@@ -1,0 +1,272 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Smartphone, Trash2, Edit2, Search, Loader2 } from 'lucide-react';
+import { AppProject } from '../types';
+import { storage } from '../services/storage';
+
+const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const [apps, setApps] = useState<AppProject[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingApp, setEditingApp] = useState<AppProject | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Form State
+  const [formData, setFormData] = useState<Partial<AppProject>>({
+    name: '',
+    description: '',
+    version: '1.0.0',
+    platform: 'Web'
+  });
+
+  useEffect(() => {
+    loadApps();
+  }, []);
+
+  const loadApps = async () => {
+    setIsLoading(true);
+    const data = await storage.getApps();
+    setApps(data);
+    setIsLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newApp: AppProject = {
+      id: editingApp ? editingApp.id : crypto.randomUUID(),
+      name: formData.name || 'Untitled App',
+      description: formData.description || '',
+      version: formData.version || '1.0.0',
+      platform: formData.platform as any || 'Web',
+      createdAt: editingApp ? editingApp.createdAt : Date.now(),
+    };
+    await storage.saveApp(newApp);
+    setIsModalOpen(false);
+    setEditingApp(null);
+    setFormData({ name: '', description: '', version: '1.0.0', platform: 'Web' });
+    loadApps();
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm('정말로 이 앱 프로젝트를 삭제하시겠습니까?')) {
+      await storage.deleteApp(id);
+      loadApps();
+    }
+  };
+
+  const openModal = (app?: AppProject) => {
+    if (app) {
+      setEditingApp(app);
+      setFormData({ ...app });
+    } else {
+      setEditingApp(null);
+      setFormData({ name: '', description: '', version: '1.0.0', platform: 'Web' });
+    }
+    setIsModalOpen(true);
+  };
+
+  const filteredApps = apps.filter(app => 
+    app.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    app.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">프로젝트 대시보드</h1>
+            <p className="text-slate-500 text-sm mt-1">등록된 모든 애플리케이션 프로젝트 현황입니다.</p>
+          </div>
+          <div className="flex gap-3">
+             <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="프로젝트 검색..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none w-64"
+                />
+             </div>
+             <button
+              onClick={() => openModal()}
+              className="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-sm"
+            >
+              <Plus size={16} /> 새 프로젝트
+            </button>
+          </div>
+        </div>
+
+        {/* Table Board */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px]">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
+              <Loader2 className="animate-spin mb-2" size={32} />
+              <p>데이터를 불러오는 중입니다...</p>
+            </div>
+          ) : (
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-16">
+                    Platform
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Project Name
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-32">
+                    Version
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-40">
+                    Created At
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-24">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {filteredApps.map((app) => (
+                  <tr 
+                    key={app.id} 
+                    onClick={() => navigate(`/app/${app.id}`)}
+                    className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
+                        ${app.platform === 'iOS' ? 'bg-slate-100 text-slate-800 border-slate-200' : 
+                          app.platform === 'Android' ? 'bg-green-100 text-green-800 border-green-200' :
+                          app.platform === 'Web' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-purple-100 text-purple-800 border-purple-200'}`}>
+                        {app.platform}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                          <Smartphone size={16} />
+                        </div>
+                        <div className="text-sm font-semibold text-slate-900">{app.name}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-slate-600 font-mono">v{app.version}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-slate-500 truncate max-w-xs">{app.description || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      {new Date(app.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openModal(app); }}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(e, app.id)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredApps.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                      {apps.length === 0 ? "등록된 프로젝트가 없습니다. '새 프로젝트'를 눌러 시작하세요." : "검색 결과가 없습니다."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md animate-in fade-in zoom-in duration-200">
+            <h2 className="text-xl font-bold mb-4">{editingApp ? '프로젝트 수정' : '새 프로젝트 등록'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">프로젝트 명</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                  placeholder="예: MyApp Pro"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">플랫폼</label>
+                  <select
+                    value={formData.platform}
+                    onChange={e => setFormData({...formData, platform: e.target.value as any})}
+                    className="w-full px-3 py-2 border rounded-lg outline-none"
+                  >
+                    <option value="iOS">iOS</option>
+                    <option value="Android">Android</option>
+                    <option value="Web">Web</option>
+                    <option value="Hybrid">Hybrid</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">버전</label>
+                  <input
+                    type="text"
+                    value={formData.version}
+                    onChange={e => setFormData({...formData, version: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg outline-none"
+                    placeholder="1.0.0"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">설명</label>
+                <textarea
+                  value={formData.description}
+                  onChange={e => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg outline-none h-24 resize-none"
+                  placeholder="프로젝트에 대한 간단한 설명을 입력하세요..."
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-sm"
+                >
+                  저장
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;
