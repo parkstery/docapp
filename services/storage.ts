@@ -13,12 +13,12 @@ import {
 import { AppProject, PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot } from '../types';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC8V2YTRo41-RjLjxFRb85h1JqVzSlHqEc",
-  authDomain: "dbam-27c63.firebaseapp.com",
-  projectId: "dbam-27c63",
-  storageBucket: "dbam-27c63.firebasestorage.app",
-  messagingSenderId: "278615707775",
-  appId: "1:278615707775:web:796af85e3b5eb2d7a0af4a"
+  apiKey: "AIzaSyDipTNPu4zT-03rjw-z21X2wiFgn4qGKqc",
+  authDomain: "docapp-9d7d7.firebaseapp.com",
+  projectId: "docapp-9d7d7",
+  storageBucket: "docapp-9d7d7.firebasestorage.app",
+  messagingSenderId: "236870255631",
+  appId: "1:236870255631:web:1045df9d108726973f4f7a"
 };
 
 const app = initializeApp(firebaseConfig);
