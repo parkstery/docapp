@@ -10,6 +10,7 @@ import {
   query, 
   where 
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { AppProject, PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot } from '../types';
 
 const firebaseConfig = {
@@ -21,8 +22,28 @@ const firebaseConfig = {
   appId: "1:236870255631:web:1045df9d108726973f4f7a"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { getApp } from 'firebase/app';
+
+// Firebase 앱 초기화 (중복 초기화 방지)
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+  console.log('[Firebase] 앱 초기화 완료:', firebaseConfig.projectId);
+} catch (error: any) {
+  // 이미 초기화된 경우 기존 앱 사용
+  if (error.code === 'app/duplicate-app') {
+    app = getApp();
+    console.log('[Firebase] 기존 앱 인스턴스 사용');
+  } else {
+    console.error('[Firebase] 초기화 실패:', error);
+    throw error;
+  }
+}
+
+export const db = getFirestore(app);
+export const firebaseStorage = getStorage(app);
+
+console.log('[Firebase] Storage 초기화 완료:', firebaseConfig.storageBucket);
 
 // Helper: Fetch collection data, optionally filtering by appId and sorting by createdAt
 const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> => {

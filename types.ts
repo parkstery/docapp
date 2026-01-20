@@ -19,10 +19,20 @@ export interface PlanningDoc extends BaseItem {
   content: string; // Markdown content
 }
 
+export interface FileInfo {
+  id: string;
+  name: string;
+  url: string;
+  size?: number;
+  type?: string;
+  date: number;
+}
+
 export interface Report extends BaseItem {
   type: 'CodeAnalysis' | 'ProjectAnalysis' | 'Interim' | 'Final' | 'Other';
   summary: string;
-  fileName?: string; // Simulated file attachment
+  fileName?: string;
+  fileInfo?: FileInfo; // Firebase Storage 파일 정보
 }
 
 export interface PromptLog extends BaseItem {
@@ -43,7 +53,7 @@ export interface Issue extends BaseItem {
 }
 
 export interface Screenshot extends BaseItem {
-  imageUrl: string; // For this demo, we'll use placeholder URLs or base64
+  imageUrl: string; // Firebase Storage URL
   description?: string;
 }
 

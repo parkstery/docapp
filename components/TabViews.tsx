@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot } from '../types';
 import { storage } from '../services/storage';
+import { uploadFile, deleteFile } from '../services/fileService';
 
 // --- Shared Props & Components ---
 interface ViewProps {
@@ -165,6 +166,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<Report>>({});
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadReports(); }, [appId]);
   
@@ -172,6 +177,85 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(true);
     setReports(await storage.reports.list(appId));
     setLoading(false);
+  };
+
+  const processFile = async (file: File) => {
+    if (uploading) {
+      console.warn('[ReportView] 이미 업로드 중입니다.');
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB 제한
+      alert('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+    
+    console.log('[ReportView] 파일 업로드 시작:', file.name, file.size);
+    setUploading(true);
+    try {
+      const fileInfo = await uploadFile(appId, `reports/${form.id || 'new'}`, file);
+      console.log('[ReportView] 파일 업로드 성공:', fileInfo);
+      setForm({
+        ...form,
+        fileName: fileInfo.name,
+        fileInfo: fileInfo
+      });
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('[ReportView] 파일 업로드 실패:', error);
+      const errorMessage = error.message || '파일 업로드에 실패했습니다.';
+      alert(`파일 업로드 실패: ${errorMessage}\n\n브라우저 콘솔을 확인하세요.`);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleFileSelect = async (file: File) => {
+    console.log('[ReportView] handleFileSelect 호출:', file.name);
+    await processFile(file);
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[ReportView] 파일 선택 이벤트 발생');
+    console.log('[ReportView] files:', e.target.files);
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log('[ReportView] 선택된 파일:', file.name, file.size, file.type);
+      await handleFileSelect(file);
+    } else {
+      console.warn('[ReportView] 파일이 선택되지 않았습니다.');
+    }
+    // 같은 파일을 다시 선택할 수 있도록 value 초기화
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
   };
 
   const handleSave = async () => {
@@ -183,12 +267,31 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       type: form.type || 'Other',
       summary: form.summary || '',
       fileName: form.fileName,
+      fileInfo: form.fileInfo,
       createdAt: form.createdAt || Date.now(),
       updatedAt: Date.now(),
     };
     await storage.reports.save(item);
     setIsModalOpen(false);
+    setForm({});
     loadReports();
+  };
+
+  const handleDeleteFile = async () => {
+    if (!form.fileInfo) return;
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+
+    try {
+      await deleteFile(form.fileInfo.url);
+      setForm({
+        ...form,
+        fileName: undefined,
+        fileInfo: undefined
+      });
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    }
   };
 
   const deleteReport = async (id: string) => {
@@ -234,7 +337,17 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{r.title}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 max-w-md truncate">{r.summary}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                      {r.fileName && <span className="flex items-center gap-1 text-indigo-600"><FileText size={14}/> {r.fileName}</span>}
+                      {r.fileInfo && (
+                        <a 
+                          href={r.fileInfo.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800"
+                        >
+                          <FileText size={14}/> {r.fileInfo.name}
+                        </a>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right">
@@ -280,14 +393,101 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                 <textarea className="w-full border rounded-lg p-3 h-32 resize-none focus:ring-2 ring-primary outline-none" value={form.summary || ''} onChange={e => setForm({...form, summary: e.target.value})} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일 (시뮬레이션)</label>
-                <div className="flex items-center gap-2">
-                  <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg text-sm text-slate-700 transition-colors">
-                    파일 선택
-                    <input type="file" className="hidden" onChange={e => setForm({...form, fileName: e.target.files?.[0]?.name})} />
-                  </label>
-                  <span className="text-sm text-slate-500">{form.fileName || '선택된 파일 없음'}</span>
+                <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
+                {uploadSuccess && (
+                  <span className="text-xs text-green-600 font-medium mb-2 block">
+                    파일이 업로드 되었습니다
+                  </span>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  id={`file-upload-${form.id || 'new'}`}
+                  onClick={(e) => {
+                    console.log('[ReportView] input 직접 클릭됨');
+                    e.stopPropagation();
+                  }}
+                />
+                <div className="space-y-2">
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
+                      isDragging
+                        ? 'border-primary bg-indigo-50'
+                        : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                    } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    <p className="text-xs text-slate-600 mb-1">
+                      파일을 여기에 드래그 앤 드롭하거나
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('[ReportView] 파일 선택 버튼 클릭 - 이벤트 발생 확인');
+                      console.log('[ReportView] fileInputRef:', fileInputRef.current);
+                      if (fileInputRef.current) {
+                        console.log('[ReportView] fileInputRef 존재, click() 호출');
+                        try {
+                          fileInputRef.current.click();
+                          console.log('[ReportView] input.click() 호출 완료');
+                        } catch (error) {
+                          console.error('[ReportView] input.click() 호출 실패:', error);
+                        }
+                      } else {
+                        console.error('[ReportView] fileInputRef가 null입니다.');
+                      }
+                    }}
+                    disabled={uploading}
+                    className="w-full text-primary hover:text-indigo-800 hover:bg-indigo-50 cursor-pointer text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    클릭하여 파일 선택
+                  </button>
                 </div>
+                {form.fileInfo && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                      <div className="flex items-center gap-2 flex-1">
+                        <FileText size={16} className="text-slate-400" />
+                        <span className="text-sm text-slate-800">{form.fileInfo.name}</span>
+                        {form.fileInfo.size && (
+                          <span className="text-xs text-slate-500">
+                            ({(form.fileInfo.size / 1024).toFixed(2)} KB)
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={form.fileInfo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50"
+                        >
+                          읽기
+                        </a>
+                        <a
+                          href={form.fileInfo.url}
+                          download={form.fileInfo.name}
+                          className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50"
+                        >
+                          다운로드
+                        </a>
+                        <button
+                          onClick={handleDeleteFile}
+                          className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
@@ -700,6 +900,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
 export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
   const [images, setImages] = useState<Screenshot[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadImages(); }, [appId]);
 
@@ -709,24 +912,113 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(false);
   };
 
-  const handleUpload = async () => {
-    // Simulation
-    const newItem: Screenshot = {
-      id: crypto.randomUUID(),
-      appId,
-      title: '스크린샷 ' + (images.length + 1),
-      imageUrl: `https://picsum.photos/400/300?random=${Date.now()}`,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    await storage.screenshots.save(newItem);
-    loadImages();
+  const processFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드할 수 있습니다.');
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB 제한
+      alert('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+
+    const fileId = crypto.randomUUID();
+    console.log('[ScreenshotView] 이미지 업로드 시작:', file.name, file.size);
+    setUploading(fileId);
+    
+    try {
+      const fileInfo = await uploadFile(appId, 'screenshots', file);
+      console.log('[ScreenshotView] 이미지 업로드 성공:', fileInfo);
+      const newItem: Screenshot = {
+        id: crypto.randomUUID(),
+        appId,
+        title: file.name || '스크린샷 ' + (images.length + 1),
+        imageUrl: fileInfo.url, // Firebase Storage URL
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      await storage.screenshots.save(newItem);
+      console.log('[ScreenshotView] Firestore 저장 완료');
+      loadImages();
+    } catch (error: any) {
+      console.error('[ScreenshotView] 이미지 업로드 실패:', error);
+      const errorMessage = error.message || '이미지 업로드에 실패했습니다.';
+      alert(`이미지 업로드 실패: ${errorMessage}\n\n브라우저 콘솔을 확인하세요.`);
+    } finally {
+      setUploading(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[ScreenshotView] 파일 선택 이벤트 발생');
+    const files = Array.from(e.target.files || []);
+    console.log('[ScreenshotView] 선택된 파일 수:', files.length);
+    
+    if (files.length === 0) {
+      console.warn('[ScreenshotView] 파일이 선택되지 않았습니다.');
+      return;
+    }
+    
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        console.log('[ScreenshotView] 이미지 파일 처리:', file.name);
+        await processFile(file);
+      } else {
+        console.warn('[ScreenshotView] 이미지가 아닌 파일:', file.name, file.type);
+      }
+    }
+    
+    // 같은 파일을 다시 선택할 수 있도록 value 초기화 (다음 이벤트 루프에서)
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }, 0);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        await processFile(file);
+      }
+    }
+  };
+
+  const handleDelete = async (id: string, imageUrl: string) => {
     if (confirm('삭제하시겠습니까?')) {
-      await storage.screenshots.delete(id);
-      loadImages();
+      try {
+        // Firebase Storage에서 파일 삭제
+        await deleteFile(imageUrl);
+        // Firestore에서 문서 삭제
+        await storage.screenshots.delete(id);
+        loadImages();
+      } catch (error) {
+        console.error('이미지 삭제 실패:', error);
+        alert('이미지 삭제에 실패했습니다.');
+      }
     }
   };
 
@@ -734,28 +1026,108 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">스크린샷 갤러리</h3>
-        <button onClick={handleUpload} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-medium">
-          <ImageIcon size={16} /> 이미지 추가 (Mock)
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('[ScreenshotView] 이미지 추가 버튼 클릭');
+            fileInputRef.current?.click();
+          }} 
+          className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-medium hover:bg-slate-700"
+        >
+          <ImageIcon size={16} /> 이미지 추가
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleFileInputChange}
+        />
       </div>
       
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 p-4 overflow-y-auto">
         {loading ? <Loading /> : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {images.map(img => (
-              <div key={img.id} className="group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all">
-                <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <a href={img.imageUrl} download target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-slate-800 hover:text-indigo-600 shadow-lg transform hover:scale-110 transition-transform"><Download size={16} /></a>
-                  <button onClick={() => handleDelete(img.id)} className="p-2 bg-white rounded-full text-slate-800 hover:text-red-600 shadow-lg transform hover:scale-110 transition-transform"><Trash2 size={16} /></button>
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-3 truncate">
-                  {img.title}
+          <>
+            {images.length === 0 && (
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
+                    isDragging 
+                      ? 'border-primary bg-indigo-50' 
+                      : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                  } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <ImageIcon size={48} className="mx-auto text-slate-300 mb-4" />
+                <p className="text-slate-600 mb-2 font-medium">이미지를 드래그하거나 클릭하여 업로드하세요</p>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('[ScreenshotView] 파일 선택 버튼 클릭 (빈 상태)');
+                    fileInputRef.current?.click();
+                  }}
+                  className="text-primary hover:underline text-sm"
+                >
+                  파일 선택
+                </button>
+                <p className="text-xs text-slate-400 mt-2">지원 형식: JPG, PNG, GIF, WebP (최대 10MB)</p>
+                {uploading && (
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <Loader2 className="animate-spin" size={20} />
+                    <span className="text-sm text-slate-600">업로드 중...</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {images.map(img => (
+                  <div key={img.id} className="group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all">
+                    <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <a href={img.imageUrl} download={img.title} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-slate-800 hover:text-indigo-600 shadow-lg transform hover:scale-110 transition-transform"><Download size={16} /></a>
+                      <button onClick={() => handleDelete(img.id, img.imageUrl)} className="p-2 bg-white rounded-full text-slate-800 hover:text-red-600 shadow-lg transform hover:scale-110 transition-transform"><Trash2 size={16} /></button>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-3 truncate">
+                      {img.title}
+                    </div>
+                  </div>
+                ))}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg aspect-video flex items-center justify-center transition-colors cursor-pointer ${
+                    isDragging 
+                      ? 'border-primary bg-indigo-50' 
+                      : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                  } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('[ScreenshotView] 드래그 영역 클릭 (갤러리)');
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <div className="text-center">
+                    {uploading ? (
+                      <>
+                        <Loader2 className="mx-auto animate-spin text-slate-400 mb-2" size={24} />
+                        <p className="text-xs text-slate-500">업로드 중...</p>
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon size={32} className="mx-auto text-slate-400 mb-2" />
+                        <p className="text-xs text-slate-500">이미지 추가</p>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))}
-            {images.length === 0 && <p className="col-span-full text-center text-slate-400 py-20">등록된 이미지가 없습니다.</p>}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
