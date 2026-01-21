@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Smartphone, Trash2, Edit2, Search, Loader2 } from 'lucide-react';
+import { Plus, Smartphone, Trash2, Edit2, Search, Loader2, LogOut, User as UserIcon } from 'lucide-react';
 import { AppProject } from '../types';
 import { storage } from '../services/storage';
+import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [apps, setApps] = useState<AppProject[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,6 +69,15 @@ const Dashboard: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error: any) {
+      console.error('로그아웃 실패:', error);
+      alert('로그아웃에 실패했습니다.');
+    }
+  };
+
   const filteredApps = apps.filter(app => 
     app.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     app.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -81,7 +92,7 @@ const Dashboard: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-800">프로젝트 대시보드</h1>
             <p className="text-slate-500 text-sm mt-1">등록된 모든 애플리케이션 프로젝트 현황입니다.</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input 
@@ -92,6 +103,24 @@ const Dashboard: React.FC = () => {
                   className="pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none w-64"
                 />
              </div>
+             {user && (
+               <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-2 px-3 py-2 bg-white border rounded-lg">
+                   {user.photoURL ? (
+                     <img src={user.photoURL} alt={user.displayName || ''} className="w-6 h-6 rounded-full" />
+                   ) : (
+                     <UserIcon size={16} className="text-slate-400" />
+                   )}
+                   <span className="text-sm text-slate-700">{user.displayName || user.email}</span>
+                 </div>
+                 <button
+                   onClick={handleSignOut}
+                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+                 >
+                   <LogOut size={16} /> 로그아웃
+                 </button>
+               </div>
+             )}
              <button
               onClick={() => openModal()}
               className="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-sm"

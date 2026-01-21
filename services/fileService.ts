@@ -1,5 +1,5 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { firebaseStorage } from './storage';
+import { firebaseStorage, auth } from './storage';
 import { Timestamp } from 'firebase/firestore';
 
 export interface FileInfo {
@@ -31,6 +31,18 @@ export const uploadFile = async (
       throw new Error('Firebase Storage가 초기화되지 않았습니다.');
     }
     
+    // 인증 상태 확인
+    const currentUser = auth.currentUser;
+    console.log('[FileService] 현재 인증 상태:', currentUser ? {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName
+    } : '로그인되지 않음');
+    
+    if (!currentUser) {
+      throw new Error('로그인이 필요합니다. 먼저 Google 로그인을 진행하세요.');
+    }
+    
     const timestamp = Date.now();
     // 파일명에 특수문자가 있으면 인코딩
     const encodedFileName = encodeURIComponent(file.name);
@@ -38,6 +50,7 @@ export const uploadFile = async (
     const storageRef = ref(firebaseStorage, fileName);
     
     console.log('[FileService] Storage 경로:', fileName);
+    console.log('[FileService] 인증된 사용자로 업로드 시도:', currentUser.email);
     console.log('[FileService] uploadBytes 시작...');
     
     // 파일 업로드
@@ -85,10 +98,42 @@ export const uploadFile = async (
     
     // Firebase Storage 권한 에러인 경우
     if (error.code === 'storage/unauthorized' || error.code === 'storage/permission-denied') {
+      const currentUser = auth.currentUser;
+      const authInfo = currentUser 
+        ? `✅ 인증된 사용자: ${currentUser.email} (UID: ${currentUser.uid})`
+        : '❌ 인증되지 않음 - 로그인이 필요합니다';
+      
+      // 인증 토큰 확인
+      let tokenInfo = '토큰 확인 중...';
+      if (currentUser) {
+        try {
+          const token = await currentUser.getIdToken();
+          tokenInfo = token ? '✅ 인증 토큰 존재' : '❌ 인증 토큰 없음';
+        } catch (tokenError) {
+          tokenInfo = '❌ 토큰 가져오기 실패: ' + (tokenError as Error).message;
+        }
+      }
+      
       throw new Error(
-        'Firebase Storage 권한이 없습니다.\n\n' +
-        'Firebase Console → Storage → Rules에서 권한을 확인하세요.\n' +
-        '개발 중에는 "allow read, write: if true;" 규칙을 사용하세요.'
+        'Firebase Storage 권한 오류가 발생했습니다.\n\n' +
+        `인증 상태: ${authInfo}\n` +
+        `토큰 상태: ${tokenInfo}\n\n` +
+        '보안 규칙 확인:\n' +
+        '1. Firebase Console → Storage → Rules\n' +
+        '2. 다음 규칙이 적용되어 있는지 확인:\n\n' +
+        'rules_version = \'2\';\n' +
+        'service firebase.storage {\n' +
+        '  match /b/{bucket}/o {\n' +
+        '    match /{allPaths=**} {\n' +
+        '      allow read: if true;\n' +
+        '      allow write: if request.auth != null;\n' +
+        '    }\n' +
+        '  }\n' +
+        '}\n\n' +
+        '3. Publish 버튼을 클릭했는지 확인\n' +
+        '4. 브라우저를 새로고침 (Ctrl+Shift+R)\n' +
+        '5. 다시 로그인 후 시도\n\n' +
+        '자세한 내용은 FIREBASE_STORAGE_RULES_SECURE.md 파일을 참고하세요.'
       );
     }
     

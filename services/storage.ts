@@ -11,6 +11,7 @@ import {
   where 
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getAuth } from 'firebase/auth';
 import { AppProject, PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot } from '../types';
 
 const firebaseConfig = {
@@ -42,8 +43,10 @@ try {
 
 export const db = getFirestore(app);
 export const firebaseStorage = getStorage(app);
+export const auth = getAuth(app);
 
 console.log('[Firebase] Storage 초기화 완료:', firebaseConfig.storageBucket);
+console.log('[Firebase] Auth 초기화 완료');
 
 // Helper: Fetch collection data, optionally filtering by appId and sorting by createdAt
 const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> => {
