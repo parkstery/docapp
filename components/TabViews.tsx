@@ -169,6 +169,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadReports(); }, [appId]);
@@ -260,6 +261,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleSave = async () => {
     if (!form.title) return alert('제목을 입력하세요');
+    // 파일 업로드 없이도 저장 가능
     const item: Report = {
       id: form.id || crypto.randomUUID(),
       appId,
@@ -274,6 +276,43 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     await storage.reports.save(item);
     setIsModalOpen(false);
     setForm({});
+    loadReports();
+  };
+
+  const handleToggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === reports.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(reports.map(r => r.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
+    
+    for (const id of selectedIds) {
+      const report = reports.find(r => r.id === id);
+      if (report?.fileInfo) {
+        try {
+          await deleteFile(report.fileInfo.url);
+        } catch (error) {
+          console.error('파일 삭제 실패:', error);
+        }
+      }
+      await storage.reports.delete(id);
+    }
+    setSelectedIds(new Set());
     loadReports();
   };
 
@@ -311,20 +350,63 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">보고서</h3>
-        <button onClick={() => openModal()} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
-          <Plus size={16} /> 작성하기
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleDeleteSelected} 
+            disabled={selectedIds.size === 0}
+            className={`px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm ${
+              selectedIds.size > 0 
+                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            <Trash2 size={16} /> 삭제 {selectedIds.size > 0 && `(${selectedIds.size})`}
+          </button>
+          <button onClick={() => openModal()} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
+            <Plus size={16} /> 작성하기
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <table className="min-w-full divide-y divide-slate-200">
-              <TableHeader cols={['Type', 'Title', 'Summary', 'Attachment', 'Date', '']} />
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={reports.length > 0 && selectedIds.size === reports.length}
+                        onChange={handleSelectAll}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border-slate-300 text-primary focus:ring-primary"
+                      />
+                      <span>SELECT</span>
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
               <tbody className="bg-white divide-y divide-slate-200">
                 {reports.map(r => (
-                  <tr key={r.id} onClick={() => openModal(r)} className="hover:bg-slate-50 cursor-pointer group">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={r.id} className="hover:bg-slate-50 group">
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(r.id)}
+                        onChange={() => handleToggleSelect(r.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border-slate-300 text-primary focus:ring-primary"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap" onClick={() => openModal(r)}>
                       <span className={`px-2 py-1 rounded text-xs font-medium border ${
                         r.type === 'Final' ? 'bg-green-50 text-green-700 border-green-200' : 
                         r.type === 'Interim' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
@@ -334,9 +416,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         {r.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{r.title}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500 max-w-md truncate">{r.summary}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 cursor-pointer" onClick={() => openModal(r)}>{r.title}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500 max-w-md truncate cursor-pointer" onClick={() => openModal(r)}>{r.summary}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => openModal(r)}>
                       {r.fileInfo && (
                         <a 
                           href={r.fileInfo.url} 
@@ -349,14 +431,14 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         </a>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => openModal(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => openModal(r)}>
                       <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
                     </td>
                   </tr>
                 ))}
                 {reports.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
                 )}
               </tbody>
             </table>
@@ -511,6 +593,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [input, setInput] = useState({ prompt: '', response: '', tags: '' });
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
@@ -546,28 +629,95 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     }
   };
 
+  const handleToggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === prompts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(prompts.map(p => p.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
+    
+    for (const id of selectedIds) {
+      await storage.prompts.delete(id);
+    }
+    setSelectedIds(new Set());
+    loadPrompts();
+    if (selectedPrompt && selectedIds.has(selectedPrompt.id)) {
+      setSelectedPrompt(null);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">프롬프트 로그</h3>
-        <button onClick={() => setIsAdding(true)} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
-          <Plus size={16} /> 로그 추가
-        </button>
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button 
+              onClick={handleDeleteSelected} 
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+            >
+              <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
+            </button>
+          )}
+          <button onClick={() => setIsAdding(true)} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
+            <Plus size={16} /> 로그 추가
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <table className="min-w-full divide-y divide-slate-200">
-               <TableHeader cols={['Prompt (Preview)', 'Tags', 'Date', '']} />
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={prompts.length > 0 && selectedIds.size === prompts.length}
+                      onChange={handleSelectAll}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Prompt (Preview)</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
                <tbody className="divide-y divide-slate-200">
                  {prompts.map(p => (
-                   <tr key={p.id} onClick={() => setSelectedPrompt(p)} className="hover:bg-slate-50 cursor-pointer group">
-                     <td className="px-6 py-4">
+                   <tr key={p.id} className="hover:bg-slate-50 group">
+                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                       <input
+                         type="checkbox"
+                         checked={selectedIds.has(p.id)}
+                         onChange={() => handleToggleSelect(p.id)}
+                         onClick={(e) => e.stopPropagation()}
+                         className="rounded border-slate-300 text-primary focus:ring-primary"
+                       />
+                     </td>
+                     <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedPrompt(p)}>
                        <div className="text-sm text-slate-900 truncate max-w-md font-medium">{p.prompt}</div>
                        <div className="text-xs text-slate-500 truncate max-w-md mt-1">{p.response}</div>
                      </td>
-                     <td className="px-6 py-4">
+                     <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedPrompt(p)}>
                        <div className="flex flex-wrap gap-1">
                          {p.tags.slice(0, 3).map((t, i) => (
                            <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">{t}</span>
@@ -575,13 +725,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          {p.tags.length > 3 && <span className="text-xs text-slate-400">+{p.tags.length - 3}</span>}
                        </div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right">
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => setSelectedPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                     <td className="px-6 py-4 text-right cursor-pointer" onClick={() => setSelectedPrompt(p)}>
                        <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
                      </td>
                    </tr>
                  ))}
-                 {prompts.length === 0 && <tr><td colSpan={4} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
+                 {prompts.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -660,6 +810,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [memos, setMemos] = useState<Memo[]>([]);
   const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -691,33 +842,99 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     }
   };
 
+  const handleToggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === memos.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(memos.map(m => m.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
+    
+    for (const id of selectedIds) {
+      await storage.memos.delete(id);
+    }
+    setSelectedIds(new Set());
+    loadMemos();
+    if (selectedMemo && selectedIds.has(selectedMemo.id)) {
+      setSelectedMemo(null);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
        <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">메모장</h3>
-        <button onClick={addMemo} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
-          <Plus size={16} /> 메모 추가
-        </button>
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button 
+              onClick={handleDeleteSelected} 
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+            >
+              <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
+            </button>
+          )}
+          <button onClick={addMemo} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+            <Plus size={16} /> 메모 추가
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <table className="min-w-full divide-y divide-slate-200">
-               <TableHeader cols={['Content', 'Date', '']} />
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={memos.length > 0 && selectedIds.size === memos.length}
+                      onChange={handleSelectAll}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
                <tbody className="divide-y divide-slate-200">
                  {memos.map(m => (
-                   <tr key={m.id} onClick={() => setSelectedMemo(m)} className="hover:bg-yellow-50 cursor-pointer group transition-colors">
-                     <td className="px-6 py-4">
+                   <tr key={m.id} className="hover:bg-yellow-50 group transition-colors">
+                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                       <input
+                         type="checkbox"
+                         checked={selectedIds.has(m.id)}
+                         onChange={() => handleToggleSelect(m.id)}
+                         onClick={(e) => e.stopPropagation()}
+                         className="rounded border-slate-300 text-primary focus:ring-primary"
+                       />
+                     </td>
+                     <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedMemo(m)}>
                        <div className="text-sm text-slate-800 line-clamp-2">{m.content}</div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 w-40">{new Date(m.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right w-16">
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 w-40 cursor-pointer" onClick={() => setSelectedMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
+                     <td className="px-6 py-4 text-right w-16 cursor-pointer" onClick={() => setSelectedMemo(m)}>
                        <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-yellow-600" />
                      </td>
                    </tr>
                  ))}
-                 {memos.length === 0 && <tr><td colSpan={3} className="text-center py-12 text-slate-400">작성된 메모가 없습니다.</td></tr>}
+                 {memos.length === 0 && <tr><td colSpan={4} className="text-center py-12 text-slate-400">작성된 메모가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -751,6 +968,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<Issue>>({});
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { loadIssues(); }, [appId]);
 
@@ -787,6 +1005,36 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     }
   };
 
+  const handleToggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === issues.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(issues.map(i => i.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
+    
+    for (const id of selectedIds) {
+      await storage.issues.delete(id);
+    }
+    setSelectedIds(new Set());
+    loadIssues();
+    setIsModalOpen(false);
+  };
+
   const openModal = (issue?: Issue) => {
     setForm(issue || { status: 'Open', severity: 'Medium' });
     setIsModalOpen(true);
@@ -796,45 +1044,81 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">트러블슈팅 이슈</h3>
-        <button onClick={() => openModal()} className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
-          <AlertCircle size={16} /> 이슈 등록
-        </button>
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button 
+              onClick={handleDeleteSelected} 
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+            >
+              <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
+            </button>
+          )}
+          <button onClick={() => openModal()} className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+            <AlertCircle size={16} /> 이슈 등록
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <table className="min-w-full divide-y divide-slate-200">
-               <TableHeader cols={['Status', 'Severity', 'Issue Title', 'Date', '']} />
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={issues.length > 0 && selectedIds.size === issues.length}
+                      onChange={handleSelectAll}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Severity</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Title</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
                <tbody className="divide-y divide-slate-200">
                  {issues.map(issue => (
-                   <tr key={issue.id} onClick={() => openModal(issue)} className="hover:bg-slate-50 cursor-pointer group">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                   <tr key={issue.id} className="hover:bg-slate-50 group">
+                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                       <input
+                         type="checkbox"
+                         checked={selectedIds.has(issue.id)}
+                         onChange={() => handleToggleSelect(issue.id)}
+                         onClick={(e) => e.stopPropagation()}
+                         className="rounded border-slate-300 text-primary focus:ring-primary"
+                       />
+                     </td>
+                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => openModal(issue)}>
                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
                            ${issue.status === 'Resolved' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                            {issue.status === 'Resolved' ? <CheckCircle size={12}/> : <AlertCircle size={12}/>}
                            {issue.status}
                          </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => openModal(issue)}>
                          <span className={`px-2 py-1 rounded text-xs font-semibold
                            ${issue.severity === 'High' ? 'text-red-600 bg-red-50' : issue.severity === 'Medium' ? 'text-orange-600 bg-orange-50' : 'text-slate-500 bg-slate-100'}`}>
                            {issue.severity}
                          </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 cursor-pointer" onClick={() => openModal(issue)}>
                         <div className={`text-sm font-medium ${issue.status === 'Resolved' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{issue.title}</div>
                         <div className="text-xs text-slate-500 truncate max-w-xs">{issue.description}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => openModal(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right cursor-pointer" onClick={() => openModal(issue)}>
                          <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-red-500" />
                       </td>
                    </tr>
                  ))}
-                 {issues.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
+                 {issues.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -902,6 +1186,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadImages(); }, [appId]);
@@ -955,7 +1240,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('[ScreenshotView] 파일 선택 이벤트 발생');
-    const files = Array.from(e.target.files || []);
+    const files = Array.from(e.target.files || []) as File[];
     console.log('[ScreenshotView] 선택된 파일 수:', files.length);
     
     if (files.length === 0) {
@@ -999,7 +1284,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
     e.stopPropagation();
     setIsDragging(false);
     
-    const files = Array.from(e.dataTransfer.files);
+    const files = Array.from(e.dataTransfer.files) as File[];
     for (const file of files) {
       if (file.type.startsWith('image/')) {
         await processFile(file);
@@ -1022,28 +1307,75 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
     }
   };
 
+  const handleToggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === images.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(images.map(img => img.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
+    
+    for (const id of selectedIds) {
+      const image = images.find(img => img.id === id);
+      if (image) {
+        try {
+          await deleteFile(image.imageUrl);
+          await storage.screenshots.delete(id);
+        } catch (error) {
+          console.error('이미지 삭제 실패:', error);
+        }
+      }
+    }
+    setSelectedIds(new Set());
+    loadImages();
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">스크린샷 갤러리</h3>
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log('[ScreenshotView] 이미지 추가 버튼 클릭');
-            fileInputRef.current?.click();
-          }} 
-          className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-medium hover:bg-slate-700"
-        >
-          <ImageIcon size={16} /> 이미지 추가
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={handleFileInputChange}
-        />
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button 
+              onClick={handleDeleteSelected} 
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+            >
+              <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
+            </button>
+          )}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('[ScreenshotView] 이미지 추가 버튼 클릭');
+              fileInputRef.current?.click();
+            }} 
+            className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-medium hover:bg-slate-700"
+          >
+            <ImageIcon size={16} /> 이미지 추가
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleFileInputChange}
+          />
+        </div>
       </div>
       
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 p-4 overflow-y-auto">
@@ -1083,46 +1415,66 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
               </div>
             )}
             {images.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {images.map(img => (
-                  <div key={img.id} className="group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all">
-                    <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <a href={img.imageUrl} download={img.title} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-slate-800 hover:text-indigo-600 shadow-lg transform hover:scale-110 transition-transform"><Download size={16} /></a>
-                      <button onClick={() => handleDelete(img.id, img.imageUrl)} className="p-2 bg-white rounded-full text-slate-800 hover:text-red-600 shadow-lg transform hover:scale-110 transition-transform"><Trash2 size={16} /></button>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <input
+                    type="checkbox"
+                    checked={images.length > 0 && selectedIds.size === images.length}
+                    onChange={handleSelectAll}
+                    className="rounded border-slate-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm text-slate-600">전체 선택</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {images.map(img => (
+                    <div key={img.id} className="group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all">
+                      <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(img.id)}
+                          onChange={() => handleToggleSelect(img.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded border-slate-300 text-primary focus:ring-primary bg-white p-1"
+                        />
+                      </div>
+                      <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <a href={img.imageUrl} download={img.title} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-slate-800 hover:text-indigo-600 shadow-lg transform hover:scale-110 transition-transform"><Download size={16} /></a>
+                        <button onClick={() => handleDelete(img.id, img.imageUrl)} className="p-2 bg-white rounded-full text-slate-800 hover:text-red-600 shadow-lg transform hover:scale-110 transition-transform"><Trash2 size={16} /></button>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-3 truncate">
+                        {img.title}
+                      </div>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-3 truncate">
-                      {img.title}
+                  ))}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-lg aspect-video flex items-center justify-center transition-colors cursor-pointer ${
+                      isDragging 
+                        ? 'border-primary bg-indigo-50' 
+                        : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                    } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log('[ScreenshotView] 드래그 영역 클릭 (갤러리)');
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    <div className="text-center">
+                      {uploading ? (
+                        <>
+                          <Loader2 className="mx-auto animate-spin text-slate-400 mb-2" size={24} />
+                          <p className="text-xs text-slate-500">업로드 중...</p>
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon size={32} className="mx-auto text-slate-400 mb-2" />
+                          <p className="text-xs text-slate-500">이미지 추가</p>
+                        </>
+                      )}
                     </div>
-                  </div>
-                ))}
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-lg aspect-video flex items-center justify-center transition-colors cursor-pointer ${
-                    isDragging 
-                      ? 'border-primary bg-indigo-50' 
-                      : 'border-slate-300 hover:border-slate-400 bg-slate-50'
-                  } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('[ScreenshotView] 드래그 영역 클릭 (갤러리)');
-                    fileInputRef.current?.click();
-                  }}
-                >
-                  <div className="text-center">
-                    {uploading ? (
-                      <>
-                        <Loader2 className="mx-auto animate-spin text-slate-400 mb-2" size={24} />
-                        <p className="text-xs text-slate-500">업로드 중...</p>
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon size={32} className="mx-auto text-slate-400 mb-2" />
-                        <p className="text-xs text-slate-500">이미지 추가</p>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
