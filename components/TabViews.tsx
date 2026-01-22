@@ -270,23 +270,29 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     
     try {
       // 파일 업로드 없이도 저장 가능 - 파일은 선택사항입니다
-      const item: Report = {
+      // Firestore는 undefined 값을 허용하지 않으므로, undefined인 필드는 제외합니다
+      const item: any = {
         id: form.id || crypto.randomUUID(),
         appId,
         title: form.title.trim(),
         type: form.type || 'Other',
         summary: form.summary || '',
-        // 파일이 없어도 저장 가능 - undefined로 설정
-        fileName: form.fileName,
-        fileInfo: form.fileInfo,
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
       
+      // 파일 정보가 있을 때만 필드에 추가 (undefined 방지)
+      if (form.fileName) {
+        item.fileName = form.fileName;
+      }
+      if (form.fileInfo) {
+        item.fileInfo = form.fileInfo;
+      }
+      
       console.log('[ReportView] 저장할 항목:', item);
       console.log('[ReportView] 파일 정보:', { fileName: item.fileName, fileInfo: item.fileInfo });
       
-      await storage.reports.save(item);
+      await storage.reports.save(item as Report);
       console.log('[ReportView] 저장 성공');
       
       setIsModalOpen(false);
