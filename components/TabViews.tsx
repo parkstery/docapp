@@ -260,23 +260,34 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSave = async () => {
-    if (!form.title) return alert('제목을 입력하세요');
-    // 파일 업로드 없이도 저장 가능
-    const item: Report = {
-      id: form.id || crypto.randomUUID(),
-      appId,
-      title: form.title,
-      type: form.type || 'Other',
-      summary: form.summary || '',
-      fileName: form.fileName,
-      fileInfo: form.fileInfo,
-      createdAt: form.createdAt || Date.now(),
-      updatedAt: Date.now(),
-    };
-    await storage.reports.save(item);
-    setIsModalOpen(false);
-    setForm({});
-    loadReports();
+    if (!form.title) {
+      alert('제목을 입력하세요');
+      return;
+    }
+    
+    try {
+      // 파일 업로드 없이도 저장 가능 - 파일은 선택사항입니다
+      const item: Report = {
+        id: form.id || crypto.randomUUID(),
+        appId,
+        title: form.title,
+        type: form.type || 'Other',
+        summary: form.summary || '',
+        fileName: form.fileName || undefined,
+        fileInfo: form.fileInfo || undefined,
+        createdAt: form.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
+      
+      await storage.reports.save(item);
+      setIsModalOpen(false);
+      setForm({});
+      loadReports();
+      // 저장 성공 메시지는 모달이 닫히면서 자연스럽게 처리됨
+    } catch (error) {
+      console.error('보고서 저장 실패:', error);
+      alert('보고서 저장에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   const handleToggleSelect = (id: string) => {
