@@ -260,7 +260,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSave = async () => {
-    if (!form.title) {
+    console.log('[ReportView] handleSave 호출됨');
+    console.log('[ReportView] form 상태:', form);
+    
+    if (!form.title || form.title.trim() === '') {
       alert('제목을 입력하세요');
       return;
     }
@@ -270,23 +273,33 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       const item: Report = {
         id: form.id || crypto.randomUUID(),
         appId,
-        title: form.title,
+        title: form.title.trim(),
         type: form.type || 'Other',
         summary: form.summary || '',
-        fileName: form.fileName || undefined,
-        fileInfo: form.fileInfo || undefined,
+        // 파일이 없어도 저장 가능 - undefined로 설정
+        fileName: form.fileName,
+        fileInfo: form.fileInfo,
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
       
+      console.log('[ReportView] 저장할 항목:', item);
+      console.log('[ReportView] 파일 정보:', { fileName: item.fileName, fileInfo: item.fileInfo });
+      
       await storage.reports.save(item);
+      console.log('[ReportView] 저장 성공');
+      
       setIsModalOpen(false);
       setForm({});
       loadReports();
-      // 저장 성공 메시지는 모달이 닫히면서 자연스럽게 처리됨
-    } catch (error) {
-      console.error('보고서 저장 실패:', error);
-      alert('보고서 저장에 실패했습니다. 다시 시도해주세요.');
+    } catch (error: any) {
+      console.error('[ReportView] 보고서 저장 실패:', error);
+      console.error('[ReportView] 에러 상세:', {
+        message: error?.message,
+        code: error?.code,
+        stack: error?.stack
+      });
+      alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}\n\n브라우저 콘솔을 확인하세요.`);
     }
   };
 
