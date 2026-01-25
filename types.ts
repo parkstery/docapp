@@ -39,6 +39,8 @@ export interface PromptLog extends BaseItem {
   prompt: string;
   response: string;
   tags: string[];
+  fileName?: string;
+  fileInfo?: FileInfo; // Firebase Storage 파일 정보
 }
 
 export interface Memo extends BaseItem {

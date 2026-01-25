@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  ChevronRight, Search, Loader2
+  ChevronRight, Search, Loader2, Edit2
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot } from '../types';
 import { storage } from '../services/storage';
@@ -625,9 +625,16 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [prompts, setPrompts] = useState<PromptLog[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptLog | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [input, setInput] = useState({ prompt: '', response: '', tags: '' });
+  const [isEditing, setIsEditing] = useState(false);
+  const [input, setInput] = useState({ prompt: '', response: '', tags: '', fileName: undefined as string | undefined, fileInfo: undefined as any });
+  const [editForm, setEditForm] = useState<Partial<PromptLog>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const addFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
@@ -637,9 +644,123 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(false);
   };
 
+  // 파일 업로드 관련 함수들 (보고서와 동일한 로직)
+  const processFile = async (file: File) => {
+    if (uploading) {
+      console.warn('[PromptView] 이미 업로드 중입니다.');
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB 제한
+      alert('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+    
+    console.log('[PromptView] 파일 업로드 시작:', file.name, file.size);
+    setUploading(true);
+    try {
+      const fileInfo = await uploadFile(appId, `prompts/${editForm.id || selectedPrompt?.id || 'new'}`, file);
+      console.log('[PromptView] 파일 업로드 성공:', fileInfo);
+      if (isEditing && editForm.id) {
+        setEditForm({
+          ...editForm,
+          fileName: fileInfo.name,
+          fileInfo: fileInfo
+        });
+      } else if (isAdding) {
+        setInput({
+          ...input,
+          fileName: fileInfo.name,
+          fileInfo: fileInfo
+        });
+      } else if (selectedPrompt) {
+        setSelectedPrompt({
+          ...selectedPrompt,
+          fileName: fileInfo.name,
+          fileInfo: fileInfo
+        });
+      }
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('[PromptView] 파일 업로드 실패:', error);
+      const errorMessage = error.message || '파일 업로드에 실패했습니다.';
+      alert(`파일 업로드 실패: ${errorMessage}\n\n브라우저 콘솔을 확인하세요.`);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      if (addFileInputRef.current) {
+        addFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
+  };
+
+  const handleDeleteFile = async () => {
+    if (!editForm.fileInfo && !selectedPrompt?.fileInfo) return;
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+
+    try {
+      const fileInfo = editForm.fileInfo || selectedPrompt?.fileInfo;
+      if (fileInfo) {
+        await deleteFile(fileInfo.url);
+        if (isEditing) {
+          setEditForm({
+            ...editForm,
+            fileName: undefined,
+            fileInfo: undefined
+          });
+        } else if (selectedPrompt) {
+          setSelectedPrompt({
+            ...selectedPrompt,
+            fileName: undefined,
+            fileInfo: undefined
+          });
+        }
+      }
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    }
+  };
+
   const handleSave = async () => {
     if (!input.prompt) return;
-    const item: PromptLog = {
+    const item: any = {
       id: crypto.randomUUID(),
       appId,
       title: input.prompt.substring(0, 30) + '...',
@@ -649,10 +770,62 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
-    await storage.prompts.save(item);
+    
+    // 파일 정보가 있을 때만 추가 (Firestore undefined 방지)
+    if (input.fileName) {
+      item.fileName = input.fileName;
+    }
+    if (input.fileInfo) {
+      item.fileInfo = input.fileInfo;
+    }
+    
+    await storage.prompts.save(item as PromptLog);
     loadPrompts();
     setIsAdding(false);
-    setInput({ prompt: '', response: '', tags: '' });
+    setInput({ prompt: '', response: '', tags: '', fileName: undefined, fileInfo: undefined });
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm.prompt) {
+      alert('프롬프트를 입력하세요');
+      return;
+    }
+    
+    try {
+      const item: any = {
+        id: editForm.id!,
+        appId,
+        title: editForm.prompt.substring(0, 30) + '...',
+        prompt: editForm.prompt,
+        response: editForm.response || '',
+        tags: editForm.tags || [],
+        createdAt: editForm.createdAt || Date.now(),
+        updatedAt: Date.now()
+      };
+      
+      // 파일 정보가 있을 때만 추가
+      if (editForm.fileName) {
+        item.fileName = editForm.fileName;
+      }
+      if (editForm.fileInfo) {
+        item.fileInfo = editForm.fileInfo;
+      }
+      
+      await storage.prompts.save(item as PromptLog);
+      loadPrompts();
+      setIsEditing(false);
+      setEditForm({});
+      setSelectedPrompt(null);
+    } catch (error: any) {
+      console.error('프롬프트 저장 실패:', error);
+      alert(`프롬프트 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+    }
+  };
+
+  const handleEdit = (prompt: PromptLog) => {
+    setEditForm({ ...prompt });
+    setIsEditing(true);
+    setSelectedPrompt(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -779,11 +952,11 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       {/* Add Modal */}
       {isAdding && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-4 border-b">
               <h3 className="font-bold text-lg">새 프롬프트 로그</h3>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">User Prompt</label>
                 <textarea className="w-full border rounded-lg p-3 h-24 focus:ring-2 ring-primary outline-none text-sm" placeholder="입력 내용..." value={input.prompt} onChange={e => setInput({...input, prompt: e.target.value})} />
@@ -796,17 +969,227 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                  <label className="block text-sm font-medium text-slate-700 mb-1">태그</label>
                  <input className="w-full border rounded-lg p-2 text-sm" placeholder="콤마(,)로 구분" value={input.tags} onChange={e => setInput({...input, tags: e.target.value})} />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
+                {uploadSuccess && (
+                  <span className="text-xs text-green-600 font-medium mb-2 block">
+                    파일이 업로드 되었습니다
+                  </span>
+                )}
+                <input
+                  ref={addFileInputRef}
+                  type="file"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  id="file-upload-prompt-new"
+                />
+                <div className="space-y-2">
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
+                      isDragging
+                        ? 'border-primary bg-indigo-50'
+                        : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                    } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    <p className="text-xs text-slate-600 mb-1">
+                      파일을 여기에 드래그 앤 드롭하거나
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      addFileInputRef.current?.click();
+                    }}
+                    disabled={uploading}
+                    className="w-full text-primary hover:text-indigo-800 hover:bg-indigo-50 cursor-pointer text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {input.fileInfo && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                      <div className="flex items-center gap-2 flex-1">
+                        <FileText size={16} className="text-slate-400" />
+                        <span className="text-sm text-slate-800">{input.fileInfo.name}</span>
+                        {input.fileInfo.size && (
+                          <span className="text-xs text-slate-500">
+                            ({(input.fileInfo.size / 1024).toFixed(2)} KB)
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={input.fileInfo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50"
+                        >
+                          읽기
+                        </a>
+                        <a
+                          href={input.fileInfo.url}
+                          download={input.fileInfo.name}
+                          className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50"
+                        >
+                          다운로드
+                        </a>
+                        <button
+                          onClick={() => setInput({...input, fileName: undefined, fileInfo: undefined})}
+                          className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-xl">
-               <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+               <button onClick={() => { setIsAdding(false); setInput({ prompt: '', response: '', tags: '', fileName: undefined, fileInfo: undefined }); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
                <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Edit Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold text-lg">프롬프트 수정</h3>
+              <button onClick={() => { setIsEditing(false); setEditForm({}); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">User Prompt</label>
+                <textarea 
+                  className="w-full border rounded-lg p-3 h-24 focus:ring-2 ring-primary outline-none text-sm" 
+                  placeholder="입력 내용..." 
+                  value={editForm.prompt || ''} 
+                  onChange={e => setEditForm({...editForm, prompt: e.target.value})} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">AI Response</label>
+                <textarea 
+                  className="w-full border rounded-lg p-3 h-32 bg-slate-50 focus:bg-white focus:ring-2 ring-primary outline-none text-sm" 
+                  placeholder="응답 내용..." 
+                  value={editForm.response || ''} 
+                  onChange={e => setEditForm({...editForm, response: e.target.value})} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">태그</label>
+                <input 
+                  className="w-full border rounded-lg p-2 text-sm" 
+                  placeholder="콤마(,)로 구분" 
+                  value={editForm.tags?.join(', ') || ''} 
+                  onChange={e => setEditForm({...editForm, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)})} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
+                {uploadSuccess && (
+                  <span className="text-xs text-green-600 font-medium mb-2 block">
+                    파일이 업로드 되었습니다
+                  </span>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  id={`file-upload-prompt-${editForm.id || 'new'}`}
+                />
+                <div className="space-y-2">
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
+                      isDragging
+                        ? 'border-primary bg-indigo-50'
+                        : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                    } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    <p className="text-xs text-slate-600 mb-1">
+                      파일을 여기에 드래그 앤 드롭하거나
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    disabled={uploading}
+                    className="w-full text-primary hover:text-indigo-800 hover:bg-indigo-50 cursor-pointer text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {(editForm.fileInfo || selectedPrompt?.fileInfo) && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                      <div className="flex items-center gap-2 flex-1">
+                        <FileText size={16} className="text-slate-400" />
+                        <span className="text-sm text-slate-800">{(editForm.fileInfo || selectedPrompt?.fileInfo)?.name}</span>
+                        {(editForm.fileInfo || selectedPrompt?.fileInfo)?.size && (
+                          <span className="text-xs text-slate-500">
+                            ({((editForm.fileInfo || selectedPrompt?.fileInfo)!.size! / 1024).toFixed(2)} KB)
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={(editForm.fileInfo || selectedPrompt?.fileInfo)?.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50"
+                        >
+                          읽기
+                        </a>
+                        <a
+                          href={(editForm.fileInfo || selectedPrompt?.fileInfo)?.url}
+                          download={(editForm.fileInfo || selectedPrompt?.fileInfo)?.name}
+                          className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50"
+                        >
+                          다운로드
+                        </a>
+                        <button
+                          onClick={handleDeleteFile}
+                          className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
+              {editForm.id ? <button onClick={() => handleDelete(editForm.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : <div/>}
+              <div className="flex gap-2">
+                <button onClick={() => { setIsEditing(false); setEditForm({}); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                <button onClick={handleEditSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Detail Modal */}
-      {selectedPrompt && (
+      {selectedPrompt && !isEditing && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
@@ -831,10 +1214,44 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   {selectedPrompt.tags.map((t, i) => <span key={i} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">{t}</span>)}
                 </div>
               </div>
+              {selectedPrompt.fileInfo && (
+                <div>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">첨부파일</h4>
+                  <div className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200">
+                    <FileText size={16} className="text-slate-400" />
+                    <span className="text-sm text-slate-800">{selectedPrompt.fileInfo.name}</span>
+                    {selectedPrompt.fileInfo.size && (
+                      <span className="text-xs text-slate-500">
+                        ({(selectedPrompt.fileInfo.size / 1024).toFixed(2)} KB)
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2 ml-auto">
+                      <a
+                        href={selectedPrompt.fileInfo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50"
+                      >
+                        읽기
+                      </a>
+                      <a
+                        href={selectedPrompt.fileInfo.url}
+                        download={selectedPrompt.fileInfo.name}
+                        className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50"
+                      >
+                        다운로드
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
               <button onClick={() => handleDelete(selectedPrompt.id)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm flex items-center gap-1"><Trash2 size={14}/> 삭제</button>
-              <button onClick={() => setSelectedPrompt(null)} className="px-4 py-2 bg-white border hover:bg-slate-50 rounded-lg text-sm">닫기</button>
+              <div className="flex gap-2">
+                <button onClick={() => handleEdit(selectedPrompt)} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-1"><Edit2 size={14}/> 수정</button>
+                <button onClick={() => setSelectedPrompt(null)} className="px-4 py-2 bg-white border hover:bg-slate-50 rounded-lg text-sm">닫기</button>
+              </div>
             </div>
           </div>
         </div>
