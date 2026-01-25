@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  ChevronRight, Search, Loader2, Edit2
+  ChevronRight, Search, Loader2, Edit2, ArrowLeft
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot } from '../types';
 import { storage } from '../services/storage';
@@ -1260,10 +1260,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   );
 };
 
-// --- 4. Memos ---
+// --- 4. 참고 ---
 export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [memos, setMemos] = useState<Memo[]>([]);
-  const [selectedMemo, setSelectedMemo] = useState<Memo | null>(null);
+  const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState<Partial<Memo>>({});
+  const [editForm, setEditForm] = useState<Partial<Memo>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -1275,25 +1278,91 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(false);
   };
 
-  const addMemo = async () => {
-    const content = prompt('메모 내용을 입력하세요:');
-    if (!content) return;
-    await storage.memos.save({
-      id: crypto.randomUUID(),
-      appId,
-      title: 'Memo',
-      content,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    });
-    loadMemos();
+  const openModal = () => {
+    setForm({ title: '', content: '' });
+    setIsModalOpen(true);
+  };
+
+  const handleSelectMemo = (memo: Memo) => {
+    setSelectedMemoId(memo.id);
+    setEditForm({ ...memo });
+  };
+
+  const handleBackToList = () => {
+    setSelectedMemoId(null);
+    setEditForm({});
   };
 
   const deleteMemo = async (id: string) => {
     if(confirm('삭제하시겠습니까?')) {
       await storage.memos.delete(id);
       loadMemos();
-      setSelectedMemo(null);
+      if (selectedMemoId === id) {
+        setSelectedMemoId(null);
+        setEditForm({});
+      }
+      setIsModalOpen(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!form.title || form.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return;
+    }
+    if (!form.content || form.content.trim() === '') {
+      alert('내용을 입력하세요');
+      return;
+    }
+    
+    try {
+      const item: Memo = {
+        id: form.id || crypto.randomUUID(),
+        appId,
+        title: form.title.trim(),
+        content: form.content.trim(),
+        createdAt: form.createdAt || Date.now(),
+        updatedAt: Date.now()
+      };
+      
+      await storage.memos.save(item);
+      loadMemos();
+      setIsModalOpen(false);
+      setForm({});
+    } catch (error: any) {
+      console.error('참고 저장 실패:', error);
+      alert(`참고 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return;
+    }
+    if (!editForm.content || editForm.content.trim() === '') {
+      alert('내용을 입력하세요');
+      return;
+    }
+    
+    try {
+      const item: Memo = {
+        id: editForm.id!,
+        appId,
+        title: editForm.title.trim(),
+        content: editForm.content.trim(),
+        createdAt: editForm.createdAt || Date.now(),
+        updatedAt: Date.now()
+      };
+      
+      await storage.memos.save(item);
+      loadMemos();
+      // 상세 페이지에 업데이트된 데이터 반영
+      setEditForm(item);
+      alert('저장되었습니다.');
+    } catch (error: any) {
+      console.error('참고 저장 실패:', error);
+      alert(`참고 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
     }
   };
 
@@ -1324,15 +1393,77 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     }
     setSelectedIds(new Set());
     loadMemos();
-    if (selectedMemo && selectedIds.has(selectedMemo.id)) {
-      setSelectedMemo(null);
+    if (selectedMemoId && selectedIds.has(selectedMemoId)) {
+      setSelectedMemoId(null);
+      setEditForm({});
     }
   };
 
+  // 상세 페이지 (편집 가능)
+  if (selectedMemoId && editForm.id) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+              <ArrowLeft size={20} />
+            </button>
+            <h3 className="font-bold text-lg text-slate-800">참고 수정</h3>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+              목록으로
+            </button>
+            <button onClick={() => deleteMemo(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
+            </button>
+            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Save size={14}/> 저장
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+          <div className="p-8 flex-1 overflow-y-auto">
+            <div className="mb-6 pb-6 border-b">
+              <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                <input 
+                  className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none" 
+                  placeholder="제목을 입력하세요" 
+                  value={editForm.title || ''} 
+                  onChange={e => setEditForm({...editForm, title: e.target.value})} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
+                <textarea 
+                  className="w-full border rounded-lg p-4 h-[500px] focus:ring-2 ring-indigo-500 outline-none text-sm resize-none" 
+                  placeholder="내용을 입력하세요..." 
+                  value={editForm.content || ''} 
+                  onChange={e => setEditForm({...editForm, content: e.target.value})} 
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 목록 페이지
   return (
     <div className="h-full flex flex-col">
        <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-lg text-slate-800">메모장</h3>
+        <h3 className="font-bold text-lg text-slate-800">참고</h3>
         <div className="flex gap-2">
           {selectedIds.size > 0 && (
             <button 
@@ -1342,8 +1473,8 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
           )}
-          <button onClick={addMemo} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
-            <Plus size={16} /> 메모 추가
+          <button onClick={() => openModal()} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+            <Plus size={16} /> 작성하기
           </button>
         </div>
       </div>
@@ -1364,6 +1495,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                     />
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
@@ -1381,42 +1513,64 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => setSelectedMemo(m)}>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        {index + 1}
                      </td>
-                     <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedMemo(m)}>
-                       <div className="text-sm text-slate-800 line-clamp-2">{m.content}</div>
+                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                       <div className="text-sm font-medium text-slate-900">{m.title}</div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 w-40 cursor-pointer" onClick={() => setSelectedMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right w-16 cursor-pointer" onClick={() => setSelectedMemo(m)}>
+                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                       <div className="text-sm text-slate-600 line-clamp-2">{m.content}</div>
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 w-40 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
+                     <td className="px-6 py-4 text-right w-16 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-yellow-600" />
                      </td>
                    </tr>
                  ))}
-                 {memos.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-slate-400">작성된 메모가 없습니다.</td></tr>}
+                 {memos.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
         </div>
       </div>
 
-      {selectedMemo && (
+      {/* Create Modal */}
+      {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-             <div className="bg-yellow-100 p-4 rounded-t-xl flex justify-between items-center">
-                <span className="font-bold text-yellow-900">메모 상세</span>
-                <button onClick={() => setSelectedMemo(null)}><X size={18} className="text-yellow-800/50 hover:text-yellow-900"/></button>
-             </div>
-             <div className="p-6 min-h-[200px] text-slate-800 whitespace-pre-wrap leading-relaxed">
-               {selectedMemo.content}
-             </div>
-             <div className="p-4 border-t flex justify-between items-center bg-slate-50 rounded-b-xl">
-               <span className="text-xs text-slate-400">{new Date(selectedMemo.createdAt).toLocaleString()}</span>
-               <button onClick={() => deleteMemo(selectedMemo.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16}/></button>
-             </div>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold text-lg">새 참고 작성</h3>
+              <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
+                <input 
+                  className="w-full border rounded-lg p-2.5 focus:ring-2 ring-yellow-400 outline-none" 
+                  placeholder="제목을 입력하세요" 
+                  value={form.title || ''} 
+                  onChange={e => setForm({...form, title: e.target.value})} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
+                <textarea 
+                  className="w-full border rounded-lg p-3 h-64 focus:ring-2 ring-yellow-400 outline-none text-sm bg-yellow-50/50 focus:bg-white transition-colors" 
+                  placeholder="내용을 입력하세요..." 
+                  value={form.content || ''} 
+                  onChange={e => setForm({...form, content: e.target.value})} 
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 rounded-lg text-sm font-medium">저장</button>
+            </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };
