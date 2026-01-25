@@ -416,6 +416,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                       <span>SELECT</span>
                     </div>
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary</th>
@@ -425,7 +426,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
-                {reports.map(r => (
+                {reports.map((r, index) => (
                   <tr key={r.id} className="hover:bg-slate-50 group">
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -435,6 +436,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         onClick={(e) => e.stopPropagation()}
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500" onClick={() => openModal(r)}>
+                      {index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap" onClick={() => openModal(r)}>
                       <span className={`px-2 py-1 rounded text-xs font-medium border ${
@@ -468,7 +472,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   </tr>
                 ))}
                 {reports.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
+                  <tr><td colSpan={8} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
                 )}
               </tbody>
             </table>
@@ -725,6 +729,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                       className="rounded border-slate-300 text-primary focus:ring-primary"
                     />
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Prompt (Preview)</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
@@ -732,7 +737,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
-                 {prompts.map(p => (
+                 {prompts.map((p, index) => (
                    <tr key={p.id} className="hover:bg-slate-50 group">
                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -742,6 +747,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          onClick={(e) => e.stopPropagation()}
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => setSelectedPrompt(p)}>
+                       {index + 1}
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedPrompt(p)}>
                        <div className="text-sm text-slate-900 truncate max-w-md font-medium">{p.prompt}</div>
@@ -761,7 +769,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                      </td>
                    </tr>
                  ))}
-                 {prompts.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
+                 {prompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -938,13 +946,14 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                       className="rounded border-slate-300 text-primary focus:ring-primary"
                     />
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
-                 {memos.map(m => (
+                 {memos.map((m, index) => (
                    <tr key={m.id} className="hover:bg-yellow-50 group transition-colors">
                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -955,6 +964,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => setSelectedMemo(m)}>
+                       {index + 1}
+                     </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedMemo(m)}>
                        <div className="text-sm text-slate-800 line-clamp-2">{m.content}</div>
                      </td>
@@ -964,7 +976,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                      </td>
                    </tr>
                  ))}
-                 {memos.length === 0 && <tr><td colSpan={4} className="text-center py-12 text-slate-400">작성된 메모가 없습니다.</td></tr>}
+                 {memos.length === 0 && <tr><td colSpan={5} className="text-center py-12 text-slate-400">작성된 메모가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -1104,6 +1116,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       className="rounded border-slate-300 text-primary focus:ring-primary"
                     />
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Severity</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Title</th>
@@ -1112,7 +1125,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
-                 {issues.map(issue => (
+                 {issues.map((issue, index) => (
                    <tr key={issue.id} className="hover:bg-slate-50 group">
                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -1122,6 +1135,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                          onClick={(e) => e.stopPropagation()}
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => openModal(issue)}>
+                       {index + 1}
                      </td>
                       <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => openModal(issue)}>
                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
@@ -1148,7 +1164,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       </td>
                    </tr>
                  ))}
-                 {issues.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
+                 {issues.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}

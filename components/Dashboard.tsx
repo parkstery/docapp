@@ -142,6 +142,9 @@ const Dashboard: React.FC = () => {
               <thead className="bg-slate-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-16">
+                    No.
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-16">
                     Platform
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -162,12 +165,15 @@ const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
-                {filteredApps.map((app) => (
+                {filteredApps.map((app, index) => (
                   <tr 
                     key={app.id} 
                     onClick={() => navigate(`/app/${app.id}`)}
                     className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
                   >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      {index + 1}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
                         ${app.platform === 'iOS' ? 'bg-slate-100 text-slate-800 border-slate-200' : 
@@ -213,7 +219,7 @@ const Dashboard: React.FC = () => {
                 ))}
                 {filteredApps.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                       {apps.length === 0 ? "등록된 프로젝트가 없습니다. '새 프로젝트'를 눌러 시작하세요." : "검색 결과가 없습니다."}
                     </td>
                   </tr>
