@@ -30,9 +30,13 @@ const Loading = () => <div className="p-8 text-center text-slate-400 flex items-
 // --- 1. Planning (Markdown) ---
 export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [docs, setDocs] = useState<PlanningDoc[]>([]);
-  const [activeDoc, setActiveDoc] = useState<PlanningDoc | null>(null);
-  const [editContent, setEditContent] = useState('');
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<PlanningDoc>>({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState<Partial<PlanningDoc>>({ title: '' });
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [saveMessageVisible, setSaveMessageVisible] = useState(false);
 
   useEffect(() => {
     loadDocs();
@@ -42,127 +46,303 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(true);
     const list = await storage.planning.list(appId);
     setDocs(list);
-    if (!activeDoc && list.length > 0) {
-      handleSelectDoc(list[0]);
-    } else if (list.length === 0) {
-      setActiveDoc(null);
+    if (selectedDocId && !list.find(d => d.id === selectedDocId)) {
+      setSelectedDocId(null);
+      setEditForm({});
     }
     setLoading(false);
   };
 
-  const handleSelectDoc = (doc: PlanningDoc) => {
-    setActiveDoc(doc);
-    setEditContent(doc.content);
+  const handleBackToList = () => {
+    setSelectedDocId(null);
+    setEditForm({});
   };
 
-  const handleCreate = async () => {
-    const title = prompt('새 기획서 제목을 입력하세요:');
-    if (!title) return;
+  const handleSelectDoc = (doc: PlanningDoc) => {
+    setSelectedDocId(doc.id);
+    setEditForm({ ...doc });
+  };
+
+  const openModal = () => {
+    setForm({ title: '' });
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.title || form.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return;
+    }
     const newDoc: PlanningDoc = {
       id: crypto.randomUUID(),
       appId,
-      title,
-      content: '# ' + title + '\n\n여기에 내용을 작성하세요.',
+      title: form.title.trim(),
+      content: '# ' + form.title.trim() + '\n\n여기에 내용을 작성하세요.',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
     await storage.planning.save(newDoc);
     loadDocs();
+    setIsModalOpen(false);
+    setForm({ title: '' });
     handleSelectDoc(newDoc);
   };
 
-  const handleSave = async () => {
-    if (!activeDoc) return;
-    const updated = { ...activeDoc, content: editContent, updatedAt: Date.now() };
-    await storage.planning.save(updated);
-    setActiveDoc(updated);
-    loadDocs(); 
-    alert('저장되었습니다.');
+  const handleEditSave = async () => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return;
+    }
+    const item: PlanningDoc = {
+      id: editForm.id!,
+      appId,
+      title: editForm.title.trim(),
+      content: editForm.content ?? '',
+      createdAt: editForm.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    };
+    await storage.planning.save(item);
+    loadDocs();
+    setEditForm(item);
+    setSaveMessageVisible(true);
+    setTimeout(() => setSaveMessageVisible(false), 2000);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
     await storage.planning.delete(id);
-    const remaining = docs.filter(d => d.id !== id);
-    setDocs(remaining);
-    if (activeDoc?.id === id) {
-      setActiveDoc(remaining.length > 0 ? remaining[0] : null);
+    loadDocs();
+    if (selectedDocId === id) {
+      handleBackToList();
     }
   };
 
-  return (
-    <div className="flex h-full border rounded-xl overflow-hidden shadow-sm bg-white">
-      {/* Sidebar List */}
-      <div className="w-64 flex-shrink-0 border-r bg-slate-50 flex flex-col">
-        <div className="p-4 border-b flex justify-between items-center bg-white">
-          <h3 className="font-bold text-slate-700 text-sm">기획 문서 목록</h3>
-          <button onClick={handleCreate} className="p-1 hover:bg-slate-100 rounded text-primary border border-transparent hover:border-slate-200 transition-all"><Plus size={16} /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {loading && docs.length === 0 ? <Loading /> : docs.map(doc => (
-            <div
-              key={doc.id}
-              onClick={() => handleSelectDoc(doc)}
-              className={`p-4 border-b border-slate-100 cursor-pointer text-sm flex justify-between items-center group transition-colors ${activeDoc?.id === doc.id ? 'bg-white border-l-4 border-l-primary text-primary font-medium' : 'hover:bg-white text-slate-600'}`}
-            >
-              <span className="truncate flex-1">{doc.title}</span>
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleDelete(doc.id); }}
-                className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-1"
-              ><Trash2 size={12}/></button>
-            </div>
-          ))}
-          {!loading && docs.length === 0 && <p className="text-xs text-slate-400 text-center py-8">문서가 없습니다.</p>}
-        </div>
-      </div>
-      
-      {/* Editor Area */}
-      <div className="flex-1 flex flex-col bg-white">
-        {activeDoc ? (
-          <>
-            <div className="h-12 border-b flex justify-between items-center px-4 bg-white">
-              <span className="font-semibold text-slate-800 text-sm">{activeDoc.title}</span>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span>{new Date(activeDoc.updatedAt).toLocaleString()} 수정됨</span>
-                <button onClick={handleSave} className="flex items-center gap-1 bg-slate-900 text-white px-3 py-1.5 rounded hover:bg-slate-800 transition-colors ml-2">
-                  <Save size={12} /> 저장
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 flex overflow-hidden">
-              <textarea
-                className="w-1/2 h-full p-6 resize-none outline-none border-r font-mono text-sm bg-slate-50/50 focus:bg-white transition-colors"
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                placeholder="Markdown 작성..."
-              />
-              <div className="w-1/2 h-full p-6 overflow-y-auto prose prose-sm max-w-none prose-slate">
-                {/* Simple Markdown Preview */}
-                {editContent.split('\n').map((line, i) => {
-                  if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{line.replace('# ', '')}</h1>;
-                  if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{line.replace('## ', '')}</h2>;
-                  if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{line.replace('### ', '')}</h3>;
-                  if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{line.replace('- ', '')}</li>;
-                  if (line.trim() === '') return <div key={i} className="h-4" />;
-                  return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{line}</p>;
-                })}
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-2">
-            <FileText size={48} className="text-slate-200" />
-            <p>기획서를 선택하거나 새로 만드세요.</p>
+  const handleToggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === docs.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(docs.map(d => d.id)));
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
+    for (const id of selectedIds) await storage.planning.delete(id);
+    setSelectedIds(new Set());
+    loadDocs();
+    if (selectedDocId && selectedIds.has(selectedDocId)) handleBackToList();
+  };
+
+  // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
+  if (selectedDocId && editForm.id) {
+    return (
+      <>
+        {saveMessageVisible && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
+            저장되었습니다
           </div>
         )}
+      <div className="h-full flex flex-col">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+              <ArrowLeft size={20} />
+            </button>
+            <h3 className="font-bold text-lg text-slate-800">기획서 수정</h3>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+              목록으로
+            </button>
+            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
+            </button>
+            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Save size={14}/> 저장
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+            <div className="mb-2 pb-2 border-b">
+              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                <input
+                  className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
+                  placeholder="제목을 입력하세요"
+                  value={editForm.title || ''}
+                  onChange={e => setEditForm({...editForm, title: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">내용 (Markdown)</label>
+                <div className="flex border rounded-xl overflow-hidden min-h-[400px]">
+                  <textarea
+                    className="w-1/2 min-h-[400px] p-4 resize-none outline-none border-r font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
+                    placeholder="Markdown 작성..."
+                    value={editForm.content || ''}
+                    onChange={e => setEditForm({...editForm, content: e.target.value})}
+                  />
+                  <div className="w-1/2 p-4 overflow-y-auto prose prose-sm max-w-none prose-slate bg-white">
+                    {(editForm.content || '').split('\n').map((line, i) => {
+                      if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{line.replace('# ', '')}</h1>;
+                      if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{line.replace('## ', '')}</h2>;
+                      if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{line.replace('### ', '')}</h3>;
+                      if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{line.replace('- ', '')}</li>;
+                      if (line.trim() === '') return <div key={i} className="h-4" />;
+                      return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{line}</p>;
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+    </>
+    );
+  }
+
+  // 목록 페이지
+  return (
+    <>
+      {saveMessageVisible && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
+          저장되었습니다
+        </div>
+      )}
+    <div className="h-full flex flex-col">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-bold text-lg text-slate-800">기획서</h3>
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+            >
+              <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
+            </button>
+          )}
+          <button onClick={openModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+            <Plus size={16} /> 작성하기
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+        <div className="overflow-auto flex-1">
+          {loading ? <Loading /> : (
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={docs.length > 0 && selectedIds.size === docs.length}
+                      onChange={handleSelectAll}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {docs.map((doc, index) => (
+                  <tr key={doc.id} className="hover:bg-indigo-50/50 group transition-colors">
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(doc.id)}
+                        onChange={() => handleToggleSelect(doc.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border-slate-300 text-primary focus:ring-primary"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                      {index + 1}
+                    </td>
+                    <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                      <div className="text-sm font-medium text-slate-900">{doc.title}</div>
+                    </td>
+                    <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                      <div className="text-sm text-slate-600 line-clamp-2">{doc.content}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 w-40 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                      {new Date(doc.updatedAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-right w-16 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                      <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-indigo-600" />
+                    </td>
+                  </tr>
+                ))}
+                {docs.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center py-12 text-slate-400">
+                      등록된 기획서가 없습니다. 작성하기를 눌러 시작하세요.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* 새 기획서 작성 모달 */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold text-lg">새 기획서 작성</h3>
+              <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
+                <input
+                  className="w-full border rounded-lg p-2.5 focus:ring-2 ring-indigo-500 outline-none"
+                  placeholder="기획서 제목을 입력하세요"
+                  value={form.title || ''}
+                  onChange={e => setForm({...form, title: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 };
 
 // --- 2. Reports ---
 export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [reports, setReports] = useState<Report[]>([]);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Report>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<Report>>({});
   const [loading, setLoading] = useState(false);
@@ -170,7 +350,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const detailFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadReports(); }, [appId]);
   
@@ -180,57 +362,51 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(false);
   };
 
-  const processFile = async (file: File) => {
-    if (uploading) {
-      console.warn('[ReportView] 이미 업로드 중입니다.');
-      return;
-    }
-    
-    if (file.size > 10 * 1024 * 1024) { // 10MB 제한
+  const handleBackToList = () => {
+    setSelectedReportId(null);
+    setEditForm({});
+  };
+
+  const handleSelectReport = (report: Report) => {
+    setSelectedReportId(report.id);
+    setEditForm({ ...report });
+  };
+
+  const processFile = async (file: File, target: 'form' | 'editForm') => {
+    if (uploading) return;
+    if (file.size > 10 * 1024 * 1024) {
       alert('파일 크기는 10MB 이하여야 합니다.');
       return;
     }
-    
-    console.log('[ReportView] 파일 업로드 시작:', file.name, file.size);
     setUploading(true);
     try {
-      const fileInfo = await uploadFile(appId, `reports/${form.id || 'new'}`, file);
-      console.log('[ReportView] 파일 업로드 성공:', fileInfo);
-      setForm({
-        ...form,
-        fileName: fileInfo.name,
-        fileInfo: fileInfo
-      });
+      const fileInfo = await uploadFile(appId, `reports/${target === 'editForm' ? editForm.id : form.id || 'new'}`, file);
+      if (target === 'editForm') {
+        setEditForm({ ...editForm, fileName: fileInfo.name, fileInfo });
+      } else {
+        setForm({ ...form, fileName: fileInfo.name, fileInfo });
+      }
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 2000);
     } catch (error: any) {
       console.error('[ReportView] 파일 업로드 실패:', error);
-      const errorMessage = error.message || '파일 업로드에 실패했습니다.';
-      alert(`파일 업로드 실패: ${errorMessage}\n\n브라우저 콘솔을 확인하세요.`);
+      alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}\n\n브라우저 콘솔을 확인하세요.`);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (detailFileInputRef.current) detailFileInputRef.current.value = '';
     }
-  };
-
-  const handleFileSelect = async (file: File) => {
-    console.log('[ReportView] handleFileSelect 호출:', file.name);
-    await processFile(file);
   };
 
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[ReportView] 파일 선택 이벤트 발생');
-    console.log('[ReportView] files:', e.target.files);
     const file = e.target.files?.[0];
-    if (file) {
-      console.log('[ReportView] 선택된 파일:', file.name, file.size, file.type);
-      await handleFileSelect(file);
-    } else {
-      console.warn('[ReportView] 파일이 선택되지 않았습니다.');
-    }
-    // 같은 파일을 다시 선택할 수 있도록 value 초기화
+    if (file) await processFile(file, 'form');
+    e.target.value = '';
+  };
+
+  const handleDetailFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await processFile(file, 'editForm');
     e.target.value = '';
   };
 
@@ -252,25 +428,24 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
     const file = e.dataTransfer.files?.[0];
-    if (file) {
-      await processFile(file);
-    }
+    if (file) await processFile(file, 'form');
+  };
+
+  const handleDetailDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await processFile(file, 'editForm');
   };
 
   const handleSave = async () => {
-    console.log('[ReportView] handleSave 호출됨');
-    console.log('[ReportView] form 상태:', form);
-    
     if (!form.title || form.title.trim() === '') {
       alert('제목을 입력하세요');
       return;
     }
-    
     try {
-      // 파일 업로드 없이도 저장 가능 - 파일은 선택사항입니다
-      // Firestore는 undefined 값을 허용하지 않으므로, undefined인 필드는 제외합니다
       const item: any = {
         id: form.id || crypto.randomUUID(),
         appId,
@@ -280,32 +455,55 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
-      
-      // 파일 정보가 있을 때만 필드에 추가 (undefined 방지)
-      if (form.fileName) {
-        item.fileName = form.fileName;
-      }
-      if (form.fileInfo) {
-        item.fileInfo = form.fileInfo;
-      }
-      
-      console.log('[ReportView] 저장할 항목:', item);
-      console.log('[ReportView] 파일 정보:', { fileName: item.fileName, fileInfo: item.fileInfo });
-      
+      if (form.fileName) item.fileName = form.fileName;
+      if (form.fileInfo) item.fileInfo = form.fileInfo;
       await storage.reports.save(item as Report);
-      console.log('[ReportView] 저장 성공');
-      
       setIsModalOpen(false);
       setForm({});
       loadReports();
     } catch (error: any) {
       console.error('[ReportView] 보고서 저장 실패:', error);
-      console.error('[ReportView] 에러 상세:', {
-        message: error?.message,
-        code: error?.code,
-        stack: error?.stack
-      });
-      alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}\n\n브라우저 콘솔을 확인하세요.`);
+      alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return;
+    }
+    try {
+      const item: any = {
+        id: editForm.id!,
+        appId,
+        title: editForm.title.trim(),
+        type: editForm.type || 'Other',
+        summary: editForm.summary || '',
+        createdAt: editForm.createdAt ?? Date.now(),
+        updatedAt: Date.now(),
+      };
+      if (editForm.fileName) item.fileName = editForm.fileName;
+      if (editForm.fileInfo) item.fileInfo = editForm.fileInfo;
+      await storage.reports.save(item as Report);
+      loadReports();
+      setEditForm(item);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
+    } catch (error: any) {
+      console.error('[ReportView] 보고서 저장 실패:', error);
+      alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+    }
+  };
+
+  const handleDeleteDetailFile = async () => {
+    if (!editForm.fileInfo) return;
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+    try {
+      await deleteFile(editForm.fileInfo.url);
+      setEditForm({ ...editForm, fileName: undefined, fileInfo: undefined });
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
     }
   };
 
@@ -330,20 +528,16 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
-    
     for (const id of selectedIds) {
       const report = reports.find(r => r.id === id);
       if (report?.fileInfo) {
-        try {
-          await deleteFile(report.fileInfo.url);
-        } catch (error) {
-          console.error('파일 삭제 실패:', error);
-        }
+        try { await deleteFile(report.fileInfo.url); } catch (error) { console.error('파일 삭제 실패:', error); }
       }
       await storage.reports.delete(id);
     }
     setSelectedIds(new Set());
     loadReports();
+    if (selectedReportId && selectedIds.has(selectedReportId)) handleBackToList();
   };
 
   const handleDeleteFile = async () => {
@@ -364,18 +558,132 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const deleteReport = async (id: string) => {
-    if(confirm('삭제하시겠습니까?')) {
-      await storage.reports.delete(id);
-      loadReports();
-      setIsModalOpen(false);
+    if (!confirm('삭제하시겠습니까?')) return;
+    const report = reports.find(r => r.id === id);
+    if (report?.fileInfo) {
+      try { await deleteFile(report.fileInfo.url); } catch (error) { console.error('파일 삭제 실패:', error); }
     }
+    await storage.reports.delete(id);
+    loadReports();
+    if (selectedReportId === id) handleBackToList();
+    setIsModalOpen(false);
   };
 
-  const openModal = (report?: Report) => {
-    setForm(report || { type: 'Other' });
+  const openModal = () => {
+    setForm({ type: 'Other' });
     setIsModalOpen(true);
   };
 
+  // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
+  if (selectedReportId && editForm.id) {
+    return (
+      <>
+        {saveMessageVisible && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
+            저장되었습니다
+          </div>
+        )}
+      <div className="h-full flex flex-col">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+              <ArrowLeft size={20} />
+            </button>
+            <h3 className="font-bold text-lg text-slate-800">보고서 수정</h3>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">목록으로</button>
+            <button onClick={() => deleteReport(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
+            </button>
+            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Save size={14}/> 저장
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+            <div className="mb-2 pb-2 border-b">
+              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                  <input
+                    className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
+                    value={editForm.title || ''}
+                    onChange={e => setEditForm({...editForm, title: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">유형</label>
+                  <select
+                    className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
+                    value={editForm.type}
+                    onChange={e => setEditForm({...editForm, type: e.target.value as Report['type']})}
+                  >
+                    <option value="CodeAnalysis">코드 분석</option>
+                    <option value="ProjectAnalysis">프로젝트 분석</option>
+                    <option value="Interim">중간 보고서</option>
+                    <option value="Final">완료 보고서</option>
+                    <option value="Other">기타</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
+                <textarea
+                  className="w-full border rounded-lg p-4 h-32 resize-none focus:ring-2 ring-indigo-500 outline-none text-sm"
+                  value={editForm.summary || ''}
+                  onChange={e => setEditForm({...editForm, summary: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
+                {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
+                <input ref={detailFileInputRef} type="file" onChange={handleDetailFileInputChange} className="hidden" id="file-upload-report-detail" />
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDetailDrop}
+                  className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                  <button type="button" onClick={() => detailFileInputRef.current?.click()} disabled={uploading} className="w-full text-primary hover:text-indigo-800 text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50">
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {editForm.fileInfo && (
+                  <div className="mt-4 flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                    <div className="flex items-center gap-2 flex-1">
+                      <FileText size={16} className="text-slate-400" />
+                      <span className="text-sm text-slate-800">{editForm.fileInfo.name}</span>
+                      {editForm.fileInfo.size && <span className="text-xs text-slate-500">({(editForm.fileInfo.size / 1024).toFixed(2)} KB)</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a href={editForm.fileInfo.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                      <a href={editForm.fileInfo.url} download={editForm.fileInfo.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                      <button onClick={handleDeleteDetailFile} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+    );
+  }
+
+  // 목록 페이지
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
@@ -437,10 +745,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500" onClick={() => openModal(r)}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {index + 1}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap" onClick={() => openModal(r)}>
+                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handleSelectReport(r)}>
                       <span className={`px-2 py-1 rounded text-xs font-medium border ${
                         r.type === 'Final' ? 'bg-green-50 text-green-700 border-green-200' : 
                         r.type === 'Interim' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
@@ -450,9 +758,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         {r.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 cursor-pointer" onClick={() => openModal(r)}>{r.title}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500 max-w-md truncate cursor-pointer" onClick={() => openModal(r)}>{r.summary}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => openModal(r)}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 cursor-pointer" onClick={() => handleSelectReport(r)}>{r.title}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500 max-w-md truncate cursor-pointer" onClick={() => handleSelectReport(r)}>{r.summary}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {r.fileInfo && (
                         <a 
                           href={r.fileInfo.url} 
@@ -465,8 +773,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         </a>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => openModal(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => openModal(r)}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectReport(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectReport(r)}>
                       <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
                     </td>
                   </tr>
@@ -484,7 +792,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg">{form.id ? '보고서 수정' : '새 보고서 작성'}</h3>
+              <h3 className="font-bold text-lg">새 보고서 작성</h3>
               <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
             </div>
             <div className="p-6 overflow-y-auto space-y-4">
@@ -625,7 +933,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [prompts, setPrompts] = useState<PromptLog[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptLog | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [input, setInput] = useState({ prompt: '', response: '', tags: '', fileName: undefined as string | undefined, fileInfo: undefined as any });
   const [editForm, setEditForm] = useState<Partial<PromptLog>>({});
   const [loading, setLoading] = useState(false);
@@ -633,6 +940,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -661,7 +969,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     try {
       const fileInfo = await uploadFile(appId, `prompts/${editForm.id || selectedPrompt?.id || 'new'}`, file);
       console.log('[PromptView] 파일 업로드 성공:', fileInfo);
-      if (isEditing && editForm.id) {
+      if (editForm.id) {
         setEditForm({
           ...editForm,
           fileName: fileInfo.name,
@@ -670,12 +978,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       } else if (isAdding) {
         setInput({
           ...input,
-          fileName: fileInfo.name,
-          fileInfo: fileInfo
-        });
-      } else if (selectedPrompt) {
-        setSelectedPrompt({
-          ...selectedPrompt,
           fileName: fileInfo.name,
           fileInfo: fileInfo
         });
@@ -738,7 +1040,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       const fileInfo = editForm.fileInfo || selectedPrompt?.fileInfo;
       if (fileInfo) {
         await deleteFile(fileInfo.url);
-        if (isEditing) {
+        if (editForm.id) {
           setEditForm({
             ...editForm,
             fileName: undefined,
@@ -813,19 +1115,24 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       
       await storage.prompts.save(item as PromptLog);
       loadPrompts();
-      setIsEditing(false);
-      setEditForm({});
-      setSelectedPrompt(null);
+      setEditForm(item);
+      setSelectedPrompt(item as PromptLog);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
     } catch (error: any) {
       console.error('프롬프트 저장 실패:', error);
       alert(`프롬프트 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
     }
   };
 
-  const handleEdit = (prompt: PromptLog) => {
-    setEditForm({ ...prompt });
-    setIsEditing(true);
+  const handleBackToList = () => {
     setSelectedPrompt(null);
+    setEditForm({});
+  };
+
+  const handleSelectPrompt = (prompt: PromptLog) => {
+    setSelectedPrompt(prompt);
+    setEditForm({ ...prompt });
   };
 
   const handleDelete = async (id: string) => {
@@ -833,6 +1140,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       await storage.prompts.delete(id);
       loadPrompts();
       setSelectedPrompt(null);
+      setEditForm({});
     }
   };
 
@@ -865,11 +1173,142 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     loadPrompts();
     if (selectedPrompt && selectedIds.has(selectedPrompt.id)) {
       setSelectedPrompt(null);
+      setEditForm({});
     }
   };
 
+  // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
+  if (selectedPrompt && editForm.id) {
+    return (
+      <>
+        {saveMessageVisible && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
+            저장되었습니다
+          </div>
+        )}
+      <div className="h-full flex flex-col">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+              <ArrowLeft size={20} />
+            </button>
+            <h3 className="font-bold text-lg text-slate-800">프롬프트 수정</h3>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+              목록으로
+            </button>
+            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
+            </button>
+            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Save size={14}/> 저장
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+            <div className="mb-2 pb-2 border-b">
+              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
+                <textarea
+                  className="w-full border rounded-lg p-3 text-sm focus:ring-2 ring-indigo-500 outline-none resize-none"
+                  placeholder="입력 내용..."
+                  rows={15}
+                  value={editForm.prompt || ''}
+                  onChange={e => setEditForm({...editForm, prompt: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">AI Response</label>
+                <textarea
+                  className="w-full border rounded-lg p-4 h-64 bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500 outline-none text-sm resize-none"
+                  placeholder="응답 내용..."
+                  value={editForm.response || ''}
+                  onChange={e => setEditForm({...editForm, response: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">태그</label>
+                <input
+                  className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none text-sm"
+                  placeholder="콤마(,)로 구분"
+                  value={Array.isArray(editForm.tags) ? editForm.tags.join(', ') : ''}
+                  onChange={e => setEditForm({...editForm, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
+                {uploadSuccess && (
+                  <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  id={`file-upload-prompt-detail-${editForm.id}`}
+                />
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
+                    isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                  } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="text-primary hover:text-indigo-800 text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50"
+                  >
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {editForm.fileInfo && (
+                  <div className="mt-4 flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                    <div className="flex items-center gap-2 flex-1">
+                      <FileText size={16} className="text-slate-400" />
+                      <span className="text-sm text-slate-800">{editForm.fileInfo.name}</span>
+                      {editForm.fileInfo.size && (
+                        <span className="text-xs text-slate-500">({(editForm.fileInfo.size / 1024).toFixed(2)} KB)</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a href={editForm.fileInfo.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                      <a href={editForm.fileInfo.url} download={editForm.fileInfo.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                      <button onClick={handleDeleteFile} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+    );
+  }
+
+  // 목록 페이지
   return (
     <div className="h-full flex flex-col">
+      {saveMessageVisible && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
+          저장되었습니다
+        </div>
+      )}
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">프롬프트 로그</h3>
         <div className="flex gap-2">
@@ -921,14 +1360,14 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => setSelectedPrompt(p)}>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        {index + 1}
                      </td>
-                     <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedPrompt(p)}>
+                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <div className="text-sm text-slate-900 truncate max-w-md font-medium">{p.prompt}</div>
                        <div className="text-xs text-slate-500 truncate max-w-md mt-1">{p.response}</div>
                      </td>
-                     <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedPrompt(p)}>
+                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <div className="flex flex-wrap gap-1">
                          {p.tags.slice(0, 3).map((t, i) => (
                            <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">{t}</span>
@@ -936,8 +1375,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          {p.tags.length > 3 && <span className="text-xs text-slate-400">+{p.tags.length - 3}</span>}
                        </div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => setSelectedPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right cursor-pointer" onClick={() => setSelectedPrompt(p)}>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                     <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
                      </td>
                    </tr>
@@ -1059,203 +1498,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
         </div>
       )}
 
-      {/* Edit Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg">프롬프트 수정</h3>
-              <button onClick={() => { setIsEditing(false); setEditForm({}); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
-            </div>
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">User Prompt</label>
-                <textarea 
-                  className="w-full border rounded-lg p-3 h-24 focus:ring-2 ring-primary outline-none text-sm" 
-                  placeholder="입력 내용..." 
-                  value={editForm.prompt || ''} 
-                  onChange={e => setEditForm({...editForm, prompt: e.target.value})} 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">AI Response</label>
-                <textarea 
-                  className="w-full border rounded-lg p-3 h-32 bg-slate-50 focus:bg-white focus:ring-2 ring-primary outline-none text-sm" 
-                  placeholder="응답 내용..." 
-                  value={editForm.response || ''} 
-                  onChange={e => setEditForm({...editForm, response: e.target.value})} 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">태그</label>
-                <input 
-                  className="w-full border rounded-lg p-2 text-sm" 
-                  placeholder="콤마(,)로 구분" 
-                  value={editForm.tags?.join(', ') || ''} 
-                  onChange={e => setEditForm({...editForm, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean)})} 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
-                {uploadSuccess && (
-                  <span className="text-xs text-green-600 font-medium mb-2 block">
-                    파일이 업로드 되었습니다
-                  </span>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                  id={`file-upload-prompt-${editForm.id || 'new'}`}
-                />
-                <div className="space-y-2">
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
-                      isDragging
-                        ? 'border-primary bg-indigo-50'
-                        : 'border-slate-300 hover:border-slate-400 bg-slate-50'
-                    } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                  >
-                    <p className="text-xs text-slate-600 mb-1">
-                      파일을 여기에 드래그 앤 드롭하거나
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    disabled={uploading}
-                    className="w-full text-primary hover:text-indigo-800 hover:bg-indigo-50 cursor-pointer text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    클릭하여 파일 선택
-                  </button>
-                </div>
-                {(editForm.fileInfo || selectedPrompt?.fileInfo) && (
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
-                      <div className="flex items-center gap-2 flex-1">
-                        <FileText size={16} className="text-slate-400" />
-                        <span className="text-sm text-slate-800">{(editForm.fileInfo || selectedPrompt?.fileInfo)?.name}</span>
-                        {(editForm.fileInfo || selectedPrompt?.fileInfo)?.size && (
-                          <span className="text-xs text-slate-500">
-                            ({((editForm.fileInfo || selectedPrompt?.fileInfo)!.size! / 1024).toFixed(2)} KB)
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={(editForm.fileInfo || selectedPrompt?.fileInfo)?.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50"
-                        >
-                          읽기
-                        </a>
-                        <a
-                          href={(editForm.fileInfo || selectedPrompt?.fileInfo)?.url}
-                          download={(editForm.fileInfo || selectedPrompt?.fileInfo)?.name}
-                          className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50"
-                        >
-                          다운로드
-                        </a>
-                        <button
-                          onClick={handleDeleteFile}
-                          className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
-              {editForm.id ? <button onClick={() => handleDelete(editForm.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : <div/>}
-              <div className="flex gap-2">
-                <button onClick={() => { setIsEditing(false); setEditForm({}); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button onClick={handleEditSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Detail Modal */}
-      {selectedPrompt && !isEditing && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
-               <div className="flex gap-2 items-center">
-                 <h3 className="font-bold text-lg">상세 보기</h3>
-                 <span className="text-xs text-slate-400">{new Date(selectedPrompt.createdAt).toLocaleString()}</span>
-               </div>
-               <button onClick={() => setSelectedPrompt(null)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
-            </div>
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              <div>
-                 <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">User Prompt</h4>
-                 <div className="bg-slate-50 p-4 rounded-lg text-slate-800 text-sm whitespace-pre-wrap border">{selectedPrompt.prompt}</div>
-              </div>
-              <div>
-                 <h4 className="text-xs font-bold text-indigo-500 uppercase mb-2">AI Response</h4>
-                 <div className="bg-indigo-50/50 p-4 rounded-lg text-slate-800 text-sm whitespace-pre-wrap border border-indigo-100">{selectedPrompt.response}</div>
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Tags</h4>
-                <div className="flex gap-2">
-                  {selectedPrompt.tags.map((t, i) => <span key={i} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">{t}</span>)}
-                </div>
-              </div>
-              {selectedPrompt.fileInfo && (
-                <div>
-                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">첨부파일</h4>
-                  <div className="flex items-center gap-2 p-2 bg-slate-50 rounded border border-slate-200">
-                    <FileText size={16} className="text-slate-400" />
-                    <span className="text-sm text-slate-800">{selectedPrompt.fileInfo.name}</span>
-                    {selectedPrompt.fileInfo.size && (
-                      <span className="text-xs text-slate-500">
-                        ({(selectedPrompt.fileInfo.size / 1024).toFixed(2)} KB)
-                      </span>
-                    )}
-                    <div className="flex items-center gap-2 ml-auto">
-                      <a
-                        href={selectedPrompt.fileInfo.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50"
-                      >
-                        읽기
-                      </a>
-                      <a
-                        href={selectedPrompt.fileInfo.url}
-                        download={selectedPrompt.fileInfo.name}
-                        className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50"
-                      >
-                        다운로드
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
-              <button onClick={() => handleDelete(selectedPrompt.id)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm flex items-center gap-1"><Trash2 size={14}/> 삭제</button>
-              <div className="flex gap-2">
-                <button onClick={() => handleEdit(selectedPrompt)} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-1"><Edit2 size={14}/> 수정</button>
-                <button onClick={() => setSelectedPrompt(null)} className="px-4 py-2 bg-white border hover:bg-slate-50 rounded-lg text-sm">닫기</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -1269,6 +1511,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [editForm, setEditForm] = useState<Partial<Memo>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [saveMessageVisible, setSaveMessageVisible] = useState(false);
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -1357,9 +1600,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       
       await storage.memos.save(item);
       loadMemos();
-      // 상세 페이지에 업데이트된 데이터 반영
       setEditForm(item);
-      alert('저장되었습니다.');
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
     } catch (error: any) {
       console.error('참고 저장 실패:', error);
       alert(`참고 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
@@ -1402,6 +1645,12 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   // 상세 페이지 (편집 가능)
   if (selectedMemoId && editForm.id) {
     return (
+      <>
+        {saveMessageVisible && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
+            저장되었습니다
+          </div>
+        )}
       <div className="h-full flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-3">
@@ -1424,9 +1673,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="p-8 flex-1 overflow-y-auto">
-            <div className="mb-6 pb-6 border-b">
-              <div className="flex items-center gap-4 text-sm text-slate-500 mb-4">
+          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+            <div className="mb-2 pb-2 border-b">
+              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
                 <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                 {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                   <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
@@ -1456,6 +1705,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         </div>
       </div>
+    </>
     );
   }
 
@@ -1578,10 +1828,13 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
 // --- 5. Troubleshooting ---
 export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Issue>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<Issue>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [saveMessageVisible, setSaveMessageVisible] = useState(false);
 
   useEffect(() => { loadIssues(); }, [appId]);
 
@@ -1589,6 +1842,16 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(true);
     setIssues(await storage.issues.list(appId));
     setLoading(false);
+  };
+
+  const handleBackToList = () => {
+    setSelectedIssueId(null);
+    setEditForm({});
+  };
+
+  const handleSelectIssue = (issue: Issue) => {
+    setSelectedIssueId(issue.id);
+    setEditForm({ ...issue });
   };
 
   const handleSave = async () => {
@@ -1610,11 +1873,42 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     setForm({});
   };
 
+  const handleEditSave = async () => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return;
+    }
+    try {
+      const item: Issue = {
+        id: editForm.id!,
+        appId,
+        title: editForm.title.trim(),
+        description: editForm.description || '',
+        solution: editForm.solution || '',
+        status: editForm.status || 'Open',
+        severity: editForm.severity || 'Medium',
+        createdAt: editForm.createdAt || Date.now(),
+        updatedAt: Date.now()
+      };
+      await storage.issues.save(item);
+      loadIssues();
+      setEditForm(item);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
+    } catch (error: any) {
+      console.error('이슈 저장 실패:', error);
+      alert(`저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+    }
+  };
+
   const deleteIssue = async (id: string) => {
     if(confirm('삭제하시겠습니까?')) {
-       await storage.issues.delete(id);
-       loadIssues();
-       setIsModalOpen(false);
+      await storage.issues.delete(id);
+      loadIssues();
+      if (selectedIssueId === id) {
+        handleBackToList();
+      }
+      setIsModalOpen(false);
     }
   };
 
@@ -1645,14 +1939,120 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     }
     setSelectedIds(new Set());
     loadIssues();
+    if (selectedIssueId && selectedIds.has(selectedIssueId)) {
+      handleBackToList();
+    }
     setIsModalOpen(false);
   };
 
-  const openModal = (issue?: Issue) => {
-    setForm(issue || { status: 'Open', severity: 'Medium' });
+  const openModal = () => {
+    setForm({ status: 'Open', severity: 'Medium' });
     setIsModalOpen(true);
   };
 
+  // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
+  if (selectedIssueId && editForm.id) {
+    return (
+      <>
+        {saveMessageVisible && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
+            저장되었습니다
+          </div>
+        )}
+      <div className="h-full flex flex-col">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+              <ArrowLeft size={20} />
+            </button>
+            <h3 className="font-bold text-lg text-slate-800">트러블슈팅 수정</h3>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+              목록으로
+            </button>
+            <button onClick={() => deleteIssue(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
+            </button>
+            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Save size={14}/> 저장
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+            <div className="mb-2 pb-2 border-b">
+              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                  <input
+                    className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
+                    placeholder="문제 상황 요약"
+                    value={editForm.title || ''}
+                    onChange={e => setEditForm({...editForm, title: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">심각도</label>
+                  <select
+                    className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
+                    value={editForm.severity}
+                    onChange={e => setEditForm({...editForm, severity: e.target.value as Issue['severity']})}
+                  >
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+              </div>
+              <div className="max-w-xs">
+                <label className="block text-sm font-medium text-slate-700 mb-2">상태</label>
+                <select
+                  className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
+                  value={editForm.status}
+                  onChange={e => setEditForm({...editForm, status: e.target.value as Issue['status']})}
+                >
+                  <option value="Open">Open</option>
+                  <option value="InProgress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">문제 설명</label>
+                <textarea
+                  className="w-full border rounded-lg p-4 h-40 focus:ring-2 ring-indigo-500 outline-none text-sm resize-none"
+                  placeholder="발생한 문제에 대한 상세 설명"
+                  value={editForm.description || ''}
+                  onChange={e => setEditForm({...editForm, description: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">해결 방법 (Solution)</label>
+                <textarea
+                  className="w-full border border-green-200 bg-green-50/50 rounded-lg p-4 h-40 focus:ring-2 ring-green-500 outline-none text-sm resize-none"
+                  placeholder="해결 방안 기록..."
+                  value={editForm.solution || ''}
+                  onChange={e => setEditForm({...editForm, solution: e.target.value})}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+    );
+  }
+
+  // 목록 페이지
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
@@ -1707,30 +2107,30 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => openModal(issue)}>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                        {index + 1}
                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => openModal(issue)}>
+                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
                            ${issue.status === 'Resolved' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                            {issue.status === 'Resolved' ? <CheckCircle size={12}/> : <AlertCircle size={12}/>}
                            {issue.status}
                          </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => openModal(issue)}>
+                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                          <span className={`px-2 py-1 rounded text-xs font-semibold
                            ${issue.severity === 'High' ? 'text-red-600 bg-red-50' : issue.severity === 'Medium' ? 'text-orange-600 bg-orange-50' : 'text-slate-500 bg-slate-100'}`}>
                            {issue.severity}
                          </span>
                       </td>
-                      <td className="px-6 py-4 cursor-pointer" onClick={() => openModal(issue)}>
+                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         <div className={`text-sm font-medium ${issue.status === 'Resolved' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{issue.title}</div>
                         <div className="text-xs text-slate-500 truncate max-w-xs">{issue.description}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => openModal(issue)}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-right cursor-pointer" onClick={() => openModal(issue)}>
+                      <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                          <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-red-500" />
                       </td>
                    </tr>
@@ -1746,7 +2146,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
             <div className="p-4 border-b flex justify-between items-center">
-               <h3 className="font-bold text-lg">{form.id ? '이슈 수정' : '새 이슈 등록'}</h3>
+               <h3 className="font-bold text-lg">새 이슈 등록</h3>
                <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
             </div>
             <div className="p-6 space-y-4">
