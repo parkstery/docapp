@@ -640,7 +640,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
                 <textarea
-                  className="w-full border rounded-lg p-4 h-32 resize-none focus:ring-2 ring-indigo-500 outline-none text-sm"
+                  className="w-full border rounded-lg p-4 h-[32rem] resize-none focus:ring-2 ring-indigo-500 outline-none text-sm"
                   value={editForm.summary || ''}
                   onChange={e => setEditForm({...editForm, summary: e.target.value})}
                 />
@@ -814,7 +814,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">요약 내용</label>
-                <textarea className="w-full border rounded-lg p-3 h-32 resize-none focus:ring-2 ring-primary outline-none" value={form.summary || ''} onChange={e => setForm({...form, summary: e.target.value})} />
+                <textarea className="w-full border rounded-lg p-3 h-[32rem] resize-none focus:ring-2 ring-primary outline-none" value={form.summary || ''} onChange={e => setForm({...form, summary: e.target.value})} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
