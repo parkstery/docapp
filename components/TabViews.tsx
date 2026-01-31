@@ -159,11 +159,11 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
             <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
-              <Trash2 size={14}/> 삭제
-            </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
+            </button>
+            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
             </button>
           </div>
         </div>
@@ -229,6 +229,9 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">기획서</h3>
         <div className="flex gap-2">
+          <button onClick={openModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+            <Plus size={16} /> 작성하기
+          </button>
           {selectedIds.size > 0 && (
             <button
               onClick={handleDeleteSelected}
@@ -237,9 +240,6 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
           )}
-          <button onClick={openModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
-            <Plus size={16} /> 작성하기
-          </button>
         </div>
       </div>
 
@@ -593,11 +593,11 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
           </div>
           <div className="flex gap-2">
             <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">목록으로</button>
-            <button onClick={() => deleteReport(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
-              <Trash2 size={14}/> 삭제
-            </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
+            </button>
+            <button onClick={() => deleteReport(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
             </button>
           </div>
         </div>
@@ -689,6 +689,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">보고서</h3>
         <div className="flex gap-2">
+          <button onClick={() => openModal()} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
+            <Plus size={16} /> 작성하기
+          </button>
           <button 
             onClick={handleDeleteSelected} 
             disabled={selectedIds.size === 0}
@@ -699,9 +702,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
             }`}
           >
             <Trash2 size={16} /> 삭제 {selectedIds.size > 0 && `(${selectedIds.size})`}
-          </button>
-          <button onClick={() => openModal()} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
-            <Plus size={16} /> 작성하기
           </button>
         </div>
       </div>
@@ -915,11 +915,11 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               </div>
             </div>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
-              {form.id ? <button onClick={() => deleteReport(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : <div/>}
               <div className="flex gap-2">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
+                {form.id ? <button onClick={() => deleteReport(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : null}
               </div>
+              <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
             </div>
           </div>
         </div>
@@ -1198,11 +1198,11 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
             <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
-              <Trash2 size={14}/> 삭제
-            </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
+            </button>
+            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
             </button>
           </div>
         </div>
@@ -1312,17 +1312,17 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">프롬프트 로그</h3>
         <div className="flex gap-2">
+          <button onClick={() => setIsAdding(true)} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
+            <Plus size={16} /> 로그 추가
+          </button>
           {selectedIds.size > 0 && (
-            <button 
-              onClick={handleDeleteSelected} 
+            <button
+              onClick={handleDeleteSelected}
               className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
             >
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
           )}
-          <button onClick={() => setIsAdding(true)} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
-            <Plus size={16} /> 로그 추가
-          </button>
         </div>
       </div>
 
@@ -1663,11 +1663,11 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
             <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button onClick={() => deleteMemo(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
-              <Trash2 size={14}/> 삭제
-            </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
+            </button>
+            <button onClick={() => deleteMemo(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
             </button>
           </div>
         </div>
@@ -1715,6 +1715,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
        <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">참고</h3>
         <div className="flex gap-2">
+          <button onClick={() => openModal()} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+            <Plus size={16} /> 작성하기
+          </button>
           {selectedIds.size > 0 && (
             <button 
               onClick={handleDeleteSelected} 
@@ -1723,9 +1726,6 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
           )}
-          <button onClick={() => openModal()} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
-            <Plus size={16} /> 작성하기
-          </button>
         </div>
       </div>
 
@@ -1971,11 +1971,11 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
             <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button onClick={() => deleteIssue(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
-              <Trash2 size={14}/> 삭제
-            </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
+            </button>
+            <button onClick={() => deleteIssue(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <Trash2 size={14}/> 삭제
             </button>
           </div>
         </div>
@@ -2058,6 +2058,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">트러블슈팅 이슈</h3>
         <div className="flex gap-2">
+          <button onClick={() => openModal()} className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+            <AlertCircle size={16} /> 이슈 등록
+          </button>
           {selectedIds.size > 0 && (
             <button 
               onClick={handleDeleteSelected} 
@@ -2066,9 +2069,6 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
           )}
-          <button onClick={() => openModal()} className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
-            <AlertCircle size={16} /> 이슈 등록
-          </button>
         </div>
       </div>
 
@@ -2184,11 +2184,11 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                </div>
             </div>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
-              {form.id ? <button onClick={() => deleteIssue(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : <div/>}
               <div className="flex gap-2">
                  <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                 <button onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
+                 {form.id ? <button onClick={() => deleteIssue(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : null}
               </div>
+              <button onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
             </div>
           </div>
         </div>
@@ -2366,6 +2366,15 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">스크린샷 갤러리</h3>
         <div className="flex gap-2">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }} 
+            className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-medium hover:bg-slate-700"
+          >
+            <ImageIcon size={16} /> 이미지 추가
+          </button>
           {selectedIds.size > 0 && (
             <button 
               onClick={handleDeleteSelected} 
@@ -2374,16 +2383,6 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
           )}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log('[ScreenshotView] 이미지 추가 버튼 클릭');
-              fileInputRef.current?.click();
-            }} 
-            className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-medium hover:bg-slate-700"
-          >
-            <ImageIcon size={16} /> 이미지 추가
-          </button>
           <input
             ref={fileInputRef}
             type="file"
