@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  ChevronRight, Search, Loader2, Edit2, ArrowLeft
+  ChevronRight, Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot } from '../types';
 import { storage } from '../services/storage';
@@ -351,6 +351,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [isMarkupMode, setIsMarkupMode] = useState(false);
+  const [markupSubMode, setMarkupSubMode] = useState<'view' | 'edit'>('view');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -365,6 +367,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const handleBackToList = () => {
     setSelectedReportId(null);
     setEditForm({});
+    setIsMarkupMode(false);
+    setMarkupSubMode('view');
   };
 
   const handleSelectReport = (report: Report) => {
@@ -593,6 +597,29 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
           </div>
           <div className="flex gap-2">
             <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">목록으로</button>
+            <button
+              type="button"
+              onClick={() => {
+                if (isMarkupMode) {
+                  setIsMarkupMode(false);
+                  setMarkupSubMode('view');
+                } else {
+                  setIsMarkupMode(true);
+                  setMarkupSubMode('edit');
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 hover:border-slate-400 transition-colors"
+            >
+              {isMarkupMode ? (
+                <>
+                  <AlignLeft size={14} /> 일반 편집
+                </>
+              ) : (
+                <>
+                  <Code size={14} /> 마크업
+                </>
+              )}
+            </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
             </button>
@@ -604,78 +631,162 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
           <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
-            <div className="mb-2 pb-2 border-b">
-              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
-                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                )}
-              </div>
-            </div>
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                  <input
-                    className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
-                    value={editForm.title || ''}
-                    onChange={e => setEditForm({...editForm, title: e.target.value})}
-                  />
+            {isMarkupMode ? (
+              /* 마크업 전용 페이지: 보기/편집 전환 */
+              <div className="flex flex-col h-full min-h-[28rem]">
+                <div className="flex items-center justify-between gap-2 mb-3 py-2 border-b border-slate-200">
+                  <span className="text-sm font-medium text-slate-700">Markup 문서</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMarkupSubMode('view')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${markupSubMode === 'view' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      보기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMarkupSubMode('edit')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${markupSubMode === 'edit' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      <Edit2 size={14} /> 편집
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">유형</label>
-                  <select
-                    className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
-                    value={editForm.type}
-                    onChange={e => setEditForm({...editForm, type: e.target.value as Report['type']})}
-                  >
-                    <option value="CodeAnalysis">코드 분석</option>
-                    <option value="ProjectAnalysis">프로젝트 분석</option>
-                    <option value="Interim">중간 보고서</option>
-                    <option value="Final">완료 보고서</option>
-                    <option value="Other">기타</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
-                <textarea
-                  className="w-full border rounded-lg p-4 h-[32rem] resize-none focus:ring-2 ring-indigo-500 outline-none text-sm"
-                  value={editForm.summary || ''}
-                  onChange={e => setEditForm({...editForm, summary: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
-                {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
-                <input ref={detailFileInputRef} type="file" onChange={handleDetailFileInputChange} className="hidden" id="file-upload-report-detail" />
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDetailDrop}
-                  className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                >
-                  <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
-                  <button type="button" onClick={() => detailFileInputRef.current?.click()} disabled={uploading} className="w-full text-primary hover:text-indigo-800 text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50">
-                    클릭하여 파일 선택
-                  </button>
-                </div>
-                {editForm.fileInfo && (
-                  <div className="mt-4 flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
-                    <div className="flex items-center gap-2 flex-1">
-                      <FileText size={16} className="text-slate-400" />
-                      <span className="text-sm text-slate-800">{editForm.fileInfo.name}</span>
-                      {editForm.fileInfo.size && <span className="text-xs text-slate-500">({(editForm.fileInfo.size / 1024).toFixed(2)} KB)</span>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <a href={editForm.fileInfo.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                      <a href={editForm.fileInfo.url} download={editForm.fileInfo.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
-                      <button onClick={handleDeleteDetailFile} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
-                    </div>
+                {markupSubMode === 'edit' ? (
+                  <div className="flex flex-col flex-1 min-h-[28rem]">
+                    <label className="block text-xs text-slate-500 mb-1">Markdown 등 마크업 문법으로 직접 편집 (# 제목, ## 소제목, - 목록, **굵게** 등)</label>
+                    <textarea
+                      className="flex-1 w-full min-h-[26rem] p-4 border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500 outline-none resize-none"
+                      placeholder="# 제목\n\n## 소제목\n\n- 목록 항목\n- 두 번째 항목\n\n**굵게** 또는 *기울임*"
+                      value={editForm.summary || ''}
+                      onChange={e => setEditForm({ ...editForm, summary: e.target.value })}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 p-4 overflow-y-auto rounded-xl border border-slate-200 bg-white prose prose-sm max-w-none prose-slate min-h-[28rem]">
+                    {(editForm.summary || '').trim() ? (
+                      (editForm.summary || '').split('\n').map((line, i) => {
+                        const renderInline = (text: string) => {
+                          const parts: (string | JSX.Element)[] = [];
+                          let rest = text;
+                          let key = 0;
+                          while (rest.length > 0) {
+                            const b = rest.indexOf('**');
+                            const u = rest.indexOf('*');
+                            if (b >= 0 && (u < 0 || b <= u)) {
+                              const end = rest.indexOf('**', b + 2);
+                              if (end >= 0) {
+                                if (b > 0) parts.push(rest.slice(0, b));
+                                parts.push(<strong key={key++}>{rest.slice(b + 2, end)}</strong>);
+                                rest = rest.slice(end + 2);
+                                continue;
+                              }
+                            }
+                            if (u >= 0) {
+                              const end = rest.indexOf('*', u + 1);
+                              if (end >= 0 && end !== u + 1) {
+                                if (u > 0) parts.push(rest.slice(0, u));
+                                parts.push(<em key={key++}>{rest.slice(u + 1, end)}</em>);
+                                rest = rest.slice(end + 1);
+                                continue;
+                              }
+                            }
+                            parts.push(rest);
+                            break;
+                          }
+                          return <>{parts}</>;
+                        };
+                        if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{renderInline(line.replace('# ', ''))}</h1>;
+                        if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{renderInline(line.replace('## ', ''))}</h2>;
+                        if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{renderInline(line.replace('### ', ''))}</h3>;
+                        if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{renderInline(line.replace('- ', ''))}</li>;
+                        if (line.trim() === '') return <div key={i} className="h-4" />;
+                        return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{renderInline(line)}</p>;
+                      })
+                    ) : (
+                      <p className="text-slate-400">내용이 없습니다. 상단에서 &quot;편집&quot;을 눌러 작성하거나 붙여넣기 하세요.</p>
+                    )}
                   </div>
                 )}
               </div>
-            </div>
+            ) : (
+              /* 일반 편집: 제목, 유형, 요약, 첨부파일 */
+              <>
+                <div className="mb-2 pb-2 border-b">
+                  <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                    <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                    {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                      <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                      <input
+                        className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
+                        value={editForm.title || ''}
+                        onChange={e => setEditForm({...editForm, title: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">유형</label>
+                      <select
+                        className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
+                        value={editForm.type}
+                        onChange={e => setEditForm({...editForm, type: e.target.value as Report['type']})}
+                      >
+                        <option value="CodeAnalysis">코드 분석</option>
+                        <option value="ProjectAnalysis">프로젝트 분석</option>
+                        <option value="Interim">중간 보고서</option>
+                        <option value="Final">완료 보고서</option>
+                        <option value="Other">기타</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
+                    <textarea
+                      className="w-full border rounded-lg p-4 h-[32rem] resize-none focus:ring-2 ring-indigo-500 outline-none text-sm"
+                      value={editForm.summary || ''}
+                      onChange={e => setEditForm({...editForm, summary: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
+                    {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
+                    <input ref={detailFileInputRef} type="file" onChange={handleDetailFileInputChange} className="hidden" id="file-upload-report-detail" />
+                    <div
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDetailDrop}
+                      className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                      <button type="button" onClick={() => detailFileInputRef.current?.click()} disabled={uploading} className="w-full text-primary hover:text-indigo-800 text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50">
+                        클릭하여 파일 선택
+                      </button>
+                    </div>
+                    {editForm.fileInfo && (
+                      <div className="mt-4 flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                        <div className="flex items-center gap-2 flex-1">
+                          <FileText size={16} className="text-slate-400" />
+                          <span className="text-sm text-slate-800">{editForm.fileInfo.name}</span>
+                          {editForm.fileInfo.size && <span className="text-xs text-slate-500">({(editForm.fileInfo.size / 1024).toFixed(2)} KB)</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <a href={editForm.fileInfo.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={editForm.fileInfo.url} download={editForm.fileInfo.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <button onClick={handleDeleteDetailFile} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
