@@ -45,6 +45,8 @@ export interface PromptLog extends BaseItem {
 
 export interface Memo extends BaseItem {
   content: string;
+  fileName?: string;
+  fileInfo?: FileInfo;
 }
 
 export interface Issue extends BaseItem {

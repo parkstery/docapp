@@ -1623,6 +1623,10 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const memoFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -1642,21 +1646,83 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     setEditForm({ ...memo });
   };
 
+  const processFile = async (file: File) => {
+    if (uploading) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fileInfo = await uploadFile(appId, `memos/${editForm.id || 'new'}`, file);
+      setEditForm({ ...editForm, fileName: fileInfo.name, fileInfo });
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('[MemoView] 파일 업로드 실패:', error);
+      alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}\n\n브라우저 콘솔을 확인하세요.`);
+    } finally {
+      setUploading(false);
+      if (memoFileInputRef.current) memoFileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await processFile(file);
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await processFile(file);
+  };
+
+  const handleDeleteMemoFile = async () => {
+    if (!editForm.fileInfo) return;
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+    try {
+      await deleteFile(editForm.fileInfo.url);
+      setEditForm({ ...editForm, fileName: undefined, fileInfo: undefined });
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    }
+  };
+
   const handleBackToList = () => {
     setSelectedMemoId(null);
     setEditForm({});
   };
 
   const deleteMemo = async (id: string) => {
-    if(confirm('삭제하시겠습니까?')) {
-      await storage.memos.delete(id);
-      loadMemos();
-      if (selectedMemoId === id) {
-        setSelectedMemoId(null);
-        setEditForm({});
-      }
-      setIsModalOpen(false);
+    if (!confirm('삭제하시겠습니까?')) return;
+    const memo = memos.find(m => m.id === id);
+    if (memo?.fileInfo) {
+      try { await deleteFile(memo.fileInfo.url); } catch (err) { console.error('파일 삭제 실패:', err); }
     }
+    await storage.memos.delete(id);
+    loadMemos();
+    if (selectedMemoId === id) {
+      setSelectedMemoId(null);
+      setEditForm({});
+    }
+    setIsModalOpen(false);
   };
 
   const handleSave = async () => {
@@ -1700,7 +1766,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     }
     
     try {
-      const item: Memo = {
+      const item: any = {
         id: editForm.id!,
         appId,
         title: editForm.title.trim(),
@@ -1708,8 +1774,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now()
       };
-      
-      await storage.memos.save(item);
+      if (editForm.fileName) item.fileName = editForm.fileName;
+      if (editForm.fileInfo) item.fileInfo = editForm.fileInfo;
+      await storage.memos.save(item as Memo);
       loadMemos();
       setEditForm(item);
       setSaveMessageVisible(true);
@@ -1741,8 +1808,11 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
-    
     for (const id of selectedIds) {
+      const memo = memos.find(m => m.id === id);
+      if (memo?.fileInfo) {
+        try { await deleteFile(memo.fileInfo.url); } catch (err) { console.error('파일 삭제 실패:', err); }
+      }
       await storage.memos.delete(id);
     }
     setSelectedIds(new Set());
@@ -1811,6 +1881,53 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   value={editForm.content || ''} 
                   onChange={e => setEditForm({...editForm, content: e.target.value})} 
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
+                {uploadSuccess && (
+                  <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>
+                )}
+                <input
+                  ref={memoFileInputRef}
+                  type="file"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  id={`file-upload-memo-detail-${editForm.id}`}
+                />
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
+                    isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                  } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                  <button
+                    type="button"
+                    onClick={() => memoFileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="text-primary hover:text-indigo-800 text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50"
+                  >
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {editForm.fileInfo && (
+                  <div className="mt-4 flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                    <div className="flex items-center gap-2 flex-1">
+                      <FileText size={16} className="text-slate-400" />
+                      <span className="text-sm text-slate-800">{editForm.fileInfo.name}</span>
+                      {editForm.fileInfo.size && (
+                        <span className="text-xs text-slate-500">({(editForm.fileInfo.size / 1024).toFixed(2)} KB)</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a href={editForm.fileInfo.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                      <a href={editForm.fileInfo.url} download={editForm.fileInfo.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                      <button onClick={handleDeleteMemoFile} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
