@@ -389,11 +389,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     setUploading(true);
     try {
       const fileInfo = await uploadFile(appId, `reports/${target === 'editForm' ? editForm.id : form.id || 'new'}`, file);
-      const nextList = [...getFileList(target === 'editForm' ? editForm : form), fileInfo];
       if (target === 'editForm') {
-        setEditForm({ ...editForm, fileInfoList: nextList });
+        setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       } else {
-        setForm({ ...form, fileInfoList: nextList });
+        setForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       }
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 2000);
@@ -1060,11 +1059,10 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     setUploading(true);
     try {
       const fileInfo = await uploadFile(appId, `prompts/${editForm.id || selectedPrompt?.id || 'new'}`, file);
-      const nextList = [...getFileList(editForm.id ? editForm : input), fileInfo];
       if (editForm.id) {
-        setEditForm({ ...editForm, fileInfoList: nextList });
+        setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       } else if (isAdding) {
-        setInput({ ...input, fileInfoList: nextList });
+        setInput(prev => ({ ...prev, fileInfoList: [...(prev.fileInfoList || []), fileInfo] }));
       }
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 2000);
@@ -1589,8 +1587,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     setUploading(true);
     try {
       const fileInfo = await uploadFile(appId, `memos/${editForm.id || 'new'}`, file);
-      const nextList = [...getFileList(editForm), fileInfo];
-      setEditForm({ ...editForm, fileInfoList: nextList });
+      setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 2000);
     } catch (error: any) {
@@ -2038,11 +2035,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     setUploading(true);
     try {
       const fileInfo = await uploadFile(appId, `issues/${target === 'editForm' ? editForm.id : form.id || 'new'}`, file);
-      const nextList = [...getFileList(target === 'editForm' ? editForm : form), fileInfo];
       if (target === 'editForm') {
-        setEditForm({ ...editForm, fileInfoList: nextList });
+        setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       } else {
-        setForm({ ...form, fileInfoList: nextList });
+        setForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       }
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 2000);
