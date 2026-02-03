@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Plus, Smartphone, Trash2, Edit2, Search, Loader2, LogOut, User as UserIcon } from 'lucide-react';
 import { AppProject } from '../types';
 import { storage } from '../services/storage';
 import { useAuth } from '../contexts/AuthContext';
+import { CONTACT_EMAIL } from '../constants/contact';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -228,6 +229,14 @@ const Dashboard: React.FC = () => {
             </table>
           )}
         </div>
+
+        <footer className="mt-8 py-4 text-center text-xs text-slate-400 border-t border-slate-200">
+          <Link to="/help" className="underline hover:text-slate-600">도움말</Link>
+          <span className="mx-2">|</span>
+          <Link to="/privacy" className="underline hover:text-slate-600">개인정보처리방침</Link>
+          <span className="mx-2">|</span>
+          <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:text-slate-600">문의: {CONTACT_EMAIL}</a>
+        </footer>
       </div>
 
       {/* Modal */}

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { LogIn, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { CONTACT_EMAIL } from '../constants/contact';
 
 const LoginPage: React.FC = () => {
   const { signIn } = useAuth();
@@ -76,6 +78,15 @@ const LoginPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* Play 심사용: 도움말·개인정보처리방침·문의 */}
+        <footer className="mt-8 text-center text-xs text-slate-400">
+          <Link to="/help" className="underline hover:text-slate-600">도움말</Link>
+          <span className="mx-2">|</span>
+          <Link to="/privacy" className="underline hover:text-slate-600">개인정보처리방침</Link>
+          <span className="mx-2">|</span>
+          <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:text-slate-600">문의: {CONTACT_EMAIL}</a>
+        </footer>
       </div>
     </div>
   );

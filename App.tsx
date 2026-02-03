@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Dashboard from './components/Dashboard';
 import AppDetail from './components/AppDetail';
 import LoginPage from './components/LoginPage';
+import HelpPage from './components/HelpPage';
+import PrivacyPage from './components/PrivacyPage';
 import { Loader2 } from 'lucide-react';
 
 // 인증이 필요한 라우트 보호 컴포넌트
@@ -52,6 +54,8 @@ const AppRoutes: React.FC = () => {
 
   return (
     <Routes>
+      <Route path="/help" element={<HelpPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route 
         path="/login" 
         element={
