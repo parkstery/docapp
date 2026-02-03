@@ -54,6 +54,8 @@ export interface Issue extends BaseItem {
   severity: 'Low' | 'Medium' | 'High';
   description: string;
   solution?: string;
+  fileName?: string;
+  fileInfo?: FileInfo;
 }
 
 export interface Screenshot extends BaseItem {

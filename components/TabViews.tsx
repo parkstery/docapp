@@ -2063,6 +2063,11 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const issueFormFileInputRef = useRef<HTMLInputElement>(null);
+  const issueEditFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadIssues(); }, [appId]);
 
@@ -2082,6 +2087,108 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     setEditForm({ ...issue });
   };
 
+  const processFile = async (file: File, target: 'form' | 'editForm') => {
+    if (uploading) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fileInfo = await uploadFile(appId, `issues/${target === 'editForm' ? editForm.id : form.id || 'new'}`, file);
+      if (target === 'editForm') {
+        setEditForm({ ...editForm, fileName: fileInfo.name, fileInfo });
+      } else {
+        setForm({ ...form, fileName: fileInfo.name, fileInfo });
+      }
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('[IssueView] 파일 업로드 실패:', error);
+      alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}`);
+    } finally {
+      setUploading(false);
+      if (issueFormFileInputRef.current) issueFormFileInputRef.current.value = '';
+      if (issueEditFileInputRef.current) issueEditFileInputRef.current.value = '';
+    }
+  };
+
+  const handleIssueFormFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await processFile(file, 'form');
+    e.target.value = '';
+  };
+
+  const handleIssueEditFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await processFile(file, 'editForm');
+    e.target.value = '';
+  };
+
+  const handleIssueFormDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) setIsDragging(true);
+  };
+
+  const handleIssueFormDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleIssueFormDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await processFile(file, 'form');
+  };
+
+  const handleIssueEditDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) setIsDragging(true);
+  };
+
+  const handleIssueEditDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleIssueEditDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await processFile(file, 'editForm');
+  };
+
+  const handleDeleteIssueFormFile = async () => {
+    if (!form.fileInfo) return;
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+    try {
+      await deleteFile(form.fileInfo.url);
+      setForm({ ...form, fileName: undefined, fileInfo: undefined });
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteIssueEditFile = async () => {
+    if (!editForm.fileInfo) return;
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+    try {
+      await deleteFile(editForm.fileInfo.url);
+      setEditForm({ ...editForm, fileName: undefined, fileInfo: undefined });
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    }
+  };
+
   const handleSave = async () => {
     if (!form.title) return;
     const item: Issue = {
@@ -2095,6 +2202,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       createdAt: form.createdAt || Date.now(),
       updatedAt: Date.now()
     };
+    if (form.fileName) item.fileName = form.fileName;
+    if (form.fileInfo) item.fileInfo = form.fileInfo;
     await storage.issues.save(item);
     loadIssues();
     setIsModalOpen(false);
@@ -2118,6 +2227,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now()
       };
+      if (editForm.fileName) item.fileName = editForm.fileName;
+      if (editForm.fileInfo) item.fileInfo = editForm.fileInfo;
       await storage.issues.save(item);
       loadIssues();
       setEditForm(item);
@@ -2130,14 +2241,19 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const deleteIssue = async (id: string) => {
-    if(confirm('삭제하시겠습니까?')) {
-      await storage.issues.delete(id);
-      loadIssues();
-      if (selectedIssueId === id) {
-        handleBackToList();
+    if (!confirm('삭제하시겠습니까?')) return;
+    const issue = issues.find(i => i.id === id);
+    if (issue?.fileInfo) {
+      try {
+        await deleteFile(issue.fileInfo.url);
+      } catch (error) {
+        console.error('파일 삭제 실패:', error);
       }
-      setIsModalOpen(false);
     }
+    await storage.issues.delete(id);
+    loadIssues();
+    if (selectedIssueId === id) handleBackToList();
+    setIsModalOpen(false);
   };
 
   const handleToggleSelect = (id: string) => {
@@ -2161,15 +2277,20 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
-    
     for (const id of selectedIds) {
+      const issue = issues.find(i => i.id === id);
+      if (issue?.fileInfo) {
+        try {
+          await deleteFile(issue.fileInfo.url);
+        } catch (error) {
+          console.error('파일 삭제 실패:', error);
+        }
+      }
       await storage.issues.delete(id);
     }
     setSelectedIds(new Set());
     loadIssues();
-    if (selectedIssueId && selectedIds.has(selectedIssueId)) {
-      handleBackToList();
-    }
+    if (selectedIssueId && selectedIds.has(selectedIssueId)) handleBackToList();
     setIsModalOpen(false);
   };
 
@@ -2271,6 +2392,36 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   value={editForm.solution || ''}
                   onChange={e => setEditForm({...editForm, solution: e.target.value})}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
+                {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
+                <input ref={issueEditFileInputRef} type="file" onChange={handleIssueEditFileInputChange} className="hidden" />
+                <div
+                  onDragOver={handleIssueEditDragOver}
+                  onDragLeave={handleIssueEditDragLeave}
+                  onDrop={handleIssueEditDrop}
+                  className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-red-400 bg-red-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                  <button type="button" onClick={() => issueEditFileInputRef.current?.click()} disabled={uploading} className="w-full text-red-600 hover:text-red-800 text-xs font-medium py-2 px-3 rounded border border-red-200 transition-colors disabled:opacity-50">
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {editForm.fileInfo && (
+                  <div className="mt-4 flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <FileText size={16} className="text-slate-400 shrink-0" />
+                      <span className="text-sm text-slate-800 truncate">{editForm.fileInfo.name}</span>
+                      {editForm.fileInfo.size != null && <span className="text-xs text-slate-500 shrink-0">({(editForm.fileInfo.size / 1024).toFixed(2)} KB)</span>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a href={editForm.fileInfo.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                      <a href={editForm.fileInfo.url} download={editForm.fileInfo.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                      <button type="button" onClick={handleDeleteIssueEditFile} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2409,6 +2560,36 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">해결 방법 (Solution)</label>
                   <textarea className="w-full border border-green-200 bg-green-50 rounded-lg p-3 h-24 resize-none outline-none focus:ring-2 ring-green-500" value={form.solution || ''} onChange={e => setForm({...form, solution: e.target.value})} placeholder="해결 방안 기록..." />
+               </div>
+               <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
+                  {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
+                  <input ref={issueFormFileInputRef} type="file" onChange={handleIssueFormFileInputChange} className="hidden" />
+                  <div
+                    onDragOver={handleIssueFormDragOver}
+                    onDragLeave={handleIssueFormDragLeave}
+                    onDrop={handleIssueFormDrop}
+                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-red-400 bg-red-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                    <button type="button" onClick={() => issueFormFileInputRef.current?.click()} disabled={uploading} className="w-full text-red-600 hover:text-red-800 text-xs font-medium py-2 px-3 rounded border border-red-200 transition-colors disabled:opacity-50">
+                      클릭하여 파일 선택
+                    </button>
+                  </div>
+                  {form.fileInfo && (
+                    <div className="mt-3 flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FileText size={16} className="text-slate-400 shrink-0" />
+                        <span className="text-sm text-slate-800 truncate">{form.fileInfo.name}</span>
+                        {form.fileInfo.size != null && <span className="text-xs text-slate-500 shrink-0">({(form.fileInfo.size / 1024).toFixed(2)} KB)</span>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a href={form.fileInfo.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                        <a href={form.fileInfo.url} download={form.fileInfo.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                        <button type="button" onClick={handleDeleteIssueFormFile} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                      </div>
+                    </div>
+                  )}
                </div>
             </div>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
