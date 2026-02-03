@@ -68,5 +68,10 @@ export interface Screenshot extends BaseItem {
   description?: string;
 }
 
+/** 메모 탭용 카드형 메모 (생성/수정/삭제, 그리드 배치) */
+export interface Note extends BaseItem {
+  content: string;
+}
+
 // Union type for all sub-items
-export type AppItem = PlanningDoc | Report | PromptLog | Memo | Issue | Screenshot;
+export type AppItem = PlanningDoc | Report | PromptLog | Memo | Issue | Screenshot | Note;

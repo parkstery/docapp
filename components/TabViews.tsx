@@ -4,7 +4,7 @@ import {
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
   ChevronRight, Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft
 } from 'lucide-react';
-import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo } from '../types';
+import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note } from '../types';
 import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
 
@@ -1988,6 +1988,183 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         </div>
       )}
 
+    </div>
+  );
+};
+
+// --- 4-2. 메모 (그리드 카드) ---
+export const NoteView: React.FC<ViewProps> = ({ appId }) => {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState<Partial<Note>>({ title: '', content: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadNotes();
+  }, [appId]);
+
+  const loadNotes = async () => {
+    setLoading(true);
+    setNotes(await storage.notes.list(appId));
+    setLoading(false);
+  };
+
+  const openCreate = () => {
+    setEditingId(null);
+    setForm({ title: '', content: '' });
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (note: Note) => {
+    setEditingId(note.id);
+    setForm({ ...note });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setForm({ title: '', content: '' });
+  };
+
+  const handleSave = async () => {
+    if (!form.title?.trim()) {
+      alert('제목을 입력하세요');
+      return;
+    }
+    const item: Note = {
+      id: form.id || crypto.randomUUID(),
+      appId,
+      title: form.title.trim(),
+      content: (form.content ?? '').trim(),
+      createdAt: form.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    };
+    await storage.notes.save(item);
+    loadNotes();
+    closeModal();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+    await storage.notes.delete(id);
+    loadNotes();
+    if (editingId === id) closeModal();
+  };
+
+  const contentPreview = (text: string, maxLen: number) => {
+    if (!text) return '';
+    const t = text.replace(/\s+/g, ' ').trim();
+    return t.length <= maxLen ? t : t.slice(0, maxLen) + '…';
+  };
+
+  if (loading) return <Loading />;
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-bold text-lg text-slate-800">메모</h3>
+        <button
+          onClick={openCreate}
+          className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+        >
+          <Plus size={16} /> 메모 추가
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {notes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <FileText size={48} className="mb-4 opacity-50" />
+            <p className="text-sm">등록된 메모가 없습니다.</p>
+            <p className="text-xs mt-1">메모 추가 버튼으로 새 메모를 만드세요.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {notes.map((note) => (
+              <div
+                key={note.id}
+                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all"
+              >
+                <div className="p-4 flex-1 flex flex-col min-h-0">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h4 className="font-semibold text-slate-800 truncate flex-1">{note.title}</h4>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(note)}
+                        className="p-1.5 text-slate-400 hover:text-primary hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="수정"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="삭제"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-600 line-clamp-4 flex-1 break-words">
+                    {contentPreview(note.content, 120)}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    {new Date(note.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold text-lg text-slate-800">
+                {editingId ? '메모 수정' : '메모 추가'}
+              </h3>
+              <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
+                <input
+                  type="text"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 ring-primary outline-none"
+                  value={form.title ?? ''}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="제목"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
+                <textarea
+                  className="w-full border border-slate-300 rounded-lg p-2.5 h-32 resize-none focus:ring-2 ring-primary outline-none"
+                  value={form.content ?? ''}
+                  onChange={(e) => setForm({ ...form, content: e.target.value })}
+                  placeholder="내용"
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
+              <button type="button" onClick={closeModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
+                취소
+              </button>
+              <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-1">
+                <Save size={14} /> 저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
