@@ -32,7 +32,9 @@ export interface Report extends BaseItem {
   type: 'CodeAnalysis' | 'ProjectAnalysis' | 'Interim' | 'Final' | 'Other';
   summary: string;
   fileName?: string;
-  fileInfo?: FileInfo; // Firebase Storage 파일 정보
+  fileInfo?: FileInfo;
+  /** 여러 개의 첨부파일 (기존 fileInfo는 하위 호환용) */
+  fileInfoList?: FileInfo[];
 }
 
 export interface PromptLog extends BaseItem {
@@ -40,13 +42,15 @@ export interface PromptLog extends BaseItem {
   response: string;
   tags: string[];
   fileName?: string;
-  fileInfo?: FileInfo; // Firebase Storage 파일 정보
+  fileInfo?: FileInfo;
+  fileInfoList?: FileInfo[];
 }
 
 export interface Memo extends BaseItem {
   content: string;
   fileName?: string;
   fileInfo?: FileInfo;
+  fileInfoList?: FileInfo[];
 }
 
 export interface Issue extends BaseItem {
@@ -56,6 +60,7 @@ export interface Issue extends BaseItem {
   solution?: string;
   fileName?: string;
   fileInfo?: FileInfo;
+  fileInfoList?: FileInfo[];
 }
 
 export interface Screenshot extends BaseItem {
