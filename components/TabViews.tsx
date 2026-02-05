@@ -12,6 +12,36 @@ import { uploadFile, deleteFile } from '../services/fileService';
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
   item?.fileInfoList?.length ? item.fileInfoList : (item?.fileInfo ? [item.fileInfo] : []);
 
+/** 마크다운 이미지 ![alt](url) 를 실제 img로 렌더한 HTML (미리보기용, XSS 방지) */
+const renderMarkdownImages = (text: string): string => {
+  if (!text) return '';
+  const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const imgs: { alt: string; url: string }[] = [];
+  let str = text.replace(imgRegex, (_, alt: string, url: string) => {
+    imgs.push({ alt, url });
+    return `__IMG_${imgs.length - 1}__`;
+  });
+  const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  str = escape(str).replace(/\n/g, '<br />');
+  imgs.forEach((img, i) => {
+    const safeUrl = img.url.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    str = str.replace(`__IMG_${i}__`, `<img src="${safeUrl}" alt="${escape(img.alt)}" class="max-w-full h-auto rounded my-1 border border-slate-200" />`);
+  });
+  return str;
+};
+
+/** 프롬프트/응답 미리보기 (이미지 렌더링) */
+const PromptPreview: React.FC<{ text: string; label?: string }> = ({ text, label }) => {
+  const html = renderMarkdownImages(text);
+  if (!text.trim()) return null;
+  return (
+    <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-sm">
+      {label && <span className="text-xs font-medium text-slate-500 block mb-2">{label}</span>}
+      <div className="prose prose-sm max-w-none text-slate-700 break-words [&>img]:max-w-full [&>img]:h-auto" dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
+  );
+};
+
 // --- Shared Props & Components ---
 interface ViewProps {
   appId: string;
@@ -1321,6 +1351,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   onChange={e => setEditForm({...editForm, prompt: e.target.value})}
                   onPaste={e => handlePasteImageInField(e, 'prompt')}
                 />
+                <PromptPreview text={editForm.prompt ?? ''} label="User Prompt 미리보기" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">AI Response</label>
@@ -1331,6 +1362,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   onChange={e => setEditForm({...editForm, response: e.target.value})}
                   onPaste={e => handlePasteImageInField(e, 'response')}
                 />
+                <PromptPreview text={editForm.response ?? ''} label="AI Response 미리보기" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">태그</label>
