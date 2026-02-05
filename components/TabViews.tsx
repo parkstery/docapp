@@ -15,19 +15,23 @@ const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | 
 /** 마크다운 이미지 ![alt](url) 를 실제 img로 렌더한 HTML (미리보기용, XSS 방지) */
 const renderMarkdownImages = (text: string): string => {
   if (!text) return '';
-  const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-  const imgs: { alt: string; url: string }[] = [];
-  let str = text.replace(imgRegex, (_, alt: string, url: string) => {
-    imgs.push({ alt, url });
-    return `__IMG_${imgs.length - 1}__`;
-  });
   const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  str = escape(str).replace(/\n/g, '<br />');
-  imgs.forEach((img, i) => {
-    const safeUrl = img.url.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    str = str.replace(`__IMG_${i}__`, `<img src="${safeUrl}" alt="${escape(img.alt)}" class="max-w-full h-auto rounded my-1 border border-slate-200" />`);
-  });
-  return str;
+  // URL은 ) 로 끝나므로, 괄호 안까지 포함해 매칭 (공백 없는 한 줄 기준). 슬래시·물음표·앰퍼샌드 등 포함
+  const imgRegex = /!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g;
+  const parts: string[] = [];
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  const re = new RegExp(imgRegex.source, 'g');
+  while ((m = re.exec(text)) !== null) {
+    const alt = m[1];
+    const url = m[2];
+    parts.push(escape(text.slice(lastIndex, m.index)).replace(/\n/g, '<br />'));
+    const safeSrc = url.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    parts.push(`<img src="${safeSrc}" alt="${escape(alt)}" class="max-w-full h-auto rounded my-1 border border-slate-200" />`);
+    lastIndex = re.lastIndex;
+  }
+  parts.push(escape(text.slice(lastIndex)).replace(/\n/g, '<br />'));
+  return parts.join('');
 };
 
 /** 프롬프트/응답 미리보기 (이미지 렌더링) */
