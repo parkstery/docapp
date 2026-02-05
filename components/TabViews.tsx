@@ -46,6 +46,143 @@ const PromptPreview: React.FC<{ text: string; label?: string }> = ({ text, label
   );
 };
 
+/** 저장된 문자열(마크다운 이미지 포함) → contentEditable용 HTML (이미지 인라인 표시) */
+const storedToEditorHtml = (text: string): string => {
+  if (!text) return '';
+  return renderMarkdownImages(text);
+};
+
+/** contentEditable DOM → 저장용 문자열(마크다운 이미지 문법) */
+const editorDomToStored = (el: HTMLElement | null): string => {
+  if (!el) return '';
+  const parts: string[] = [];
+  function walk(node: Node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push((node.textContent || '').replace(/\u00A0/g, ' '));
+      return;
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const elem = node as HTMLElement;
+      if (elem.tagName === 'IMG') {
+        const src = elem.getAttribute('src') || '';
+        const alt = elem.getAttribute('alt') || '이미지';
+        parts.push(`\n![${alt}](${src})\n`);
+        return;
+      }
+      if (elem.tagName === 'BR') {
+        parts.push('\n');
+        return;
+      }
+      const isBlock = /^(DIV|P|LI|H[1-6])$/i.test(elem.tagName);
+      if (isBlock && parts.length > 0) parts.push('\n');
+      for (let i = 0; i < node.childNodes.length; i++) walk(node.childNodes[i]);
+      if (isBlock) parts.push('\n');
+      return;
+    }
+  }
+  for (let i = 0; i < el.childNodes.length; i++) walk(el.childNodes[i]);
+  return parts.join('').replace(/\n{3,}/g, '\n\n').trim();
+};
+
+/** 편집 창에서 이미지 인라인 + 텍스트 이어서 편집 가능한 필드 (contentEditable) */
+interface RichPromptFieldProps {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  appId: string;
+  promptId: string | undefined;
+  setUploading: (v: boolean) => void;
+  field: 'prompt' | 'response';
+}
+
+const RichPromptField: React.FC<RichPromptFieldProps> = ({
+  value, onChange, placeholder, className, appId, promptId, setUploading, field,
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInternalChange = useRef(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    ref.current.innerHTML = storedToEditorHtml(value);
+    // 마운트 시에만 반영. 부모에서 key={editForm.id} 로 프롬프트 전환 시 리마운트하므로 새 value 적용됨
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const syncToParent = () => {
+    if (!ref.current || isInternalChange.current) return;
+    const next = editorDomToStored(ref.current);
+    if (next !== value) onChange(next);
+  };
+
+  const insertImageAtCaret = (url: string, alt: string = '이미지') => {
+    const sel = document.getSelection();
+    const el = ref.current;
+    if (!el || !sel) return;
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = alt;
+    img.className = 'max-w-full h-auto rounded my-1 border border-slate-200 inline-block';
+    img.setAttribute('data-pasted-image', '1');
+    try {
+      if (sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(img);
+        range.setStartAfter(img);
+        range.setEndAfter(img);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        el.appendChild(img);
+      }
+    } finally {
+      isInternalChange.current = true;
+      onChange(editorDomToStored(el));
+      isInternalChange.current = false;
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image/') !== 0) continue;
+      const file = items[i].getAsFile();
+      if (!file) continue;
+      e.preventDefault();
+      if (file.size > 10 * 1024 * 1024) {
+        alert('이미지 크기는 10MB 이하여야 합니다.');
+        return;
+      }
+      setUploading(true);
+      try {
+        const fileInfo = await uploadFile(appId, `prompts/${promptId || 'new'}`, file);
+        insertImageAtCaret(fileInfo.url, '이미지');
+      } catch (err: any) {
+        console.error('[RichPromptField] 클립보드 이미지 업로드 실패:', err);
+        alert(`이미지 업로드 실패: ${err?.message || '알 수 없는 오류'}`);
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+  };
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      className={className}
+      data-placeholder={placeholder}
+      onInput={syncToParent}
+      onPaste={handlePaste}
+      onBlur={syncToParent}
+    />
+  );
+};
+
 // --- Shared Props & Components ---
 interface ViewProps {
   appId: string;
@@ -1347,25 +1484,36 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
-                <textarea
-                  className="w-full border rounded-lg p-3 text-sm focus:ring-2 ring-indigo-500 outline-none resize-none"
-                  placeholder="입력 내용... (클립보드 이미지 붙여넣기 가능)"
-                  rows={15}
-                  value={editForm.prompt || ''}
-                  onChange={e => setEditForm({...editForm, prompt: e.target.value})}
-                  onPaste={e => handlePasteImageInField(e, 'prompt')}
-                />
+                <div className="border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+                  <RichPromptField
+                    key={`prompt-${editForm.id}`}
+                    field="prompt"
+                    value={editForm.prompt ?? ''}
+                    onChange={v => setEditForm(prev => ({ ...prev, prompt: v }))}
+                    placeholder="입력 내용... (클립보드 이미지 붙여넣기 시 편집 창에 바로 표시)"
+                    className="w-full min-h-[360px] p-3 text-sm outline-none overflow-y-auto [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-slate-400"
+                    appId={appId}
+                    promptId={editForm.id}
+                    setUploading={setUploading}
+                  />
+                </div>
                 <PromptPreview text={editForm.prompt ?? ''} label="User Prompt 미리보기" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">AI Response</label>
-                <textarea
-                  className="w-full border rounded-lg p-4 h-64 bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500 outline-none text-sm resize-none"
-                  placeholder="응답 내용... (클립보드 이미지 붙여넣기 가능)"
-                  value={editForm.response || ''}
-                  onChange={e => setEditForm({...editForm, response: e.target.value})}
-                  onPaste={e => handlePasteImageInField(e, 'response')}
-                />
+                <div className="border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-slate-50/50 focus-within:bg-white">
+                  <RichPromptField
+                    key={`response-${editForm.id}`}
+                    field="response"
+                    value={editForm.response ?? ''}
+                    onChange={v => setEditForm(prev => ({ ...prev, response: v }))}
+                    placeholder="응답 내용... (클립보드 이미지 붙여넣기 시 편집 창에 바로 표시)"
+                    className="w-full min-h-[256px] p-4 text-sm outline-none overflow-y-auto [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-slate-400"
+                    appId={appId}
+                    promptId={editForm.id}
+                    setUploading={setUploading}
+                  />
+                </div>
                 <PromptPreview text={editForm.response ?? ''} label="AI Response 미리보기" />
               </div>
               <div>
