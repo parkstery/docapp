@@ -1245,6 +1245,11 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       const file = items[i].getAsFile();
       if (!file) continue;
       e.preventDefault();
+      const target = e.currentTarget as HTMLTextAreaElement | null;
+      if (!target) return;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      const value = field === 'prompt' ? (editForm.prompt ?? '') : (editForm.response ?? '');
       if (file.size > 10 * 1024 * 1024) {
         alert('이미지 크기는 10MB 이하여야 합니다.');
         return;
@@ -1252,10 +1257,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       setUploading(true);
       try {
         const fileInfo = await uploadFile(appId, `prompts/${editForm.id || 'new'}`, file);
-        const target = e.currentTarget as HTMLTextAreaElement;
-        const start = target.selectionStart;
-        const end = target.selectionEnd;
-        const value = field === 'prompt' ? (editForm.prompt ?? '') : (editForm.response ?? '');
         const inserted = `\n![이미지](${fileInfo.url})\n`;
         const newValue = value.slice(0, start) + inserted + value.slice(end);
         setEditForm(prev => ({ ...prev, [field]: newValue }));
