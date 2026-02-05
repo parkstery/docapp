@@ -1236,6 +1236,39 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     }
   };
 
+  /** 클립보드 이미지를 업로드한 뒤 마크다운 이미지 문법으로 현재 커서 위치에 삽입 */
+  const handlePasteImageInField = async (e: React.ClipboardEvent, field: 'prompt' | 'response') => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image/') !== 0) continue;
+      const file = items[i].getAsFile();
+      if (!file) continue;
+      e.preventDefault();
+      if (file.size > 10 * 1024 * 1024) {
+        alert('이미지 크기는 10MB 이하여야 합니다.');
+        return;
+      }
+      setUploading(true);
+      try {
+        const fileInfo = await uploadFile(appId, `prompts/${editForm.id || 'new'}`, file);
+        const target = e.currentTarget as HTMLTextAreaElement;
+        const start = target.selectionStart;
+        const end = target.selectionEnd;
+        const value = field === 'prompt' ? (editForm.prompt ?? '') : (editForm.response ?? '');
+        const inserted = `\n![이미지](${fileInfo.url})\n`;
+        const newValue = value.slice(0, start) + inserted + value.slice(end);
+        setEditForm(prev => ({ ...prev, [field]: newValue }));
+      } catch (err: any) {
+        console.error('[PromptView] 클립보드 이미지 업로드 실패:', err);
+        alert(`이미지 업로드 실패: ${err?.message || '알 수 없는 오류'}`);
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+  };
+
   // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
   if (selectedPrompt && editForm.id) {
     return (
@@ -1281,19 +1314,21 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                 <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
                 <textarea
                   className="w-full border rounded-lg p-3 text-sm focus:ring-2 ring-indigo-500 outline-none resize-none"
-                  placeholder="입력 내용..."
+                  placeholder="입력 내용... (클립보드 이미지 붙여넣기 가능)"
                   rows={15}
                   value={editForm.prompt || ''}
                   onChange={e => setEditForm({...editForm, prompt: e.target.value})}
+                  onPaste={e => handlePasteImageInField(e, 'prompt')}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">AI Response</label>
                 <textarea
                   className="w-full border rounded-lg p-4 h-64 bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500 outline-none text-sm resize-none"
-                  placeholder="응답 내용..."
+                  placeholder="응답 내용... (클립보드 이미지 붙여넣기 가능)"
                   value={editForm.response || ''}
                   onChange={e => setEditForm({...editForm, response: e.target.value})}
+                  onPaste={e => handlePasteImageInField(e, 'response')}
                 />
               </div>
               <div>
