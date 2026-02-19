@@ -1062,8 +1062,12 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         {r.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 cursor-pointer" onClick={() => handleSelectReport(r)}>{r.title}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500 max-w-md truncate cursor-pointer" onClick={() => handleSelectReport(r)}>{r.summary}</td>
+                    <td className="px-6 py-4 min-w-0 overflow-hidden text-sm font-medium text-slate-900 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                      <div className="truncate" title={r.title}>{r.title}</div>
+                    </td>
+                    <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                      <div className="truncate" title={r.summary}>{r.summary}</div>
+                    </td>
                     <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {getFileList(r).length > 0 && (
                         <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
