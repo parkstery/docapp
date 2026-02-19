@@ -7,6 +7,7 @@ import {
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note } from '../types';
 import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -212,6 +213,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const resize = useResizableColumns(6, [40, 48, 160, 240, 100, 44]);
 
   useEffect(() => {
     loadDocs();
@@ -421,10 +423,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
+              </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-left">
+                  <th style={resize.getThStyle(0)} className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={docs.length > 0 && selectedIds.size === docs.length}
@@ -432,12 +437,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-primary focus:ring-primary"
                     />
+                    <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -461,10 +467,10 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       <div className="text-sm text-slate-600 line-clamp-2">{doc.content}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 w-40 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {new Date(doc.updatedAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-right w-16 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-indigo-600" />
                     </td>
                   </tr>
@@ -530,6 +536,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [markupSubMode, setMarkupSubMode] = useState<'view' | 'edit'>('view');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
+  const resize = useResizableColumns(8, [40, 48, 80, 140, 200, 120, 100, 44]);
 
   useEffect(() => { loadReports(); }, [appId]);
   
@@ -1002,10 +1009,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
+              </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th style={resize.getThStyle(0)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -1016,14 +1026,15 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                       />
                       <span>SELECT</span>
                     </div>
+                    <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={3} /></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={6} /></th>
+                  <th style={resize.getThStyle(7)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -1212,6 +1223,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
+  const resize = useResizableColumns(6, [40, 48, 200, 120, 100, 44]);
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
@@ -1611,10 +1623,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
+              </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-left">
+                  <th style={resize.getThStyle(0)} className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={prompts.length > 0 && selectedIds.size === prompts.length}
@@ -1622,12 +1637,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-primary focus:ring-primary"
                     />
+                    <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Prompt (Preview)</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Prompt (Preview)<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -1646,8 +1662,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                        {index + 1}
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
-                       <div className="text-sm text-slate-900 truncate max-w-md font-medium">{p.prompt}</div>
-                       <div className="text-xs text-slate-500 truncate max-w-md mt-1">{p.response}</div>
+                       <div className="text-sm text-slate-900 truncate font-medium">{p.prompt}</div>
+                       <div className="text-xs text-slate-500 truncate mt-1">{p.response}</div>
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <div className="flex flex-wrap gap-1">
@@ -1779,6 +1795,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const memoFileInputRef = useRef<HTMLInputElement>(null);
+  const resize = useResizableColumns(6, [40, 48, 160, 240, 100, 44]);
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -2119,10 +2136,13 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
+              </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-left">
+                  <th style={resize.getThStyle(0)} className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={memos.length > 0 && selectedIds.size === memos.length}
@@ -2130,12 +2150,13 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-primary focus:ring-primary"
                     />
+                    <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -2159,8 +2180,8 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        <div className="text-sm text-slate-600 line-clamp-2">{m.content}</div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 w-40 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right w-16 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
+                     <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-yellow-600" />
                      </td>
                    </tr>
@@ -2404,6 +2425,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
+  const resize = useResizableColumns(7, [40, 48, 90, 80, 200, 100, 44]);
 
   useEffect(() => { loadIssues(); }, [appId]);
 
@@ -2794,10 +2816,13 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
+              </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-left">
+                  <th style={resize.getThStyle(0)} className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={issues.length > 0 && selectedIds.size === issues.length}
@@ -2805,13 +2830,14 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-primary focus:ring-primary"
                     />
+                    <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">No.</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Severity</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Severity<resize.ResizeHandle columnIndex={3} /></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -2844,7 +2870,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       </td>
                       <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         <div className={`text-sm font-medium ${issue.status === 'Resolved' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{issue.title}</div>
-                        <div className="text-xs text-slate-500 truncate max-w-xs">{issue.description}</div>
+                        <div className="text-xs text-slate-500 truncate">{issue.description}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
