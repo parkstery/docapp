@@ -2330,7 +2330,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
             {notes.map((note) => (
               <div
                 key={note.id}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all"
+                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[15rem] hover:shadow-md hover:border-slate-300 transition-all"
               >
                 <div className="p-4 flex-1 flex flex-col min-h-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -2369,37 +2369,37 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="p-4 border-b flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl min-h-[32rem]">
+            <div className="py-2 px-3 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-800">
-                {editingId ? '메모 수정' : '메모 추가'}
+                제목
               </h3>
               <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-4 space-y-4">
+            <div className="p-2 space-y-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
+                <label className="block text-sm font-medium text-slate-700 mb-0.5">제목</label>
                 <input
                   type="text"
-                  className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 ring-primary outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 ring-primary outline-none"
                   value={form.title ?? ''}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="제목"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
+                <label className="block text-sm font-medium text-slate-700 mb-0.5">내용</label>
                 <textarea
-                  className="w-full border border-slate-300 rounded-lg p-2.5 h-32 resize-none focus:ring-2 ring-primary outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2 h-64 resize-none focus:ring-2 ring-primary outline-none"
                   value={form.content ?? ''}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                   placeholder="내용"
                 />
               </div>
             </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
+            <div className="py-2 px-3 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
               <button type="button" onClick={closeModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
                 취소
               </button>
