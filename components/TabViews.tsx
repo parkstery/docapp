@@ -2372,7 +2372,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl min-h-[32rem]">
             <div className="py-2 px-3 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-800">
-                제목
+                메모 수정
               </h3>
               <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
                 <X size={20} />
