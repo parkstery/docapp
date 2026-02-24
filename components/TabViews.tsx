@@ -8,6 +8,7 @@ import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note
 import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
+import { MarkdownPreview } from './MarkdownPreview';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -374,15 +375,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     value={editForm.content || ''}
                     onChange={e => setEditForm({...editForm, content: e.target.value})}
                   />
-                  <div className="w-1/2 p-4 overflow-y-auto prose prose-sm max-w-none prose-slate bg-white">
-                    {(editForm.content || '').split('\n').map((line, i) => {
-                      if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{line.replace('# ', '')}</h1>;
-                      if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{line.replace('## ', '')}</h2>;
-                      if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{line.replace('### ', '')}</h3>;
-                      if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{line.replace('- ', '')}</li>;
-                      if (line.trim() === '') return <div key={i} className="h-4" />;
-                      return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{line}</p>;
-                    })}
+                  <div className="w-1/2 p-4 overflow-y-auto bg-white">
+                    <MarkdownPreview content={editForm.content || ''} />
                   </div>
                 </div>
               </div>
@@ -849,49 +843,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     />
                   </div>
                 ) : (
-                  <div className="flex-1 p-4 overflow-y-auto rounded-xl border border-slate-200 bg-white prose prose-sm max-w-none prose-slate min-h-[28rem]">
-                    {(editForm.summary || '').trim() ? (
-                      (editForm.summary || '').split('\n').map((line, i) => {
-                        const renderInline = (text: string) => {
-                          const parts: (string | JSX.Element)[] = [];
-                          let rest = text;
-                          let key = 0;
-                          while (rest.length > 0) {
-                            const b = rest.indexOf('**');
-                            const u = rest.indexOf('*');
-                            if (b >= 0 && (u < 0 || b <= u)) {
-                              const end = rest.indexOf('**', b + 2);
-                              if (end >= 0) {
-                                if (b > 0) parts.push(rest.slice(0, b));
-                                parts.push(<strong key={key++}>{rest.slice(b + 2, end)}</strong>);
-                                rest = rest.slice(end + 2);
-                                continue;
-                              }
-                            }
-                            if (u >= 0) {
-                              const end = rest.indexOf('*', u + 1);
-                              if (end >= 0 && end !== u + 1) {
-                                if (u > 0) parts.push(rest.slice(0, u));
-                                parts.push(<em key={key++}>{rest.slice(u + 1, end)}</em>);
-                                rest = rest.slice(end + 1);
-                                continue;
-                              }
-                            }
-                            parts.push(rest);
-                            break;
-                          }
-                          return <>{parts}</>;
-                        };
-                        if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{renderInline(line.replace('# ', ''))}</h1>;
-                        if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{renderInline(line.replace('## ', ''))}</h2>;
-                        if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{renderInline(line.replace('### ', ''))}</h3>;
-                        if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{renderInline(line.replace('- ', ''))}</li>;
-                        if (line.trim() === '') return <div key={i} className="h-4" />;
-                        return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{renderInline(line)}</p>;
-                      })
-                    ) : (
-                      <p className="text-slate-400">내용이 없습니다. 상단에서 &quot;편집&quot;을 눌러 작성하거나 붙여넣기 하세요.</p>
-                    )}
+                  <div className="flex-1 p-4 overflow-y-auto rounded-xl border border-slate-200 bg-white min-h-[28rem]">
+                    <MarkdownPreview content={editForm.summary || ''} />
                   </div>
                 )}
               </div>
