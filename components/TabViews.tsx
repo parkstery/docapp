@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
@@ -214,11 +214,42 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [leftPanelPercent, setLeftPanelPercent] = useState(50);
+  const [panelResizing, setPanelResizing] = useState<{ startX: number; startPercent: number } | null>(null);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
   const resize = useResizableColumns(6, [40, 48, 160, 240, 100, 44]);
 
   useEffect(() => {
     loadDocs();
   }, [appId]);
+
+  useEffect(() => {
+    if (panelResizing === null || !splitContainerRef.current) return;
+    const { startX, startPercent } = panelResizing;
+    const onMove = (e: MouseEvent) => {
+      const rect = splitContainerRef.current?.getBoundingClientRect();
+      if (!rect?.width) return;
+      const delta = e.clientX - startX;
+      const deltaPercent = (delta / rect.width) * 100;
+      const next = Math.min(80, Math.max(20, startPercent + deltaPercent));
+      setLeftPanelPercent(next);
+    };
+    const onUp = () => {
+      setPanelResizing(null);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [panelResizing]);
 
   const loadDocs = async () => {
     setLoading(true);
@@ -368,14 +399,24 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">내용 (Markdown)</label>
-                <div className="flex border rounded-xl overflow-hidden min-h-[400px]">
-                  <textarea
-                    className="w-1/2 min-h-[400px] p-4 resize-none outline-none border-r font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
-                    placeholder="Markdown 작성..."
-                    value={editForm.content || ''}
-                    onChange={e => setEditForm({...editForm, content: e.target.value})}
-                  />
-                  <div className="w-1/2 p-4 overflow-y-auto bg-white">
+                <div ref={splitContainerRef} className="flex border rounded-xl overflow-hidden min-h-[400px]">
+                  <div style={{ width: `${leftPanelPercent}%`, minWidth: 200 }} className="shrink-0 flex flex-col">
+                    <textarea
+                      className="w-full min-h-[400px] p-4 resize-none outline-none border-r font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
+                      placeholder="Markdown 작성..."
+                      value={editForm.content || ''}
+                      onChange={e => setEditForm({...editForm, content: e.target.value})}
+                    />
+                  </div>
+                  <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    onMouseDown={(e) => { e.preventDefault(); setPanelResizing({ startX: e.clientX, startPercent: leftPanelPercent }); }}
+                    className="shrink-0 w-2 cursor-col-resize bg-slate-200 hover:bg-indigo-300 active:bg-indigo-400 transition-colors flex items-center justify-center"
+                  >
+                    <div className="w-0.5 h-8 bg-slate-400 rounded-full opacity-60" />
+                  </div>
+                  <div style={{ width: `${100 - leftPanelPercent}%`, minWidth: 200 }} className="shrink min-h-0 p-4 overflow-y-auto bg-white">
                     <MarkdownPreview content={editForm.content || ''} />
                   </div>
                 </div>
