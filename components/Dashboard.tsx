@@ -5,6 +5,7 @@ import { AppProject } from '../types';
 import { storage } from '../services/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { CONTACT_EMAIL } from '../constants/contact';
+import { useResizableColumns } from '../hooks/useResizableColumns';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -83,6 +84,7 @@ const Dashboard: React.FC = () => {
     app.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     app.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const resize = useResizableColumns(7, [48, 80, 200, 80, 240, 100, 80]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
@@ -139,28 +141,31 @@ const Dashboard: React.FC = () => {
               <p>데이터를 불러오는 중입니다...</p>
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
+              </colgroup>
               <thead className="bg-slate-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-16">
-                    No.
+                  <th scope="col" style={resize.getThStyle(0)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    No.<resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-16">
-                    Platform
+                  <th scope="col" style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Platform<resize.ResizeHandle columnIndex={1} />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Project Name
+                  <th scope="col" style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Project Name<resize.ResizeHandle columnIndex={2} />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-32">
-                    Version
+                  <th scope="col" style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Version<resize.ResizeHandle columnIndex={3} />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Description
+                  <th scope="col" style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Description<resize.ResizeHandle columnIndex={4} />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-40">
-                    Created At
+                  <th scope="col" style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Created At<resize.ResizeHandle columnIndex={5} />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-24">
+                  <th scope="col" style={resize.getThStyle(6)} className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
