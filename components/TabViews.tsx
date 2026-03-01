@@ -2218,7 +2218,9 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<Note>>({ title: '', content: '' });
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Note>>({});
+  const [saveMessageVisible, setSaveMessageVisible] = useState(false);
 
   useEffect(() => {
     loadNotes();
@@ -2231,20 +2233,22 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const openCreate = () => {
-    setEditingId(null);
     setForm({ title: '', content: '' });
     setIsModalOpen(true);
   };
 
-  const openEdit = (note: Note) => {
-    setEditingId(note.id);
-    setForm({ ...note });
-    setIsModalOpen(true);
+  const handleSelectNote = (note: Note) => {
+    setSelectedNoteId(note.id);
+    setEditForm({ ...note });
+  };
+
+  const handleBackToList = () => {
+    setSelectedNoteId(null);
+    setEditForm({});
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setEditingId(null);
     setForm({ title: '', content: '' });
   };
 
@@ -2266,11 +2270,34 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
     closeModal();
   };
 
+  const handleEditSave = async () => {
+    if (!editForm.title?.trim()) {
+      alert('제목을 입력하세요');
+      return;
+    }
+    const item: Note = {
+      id: editForm.id!,
+      appId,
+      title: editForm.title.trim(),
+      content: (editForm.content ?? '').trim(),
+      createdAt: editForm.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    };
+    await storage.notes.save(item);
+    loadNotes();
+    setEditForm(item);
+    setSaveMessageVisible(true);
+    setTimeout(() => setSaveMessageVisible(false), 2000);
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
     await storage.notes.delete(id);
     loadNotes();
-    if (editingId === id) closeModal();
+    if (selectedNoteId === id) {
+      setSelectedNoteId(null);
+      setEditForm({});
+    }
   };
 
   const contentPreview = (text: string, maxLen: number) => {
@@ -2281,6 +2308,74 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 
   if (loading) return <Loading />;
 
+  // 상세 페이지 (편집 가능)
+  if (selectedNoteId && editForm.id) {
+    return (
+      <>
+        {saveMessageVisible && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
+            저장되었습니다
+          </div>
+        )}
+        <div className="h-full flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-3">
+              <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                <ArrowLeft size={20} />
+              </button>
+              <h3 className="font-bold text-lg text-slate-800">메모 수정</h3>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+                목록으로
+              </button>
+              <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+                <Save size={14}/> 저장
+              </button>
+              <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+                <Trash2 size={14}/> 삭제
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+            <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+              <div className="mb-2 pb-2 border-b">
+                <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                  <input 
+                    className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none" 
+                    placeholder="제목을 입력하세요" 
+                    value={editForm.title || ''} 
+                    onChange={e => setEditForm({...editForm, title: e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
+                  <textarea 
+                    className="w-full border rounded-lg p-4 h-[500px] focus:ring-2 ring-indigo-500 outline-none text-sm resize-none" 
+                    placeholder="내용을 입력하세요..." 
+                    value={editForm.content || ''} 
+                    onChange={e => setEditForm({...editForm, content: e.target.value})} 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // 목록 페이지
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
@@ -2305,15 +2400,16 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
             {notes.map((note) => (
               <div
                 key={note.id}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all"
+                onClick={() => handleSelectNote(note)}
+                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all cursor-pointer"
               >
                 <div className="p-4 flex-1 flex flex-col min-h-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="font-semibold text-slate-800 truncate flex-1">{note.title}</h4>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        onClick={() => openEdit(note)}
+                        onClick={(e) => { e.stopPropagation(); handleSelectNote(note); }}
                         className="p-1.5 text-slate-400 hover:text-primary hover:bg-indigo-50 rounded-lg transition-colors"
                         title="수정"
                       >
@@ -2342,12 +2438,13 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
         )}
       </div>
 
+      {/* Create Modal - 새로 작성할 때만 사용 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-800">
-                {editingId ? '메모 수정' : '메모 추가'}
+                메모 추가
               </h3>
               <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
                 <X size={20} />
