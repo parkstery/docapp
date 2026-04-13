@@ -227,7 +227,11 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
-  const resize = useResizableColumns(6, [18, 22, 160, 240, 100, 44]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const detailFileInputRef = useRef<HTMLInputElement>(null);
+  const resize = useResizableColumns(7, [18, 22, 160, 240, 84, 100, 44]);
 
   useEffect(() => {
     loadDocs();
@@ -251,7 +255,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleSelectDoc = (doc: PlanningDoc) => {
     setSelectedDocId(doc.id);
-    setEditForm({ ...doc });
+    setEditForm({ ...doc, fileInfoList: getFileList(doc) });
   };
 
   const openModal = () => {
@@ -292,6 +296,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       createdAt: editForm.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
+    const list = getFileList(editForm);
+    if (list.length) item.fileInfoList = list;
     await storage.planning.save(item);
     loadDocs();
     setEditForm(item);
@@ -301,6 +307,10 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleDelete = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
+    const doc = docs.find(d => d.id === id);
+    for (const f of getFileList(doc)) {
+      try { await deleteFile(f.url); } catch (err) { console.error('파일 삭제 실패:', err); }
+    }
     await storage.planning.delete(id);
     loadDocs();
     if (selectedDocId === id) {
@@ -323,10 +333,80 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
-    for (const id of selectedIds) await storage.planning.delete(id);
+    for (const id of selectedIds) {
+      const doc = docs.find(d => d.id === id);
+      for (const f of getFileList(doc)) {
+        try { await deleteFile(f.url); } catch (err) { console.error('파일 삭제 실패:', err); }
+      }
+      await storage.planning.delete(id);
+    }
     setSelectedIds(new Set());
     loadDocs();
     if (selectedDocId && selectedIds.has(selectedDocId)) handleBackToList();
+  };
+
+  const processDetailFile = async (file: File) => {
+    if (uploading) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+    if (!editForm.id) return;
+    setUploading(true);
+    try {
+      const fileInfo = await uploadFile(appId, `planning/${editForm.id}`, file);
+      setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('[PlanningView] 파일 업로드 실패:', error);
+      alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}`);
+    } finally {
+      setUploading(false);
+      if (detailFileInputRef.current) detailFileInputRef.current.value = '';
+    }
+  };
+
+  const handleDetailFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files?.length) {
+      for (let i = 0; i < files.length; i++) await processDetailFile(files[i]);
+    }
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files?.length) {
+      for (let i = 0; i < files.length; i++) await processDetailFile(files[i]);
+    }
+  };
+
+  const handleDeleteDetailFile = async (fileInfo: FileInfo) => {
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+    try {
+      await deleteFile(fileInfo.url);
+      const list = getFileList(editForm).filter(f => f.url !== fileInfo.url);
+      setEditForm({ ...editForm, fileInfoList: list });
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    }
   };
 
   // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
@@ -399,6 +479,56 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     })}
                   </div>
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
+                {uploadSuccess && (
+                  <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>
+                )}
+                <input
+                  ref={detailFileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleDetailFileInputChange}
+                  className="hidden"
+                  id={`file-upload-planning-detail-${editForm.id}`}
+                />
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
+                    isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                  } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                  <button
+                    type="button"
+                    onClick={() => detailFileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="text-primary hover:text-indigo-800 text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50"
+                  >
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {getFileList(editForm).length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {getFileList(editForm).map((f) => (
+                      <div key={f.id || f.url} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText size={16} className="text-slate-400 shrink-0" />
+                          <span className="text-sm text-slate-800 truncate">{f.name}</span>
+                          {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <button type="button" onClick={() => handleDeleteDetailFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -482,6 +612,17 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       <div className="text-sm text-slate-600 line-clamp-2">{doc.content}</div>
                     </td>
+                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                      {getFileList(doc).length > 0 && (
+                        <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
+                          {getFileList(doc).map((f) => (
+                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                              <FileText size={12}/> {f.name}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {new Date(doc.updatedAt).toLocaleDateString()}
                     </td>
@@ -492,7 +633,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                 ))}
                 {docs.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-400">
+                    <td colSpan={7} className="text-center py-12 text-slate-400">
                       등록된 기획서가 없습니다. 작성하기를 눌러 시작하세요.
                     </td>
                   </tr>
