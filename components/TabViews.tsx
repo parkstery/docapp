@@ -227,7 +227,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
-  const resize = useResizableColumns(6, [40, 48, 160, 240, 100, 44]);
+  const resize = useResizableColumns(6, [18, 22, 160, 240, 100, 44]);
 
   useEffect(() => {
     loadDocs();
@@ -456,8 +456,9 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
-                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
-                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -550,7 +551,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [markupSubMode, setMarkupSubMode] = useState<'view' | 'edit'>('view');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(8, [40, 48, 80, 140, 200, 120, 100, 44]);
+  const resize = useResizableColumns(8, [18, 22, 80, 140, 200, 84, 100, 44]);
 
   useEffect(() => { loadReports(); }, [appId]);
   
@@ -867,7 +868,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     {(editForm.summary || '').trim() ? (
                       (editForm.summary || '').split('\n').map((line, i) => {
                         const renderInline = (text: string) => {
-                          const parts: (string | JSX.Element)[] = [];
+                          const parts: React.ReactNode[] = [];
                           let rest = text;
                           let key = 0;
                           while (rest.length > 0) {
@@ -1241,7 +1242,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [40, 48, 200, 120, 100, 44]);
+  const resize = useResizableColumns(7, [18, 22, 200, 120, 84, 100, 44]);
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
@@ -1660,8 +1661,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Prompt (Preview)<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
-                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
-                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -1691,13 +1693,24 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          {p.tags.length > 3 && <span className="text-xs text-slate-400">+{p.tags.length - 3}</span>}
                        </div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                      {getFileList(p).length > 0 && (
+                        <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
+                          {getFileList(p).map((f) => (
+                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                              <FileText size={12}/> {f.name}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
                      </td>
                    </tr>
                  ))}
-                 {prompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
+                 {prompts.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -1813,7 +1826,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const memoFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [40, 48, 160, 240, 100, 44]);
+  const resize = useResizableColumns(7, [18, 22, 160, 240, 84, 100, 44]);
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -2198,13 +2211,24 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        <div className="text-sm text-slate-600 line-clamp-2">{m.content}</div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                      {getFileList(m).length > 0 && (
+                        <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
+                          {getFileList(m).map((f) => (
+                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                              <FileText size={12}/> {f.name}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-yellow-600" />
                      </td>
                    </tr>
                  ))}
-                 {memos.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
+                 {memos.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -2443,7 +2467,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [40, 48, 90, 80, 200, 100, 44]);
+  const resize = useResizableColumns(7, [18, 22, 90, 80, 200, 100, 44]);
 
   useEffect(() => { loadIssues(); }, [appId]);
 
