@@ -93,7 +93,7 @@ const AppDetail: React.FC = () => {
           </nav>
           <div className="mt-auto p-4 border-t">
             <div className="text-xs text-slate-400 text-center">
-              DevManager Pro<br/>&copy; 2024
+              DevManager Pro. <br/>&copy; 2026 Liveonsoft
             </div>
           </div>
         </aside>
