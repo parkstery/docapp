@@ -337,7 +337,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const resize = useResizableColumns(6, [18, 22, 160, 240, 100, 44]);
+  const resize = useResizableColumns(6, [18, 22, 172, 252, 100, 20]);
 
   const [bodyHtml, setBodyHtml] = useState('');
   const [modalHtml, setModalHtml] = useState('');

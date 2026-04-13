@@ -231,7 +231,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 160, 240, 84, 100, 44]);
+  const resize = useResizableColumns(7, [18, 22, 172, 252, 84, 100, 20]);
 
   useEffect(() => {
     loadDocs();
@@ -692,7 +692,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [markupSubMode, setMarkupSubMode] = useState<'view' | 'edit'>('view');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(8, [18, 22, 80, 140, 200, 84, 100, 44]);
+  const resize = useResizableColumns(8, [18, 22, 80, 152, 212, 84, 100, 20]);
 
   useEffect(() => { loadReports(); }, [appId]);
   
@@ -1383,7 +1383,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 200, 120, 84, 100, 44]);
+  const resize = useResizableColumns(7, [18, 22, 224, 120, 84, 100, 20]);
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
@@ -1967,7 +1967,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const memoFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 160, 240, 84, 100, 44]);
+  const resize = useResizableColumns(7, [18, 22, 172, 252, 84, 100, 20]);
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -2697,7 +2697,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 90, 80, 200, 100, 44]);
+  const resize = useResizableColumns(7, [18, 22, 90, 92, 212, 100, 20]);
 
   useEffect(() => { loadIssues(); }, [appId]);
 
