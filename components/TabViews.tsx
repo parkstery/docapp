@@ -1219,12 +1219,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       <div className="truncate" title={r.summary}>{r.summary}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {getFileList(r).length > 0 && (
-                        <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
-                          {getFileList(r).map((f, i) => (
-                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800">
-                              <FileText size={14}/> {f.name}
+                        <div className="flex flex-col gap-1 min-w-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+                          {getFileList(r).map((f) => (
+                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 min-w-0 max-w-full text-indigo-600 hover:text-indigo-800">
+                              <FileText size={14} className="shrink-0" />
+                              <span className="truncate" title={f.name}>{f.name}</span>
                             </a>
                           ))}
                         </div>
