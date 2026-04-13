@@ -53,6 +53,12 @@ export interface Memo extends BaseItem {
   fileInfoList?: FileInfo[];
 }
 
+/** 참고(메모)와 별도 — WYSIWYG HTML 본문 (인라인 이미지 등). Firestore `freeDocs` */
+export interface FreeDoc extends BaseItem {
+  /** TipTap 등에서 저장하는 HTML 본문 */
+  html: string;
+}
+
 export interface Issue extends BaseItem {
   status: 'Open' | 'Resolved' | 'InProgress';
   severity: 'Low' | 'Medium' | 'High';
@@ -74,4 +80,4 @@ export interface Note extends BaseItem {
 }
 
 // Union type for all sub-items
-export type AppItem = PlanningDoc | Report | PromptLog | Memo | Issue | Screenshot | Note;
+export type AppItem = PlanningDoc | Report | PromptLog | Memo | FreeDoc | Issue | Screenshot | Note;

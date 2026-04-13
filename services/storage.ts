@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
-import { AppProject, PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, Note } from '../types';
+import { AppProject, PlanningDoc, Report, PromptLog, Memo, FreeDoc, Issue, Screenshot, Note } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDipTNPu4zT-03rjw-z21X2wiFgn4qGKqc",
@@ -128,6 +128,11 @@ export const storage = {
     list: (appId: string) => getCollection<Memo>('memos', appId),
     save: (item: Memo) => saveDocument('memos', item),
     delete: (id: string) => deleteDocument('memos', id),
+  },
+  freeDocs: {
+    list: (appId: string) => getCollection<FreeDoc>('freeDocs', appId),
+    save: (item: FreeDoc) => saveDocument('freeDocs', item),
+    delete: (id: string) => deleteDocument('freeDocs', id),
   },
   issues: {
     list: (appId: string) => getCollection<Issue>('issues', appId),
