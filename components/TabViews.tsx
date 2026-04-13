@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  ChevronRight, Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft
+  Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note } from '../types';
 import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
-import { MarkdownPreview } from './MarkdownPreview';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -228,42 +227,15 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
-  const [leftPanelPercent, setLeftPanelPercent] = useState(50);
-  const [panelResizing, setPanelResizing] = useState<{ startX: number; startPercent: number } | null>(null);
-  const splitContainerRef = useRef<HTMLDivElement>(null);
-  const resize = useResizableColumns(6, [40, 48, 160, 240, 100, 44]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const detailFileInputRef = useRef<HTMLInputElement>(null);
+  const resize = useResizableColumns(6, [18, 22, 172, 252, 84, 100]);
 
   useEffect(() => {
     loadDocs();
   }, [appId]);
-
-  useEffect(() => {
-    if (panelResizing === null || !splitContainerRef.current) return;
-    const { startX, startPercent } = panelResizing;
-    const onMove = (e: MouseEvent) => {
-      const rect = splitContainerRef.current?.getBoundingClientRect();
-      if (!rect?.width) return;
-      const delta = e.clientX - startX;
-      const deltaPercent = (delta / rect.width) * 100;
-      const next = Math.min(80, Math.max(20, startPercent + deltaPercent));
-      setLeftPanelPercent(next);
-    };
-    const onUp = () => {
-      setPanelResizing(null);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    return () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [panelResizing]);
 
   const loadDocs = async () => {
     setLoading(true);
@@ -283,7 +255,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleSelectDoc = (doc: PlanningDoc) => {
     setSelectedDocId(doc.id);
-    setEditForm({ ...doc });
+    setEditForm({ ...doc, fileInfoList: getFileList(doc) });
   };
 
   const openModal = () => {
@@ -324,6 +296,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       createdAt: editForm.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
+    const list = getFileList(editForm);
+    if (list.length) item.fileInfoList = list;
     await storage.planning.save(item);
     loadDocs();
     setEditForm(item);
@@ -333,6 +307,10 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleDelete = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
+    const doc = docs.find(d => d.id === id);
+    for (const f of getFileList(doc)) {
+      try { await deleteFile(f.url); } catch (err) { console.error('파일 삭제 실패:', err); }
+    }
     await storage.planning.delete(id);
     loadDocs();
     if (selectedDocId === id) {
@@ -355,10 +333,80 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
-    for (const id of selectedIds) await storage.planning.delete(id);
+    for (const id of selectedIds) {
+      const doc = docs.find(d => d.id === id);
+      for (const f of getFileList(doc)) {
+        try { await deleteFile(f.url); } catch (err) { console.error('파일 삭제 실패:', err); }
+      }
+      await storage.planning.delete(id);
+    }
     setSelectedIds(new Set());
     loadDocs();
     if (selectedDocId && selectedIds.has(selectedDocId)) handleBackToList();
+  };
+
+  const processDetailFile = async (file: File) => {
+    if (uploading) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+    if (!editForm.id) return;
+    setUploading(true);
+    try {
+      const fileInfo = await uploadFile(appId, `planning/${editForm.id}`, file);
+      setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('[PlanningView] 파일 업로드 실패:', error);
+      alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}`);
+    } finally {
+      setUploading(false);
+      if (detailFileInputRef.current) detailFileInputRef.current.value = '';
+    }
+  };
+
+  const handleDetailFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files?.length) {
+      for (let i = 0; i < files.length; i++) await processDetailFile(files[i]);
+    }
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files?.length) {
+      for (let i = 0; i < files.length; i++) await processDetailFile(files[i]);
+    }
+  };
+
+  const handleDeleteDetailFile = async (fileInfo: FileInfo) => {
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+    try {
+      await deleteFile(fileInfo.url);
+      const list = getFileList(editForm).filter(f => f.url !== fileInfo.url);
+      setEditForm({ ...editForm, fileInfoList: list });
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
+    }
   };
 
   // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
@@ -379,7 +427,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">기획서 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -413,27 +461,74 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">내용 (Markdown)</label>
-                <div ref={splitContainerRef} className="flex border rounded-xl overflow-hidden min-h-[400px]">
-                  <div style={{ width: `${leftPanelPercent}%`, minWidth: 200 }} className="shrink-0 flex flex-col">
-                    <textarea
-                      className="w-full min-h-[400px] p-4 resize-none outline-none border-r font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
-                      placeholder="Markdown 작성..."
-                      value={editForm.content || ''}
-                      onChange={e => setEditForm({...editForm, content: e.target.value})}
-                    />
-                  </div>
-                  <div
-                    role="separator"
-                    aria-orientation="vertical"
-                    onMouseDown={(e) => { e.preventDefault(); setPanelResizing({ startX: e.clientX, startPercent: leftPanelPercent }); }}
-                    className="shrink-0 w-2 cursor-col-resize bg-slate-200 hover:bg-indigo-300 active:bg-indigo-400 transition-colors flex items-center justify-center"
-                  >
-                    <div className="w-0.5 h-8 bg-slate-400 rounded-full opacity-60" />
-                  </div>
-                  <div style={{ width: `${100 - leftPanelPercent}%`, minWidth: 200 }} className="shrink min-h-0 p-4 overflow-y-auto bg-white">
-                    <MarkdownPreview content={editForm.content || ''} />
+                <div className="flex border rounded-xl overflow-hidden min-h-[400px]">
+                  <textarea
+                    className="w-1/2 min-h-[400px] p-4 resize-none outline-none border-r font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
+                    placeholder="Markdown 작성..."
+                    value={editForm.content || ''}
+                    onChange={e => setEditForm({...editForm, content: e.target.value})}
+                  />
+                  <div className="w-1/2 p-4 overflow-y-auto prose prose-sm max-w-none prose-slate bg-white">
+                    {(editForm.content || '').split('\n').map((line, i) => {
+                      if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{line.replace('# ', '')}</h1>;
+                      if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{line.replace('## ', '')}</h2>;
+                      if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{line.replace('### ', '')}</h3>;
+                      if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{line.replace('- ', '')}</li>;
+                      if (line.trim() === '') return <div key={i} className="h-4" />;
+                      return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{line}</p>;
+                    })}
                   </div>
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
+                {uploadSuccess && (
+                  <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>
+                )}
+                <input
+                  ref={detailFileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleDetailFileInputChange}
+                  className="hidden"
+                  id={`file-upload-planning-detail-${editForm.id}`}
+                />
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
+                    isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'
+                  } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                  <button
+                    type="button"
+                    onClick={() => detailFileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="text-primary hover:text-indigo-800 text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50"
+                  >
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {getFileList(editForm).length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {getFileList(editForm).map((f) => (
+                      <div key={f.id || f.url} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText size={16} className="text-slate-400 shrink-0" />
+                          <span className="text-sm text-slate-800 truncate">{f.name}</span>
+                          {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <button type="button" onClick={() => handleDeleteDetailFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -491,8 +586,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
-                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
-                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -516,11 +611,19 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       <div className="text-sm text-slate-600 line-clamp-2">{doc.content}</div>
                     </td>
+                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                      {getFileList(doc).length > 0 && (
+                        <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
+                          {getFileList(doc).map((f) => (
+                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                              <FileText size={12}/> {f.name}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {new Date(doc.updatedAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectDoc(doc)}>
-                      <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-indigo-600" />
                     </td>
                   </tr>
                 ))}
@@ -585,7 +688,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [markupSubMode, setMarkupSubMode] = useState<'view' | 'edit'>('view');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(8, [40, 48, 80, 140, 200, 120, 100, 44]);
+  const resize = useResizableColumns(7, [18, 22, 80, 152, 212, 84, 100]);
 
   useEffect(() => { loadReports(); }, [appId]);
   
@@ -830,7 +933,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">보고서 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">목록으로</button>
+            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
             <button
               type="button"
               onClick={() => {
@@ -898,8 +1001,49 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     />
                   </div>
                 ) : (
-                  <div className="flex-1 p-4 overflow-y-auto rounded-xl border border-slate-200 bg-white min-h-[28rem]">
-                    <MarkdownPreview content={editForm.summary || ''} />
+                  <div className="flex-1 p-4 overflow-y-auto rounded-xl border border-slate-200 bg-white prose prose-sm max-w-none prose-slate min-h-[28rem]">
+                    {(editForm.summary || '').trim() ? (
+                      (editForm.summary || '').split('\n').map((line, i) => {
+                        const renderInline = (text: string) => {
+                          const parts: React.ReactNode[] = [];
+                          let rest = text;
+                          let key = 0;
+                          while (rest.length > 0) {
+                            const b = rest.indexOf('**');
+                            const u = rest.indexOf('*');
+                            if (b >= 0 && (u < 0 || b <= u)) {
+                              const end = rest.indexOf('**', b + 2);
+                              if (end >= 0) {
+                                if (b > 0) parts.push(rest.slice(0, b));
+                                parts.push(<strong key={key++}>{rest.slice(b + 2, end)}</strong>);
+                                rest = rest.slice(end + 2);
+                                continue;
+                              }
+                            }
+                            if (u >= 0) {
+                              const end = rest.indexOf('*', u + 1);
+                              if (end >= 0 && end !== u + 1) {
+                                if (u > 0) parts.push(rest.slice(0, u));
+                                parts.push(<em key={key++}>{rest.slice(u + 1, end)}</em>);
+                                rest = rest.slice(end + 1);
+                                continue;
+                              }
+                            }
+                            parts.push(rest);
+                            break;
+                          }
+                          return <>{parts}</>;
+                        };
+                        if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{renderInline(line.replace('# ', ''))}</h1>;
+                        if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{renderInline(line.replace('## ', ''))}</h2>;
+                        if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{renderInline(line.replace('### ', ''))}</h3>;
+                        if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{renderInline(line.replace('- ', ''))}</li>;
+                        if (line.trim() === '') return <div key={i} className="h-4" />;
+                        return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{renderInline(line)}</p>;
+                      })
+                    ) : (
+                      <p className="text-slate-400">내용이 없습니다. 상단에서 &quot;편집&quot;을 눌러 작성하거나 붙여넣기 하세요.</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1042,7 +1186,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={5} /></th>
                   <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={6} /></th>
-                  <th style={resize.getThStyle(7)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -1076,25 +1219,23 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       <div className="truncate" title={r.summary}>{r.summary}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {getFileList(r).length > 0 && (
-                        <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
-                          {getFileList(r).map((f, i) => (
-                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800">
-                              <FileText size={14}/> {f.name}
+                        <div className="flex flex-col gap-1 min-w-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+                          {getFileList(r).map((f) => (
+                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 min-w-0 max-w-full text-indigo-600 hover:text-indigo-800">
+                              <FileText size={14} className="shrink-0" />
+                              <span className="truncate" title={f.name}>{f.name}</span>
                             </a>
                           ))}
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectReport(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectReport(r)}>
-                      <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
-                    </td>
                   </tr>
                 ))}
                 {reports.length === 0 && (
-                  <tr><td colSpan={8} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1235,7 +1376,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [40, 48, 200, 120, 100, 44]);
+  const resize = useResizableColumns(6, [18, 22, 224, 120, 84, 100]);
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
@@ -1483,7 +1624,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">프롬프트 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -1654,8 +1795,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Prompt (Preview)<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
-                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
-                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -1685,10 +1826,18 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          {p.tags.length > 3 && <span className="text-xs text-slate-400">+{p.tags.length - 3}</span>}
                        </div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectPrompt(p)}>
-                       <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
-                     </td>
+                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                      {getFileList(p).length > 0 && (
+                        <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
+                          {getFileList(p).map((f) => (
+                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                              <FileText size={12}/> {f.name}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
                    </tr>
                  ))}
                  {prompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
@@ -1807,7 +1956,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const memoFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [40, 48, 160, 240, 100, 44]);
+  const resize = useResizableColumns(6, [18, 22, 172, 252, 84, 100]);
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -2026,7 +2175,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">참고 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2167,8 +2316,8 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
-                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
-                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -2192,10 +2341,18 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        <div className="text-sm text-slate-600 line-clamp-2">{m.content}</div>
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectMemo(m)}>
-                       <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-yellow-600" />
-                     </td>
+                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                      {getFileList(m).length > 0 && (
+                        <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
+                          {getFileList(m).map((f) => (
+                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                              <FileText size={12}/> {f.name}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
                    </tr>
                  ))}
                  {memos.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
@@ -2270,19 +2427,19 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
     setIsModalOpen(true);
   };
 
-  const handleSelectNote = (note: Note) => {
+  const openEdit = (note: Note) => {
     setSelectedNoteId(note.id);
     setEditForm({ ...note });
-  };
-
-  const handleBackToList = () => {
-    setSelectedNoteId(null);
-    setEditForm({});
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setForm({ title: '', content: '' });
+  };
+
+  const handleBackToList = () => {
+    setSelectedNoteId(null);
+    setEditForm({});
   };
 
   const handleSave = async () => {
@@ -2303,13 +2460,20 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
     closeModal();
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+    await storage.notes.delete(id);
+    loadNotes();
+    if (selectedNoteId === id) handleBackToList();
+  };
+
   const handleEditSave = async () => {
     if (!editForm.title?.trim()) {
       alert('제목을 입력하세요');
       return;
     }
     const item: Note = {
-      id: editForm.id!,
+      id: editForm.id || crypto.randomUUID(),
       appId,
       title: editForm.title.trim(),
       content: (editForm.content ?? '').trim(),
@@ -2323,16 +2487,6 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
     setTimeout(() => setSaveMessageVisible(false), 2000);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
-    await storage.notes.delete(id);
-    loadNotes();
-    if (selectedNoteId === id) {
-      setSelectedNoteId(null);
-      setEditForm({});
-    }
-  };
-
   const contentPreview = (text: string, maxLen: number) => {
     if (!text) return '';
     const t = text.replace(/\s+/g, ' ').trim();
@@ -2341,7 +2495,6 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 
   if (loading) return <Loading />;
 
-  // 상세 페이지 (편집 가능)
   if (selectedNoteId && editForm.id) {
     return (
       <>
@@ -2359,7 +2512,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
               <h3 className="font-bold text-lg text-slate-800">메모 수정</h3>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+              <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
                 목록으로
               </button>
               <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2381,23 +2534,23 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
                   )}
                 </div>
               </div>
-              <div className="space-y-6">
+              <div className="space-y-6 mt-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                  <input 
-                    className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none" 
-                    placeholder="제목을 입력하세요" 
-                    value={editForm.title || ''} 
-                    onChange={e => setEditForm({...editForm, title: e.target.value})} 
+                  <input
+                    className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
+                    placeholder="제목"
+                    value={editForm.title || ''}
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
-                  <textarea 
-                    className="w-full border rounded-lg p-4 h-[500px] focus:ring-2 ring-indigo-500 outline-none text-sm resize-none" 
-                    placeholder="내용을 입력하세요..." 
-                    value={editForm.content || ''} 
-                    onChange={e => setEditForm({...editForm, content: e.target.value})} 
+                  <textarea
+                    className="w-full border rounded-lg p-4 h-[560px] focus:ring-2 ring-indigo-500 outline-none text-sm resize-none"
+                    placeholder="내용"
+                    value={editForm.content || ''}
+                    onChange={e => setEditForm({ ...editForm, content: e.target.value })}
                   />
                 </div>
               </div>
@@ -2408,7 +2561,6 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
     );
   }
 
-  // 목록 페이지
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
@@ -2433,16 +2585,15 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
             {notes.map((note) => (
               <div
                 key={note.id}
-                onClick={() => handleSelectNote(note)}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[15rem] hover:shadow-md hover:border-slate-300 transition-all cursor-pointer"
+                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all"
               >
                 <div className="p-4 flex-1 flex flex-col min-h-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="font-semibold text-slate-800 truncate flex-1">{note.title}</h4>
-                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); handleSelectNote(note); }}
+                        onClick={() => openEdit(note)}
                         className="p-1.5 text-slate-400 hover:text-primary hover:bg-indigo-50 rounded-lg transition-colors"
                         title="수정"
                       >
@@ -2471,40 +2622,37 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
         )}
       </div>
 
-      {/* Create Modal - 새로 작성할 때만 사용 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl min-h-[32rem]">
-            <div className="py-2 px-3 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-800">
-                메모 추가
-              </h3>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold text-lg text-slate-800">메모 추가</h3>
               <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-2 space-y-2">
+            <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-0.5">제목</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
                 <input
                   type="text"
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 ring-primary outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 ring-primary outline-none"
                   value={form.title ?? ''}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="제목"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-0.5">내용</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
                 <textarea
-                  className="w-full border border-slate-300 rounded-lg p-2 h-64 resize-none focus:ring-2 ring-primary outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 h-32 resize-none focus:ring-2 ring-primary outline-none"
                   value={form.content ?? ''}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                   placeholder="내용"
                 />
               </div>
             </div>
-            <div className="py-2 px-3 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
               <button type="button" onClick={closeModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
                 취소
               </button>
@@ -2534,7 +2682,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [40, 48, 90, 80, 200, 100, 44]);
+  const resize = useResizableColumns(6, [18, 22, 90, 92, 212, 100]);
 
   useEffect(() => { loadIssues(); }, [appId]);
 
@@ -2784,7 +2932,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">트러블슈팅 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2946,7 +3094,6 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Severity<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -2984,12 +3131,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectIssue(issue)}>
-                         <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-red-500" />
-                      </td>
                    </tr>
                  ))}
-                 {issues.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
+                 {issues.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -3001,7 +3145,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
             <div className="p-4 border-b flex justify-between items-center">
                <h3 className="font-bold text-lg">새 이슈 등록</h3>
-               <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+               <div className="flex items-center gap-2">
+                 <button onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
+                 <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+               </div>
             </div>
             <div className="p-6 space-y-4">
                <div className="grid grid-cols-4 gap-4">
@@ -3071,12 +3218,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   )}
                </div>
             </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end">
               <div className="flex gap-2">
-                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
                  {form.id ? <button onClick={() => deleteIssue(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : null}
               </div>
-              <button onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
             </div>
           </div>
         </div>

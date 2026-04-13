@@ -7,7 +7,6 @@ import Placeholder from '@tiptap/extension-placeholder';
 import {
   ArrowLeft,
   Bold,
-  ChevronRight,
   Heading2,
   ImageIcon,
   Italic,
@@ -337,7 +336,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const resize = useResizableColumns(6, [40, 48, 160, 240, 100, 44]);
+  const resize = useResizableColumns(5, [18, 22, 172, 252, 100]);
 
   const [bodyHtml, setBodyHtml] = useState('');
   const [modalHtml, setModalHtml] = useState('');
@@ -495,7 +494,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               <button
                 type="button"
                 onClick={handleBackToList}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors"
+                className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors"
               >
                 목록으로
               </button>
@@ -617,7 +616,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Date<resize.ResizeHandle columnIndex={4} />
                   </th>
-                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" />
+                  
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -644,14 +643,11 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
                       {new Date(d.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelect(d)}>
-                      <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-violet-600" />
-                    </td>
                   </tr>
                 ))}
                 {docs.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-400">
+                    <td colSpan={5} className="text-center py-12 text-slate-400">
                       작성된 프리 문서가 없습니다.
                     </td>
                   </tr>

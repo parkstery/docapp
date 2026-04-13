@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 
-const MIN_COL_WIDTH = 48;
+const MIN_COL_WIDTH = 8;
 
 export function useResizableColumns(
   numColumns: number,

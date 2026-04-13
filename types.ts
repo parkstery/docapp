@@ -17,6 +17,9 @@ export interface BaseItem {
 
 export interface PlanningDoc extends BaseItem {
   content: string; // Markdown content
+  fileName?: string;
+  fileInfo?: FileInfo;
+  fileInfoList?: FileInfo[];
 }
 
 export interface FileInfo {
