@@ -3163,7 +3163,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
             <div className="p-4 border-b flex justify-between items-center">
                <h3 className="font-bold text-lg">새 이슈 등록</h3>
-               <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+               <div className="flex items-center gap-2">
+                 <button onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
+                 <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+               </div>
             </div>
             <div className="p-6 space-y-4">
                <div className="grid grid-cols-4 gap-4">
@@ -3233,12 +3236,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   )}
                </div>
             </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end">
               <div className="flex gap-2">
-                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
                  {form.id ? <button onClick={() => deleteIssue(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : null}
               </div>
-              <button onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
             </div>
           </div>
         </div>
