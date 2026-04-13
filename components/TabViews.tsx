@@ -1038,7 +1038,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         onClick={(e) => e.stopPropagation()}
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
-                      <span>SELECT</span>
+                      {/* <span>SELECT</span> */}
                     </div>
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
