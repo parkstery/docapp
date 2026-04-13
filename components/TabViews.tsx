@@ -1376,7 +1376,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [18, 22, 224, 120, 84, 100]);
+  const resize = useResizableColumns(6, [18, 22, 284, 60, 84, 100]);
 
   useEffect(() => { loadPrompts(); }, [appId]);
 

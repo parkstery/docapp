@@ -84,7 +84,7 @@ const Dashboard: React.FC = () => {
     app.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     app.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const resize = useResizableColumns(7, [48, 80, 200, 80, 240, 100, 80]);
+  const resize = useResizableColumns(7, [34, 56, 200, 56, 356, 70, 56]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
@@ -163,7 +163,7 @@ const Dashboard: React.FC = () => {
                     Description<resize.ResizeHandle columnIndex={4} />
                   </th>
                   <th scope="col" style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Created At<resize.ResizeHandle columnIndex={5} />
+                    DATE<resize.ResizeHandle columnIndex={5} />
                   </th>
                   <th scope="col" style={resize.getThStyle(6)} className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Actions
@@ -189,11 +189,11 @@ const Dashboard: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
+                      <div className="flex items-center min-w-0">
                         <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3">
                           <Smartphone size={16} />
                         </div>
-                        <div className="text-sm font-semibold text-slate-900">{app.name}</div>
+                        <div className="text-sm font-semibold text-slate-900 truncate">{app.name}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
