@@ -2327,8 +2327,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
-                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={4} /></th>
-                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
+                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
