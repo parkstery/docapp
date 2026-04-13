@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  ChevronRight, Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft
+  Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note } from '../types';
 import { storage } from '../services/storage';
@@ -231,7 +231,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 172, 252, 84, 100, 20]);
+  const resize = useResizableColumns(6, [18, 22, 172, 252, 84, 100]);
 
   useEffect(() => {
     loadDocs();
@@ -588,7 +588,6 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -626,14 +625,11 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {new Date(doc.updatedAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectDoc(doc)}>
-                      <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-indigo-600" />
-                    </td>
                   </tr>
                 ))}
                 {docs.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-400">
+                    <td colSpan={6} className="text-center py-12 text-slate-400">
                       등록된 기획서가 없습니다. 작성하기를 눌러 시작하세요.
                     </td>
                   </tr>
@@ -692,7 +688,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [markupSubMode, setMarkupSubMode] = useState<'view' | 'edit'>('view');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(8, [18, 22, 80, 152, 212, 84, 100, 20]);
+  const resize = useResizableColumns(7, [18, 22, 80, 152, 212, 84, 100]);
 
   useEffect(() => { loadReports(); }, [appId]);
   
@@ -1190,7 +1186,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={5} /></th>
                   <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={6} /></th>
-                  <th style={resize.getThStyle(7)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -1236,13 +1231,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectReport(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectReport(r)}>
-                      <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
-                    </td>
                   </tr>
                 ))}
                 {reports.length === 0 && (
-                  <tr><td colSpan={8} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1383,7 +1375,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 224, 120, 84, 100, 20]);
+  const resize = useResizableColumns(6, [18, 22, 224, 120, 84, 100]);
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
@@ -1804,7 +1796,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -1846,12 +1837,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectPrompt(p)}>
-                       <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-primary" />
-                     </td>
                    </tr>
                  ))}
-                 {prompts.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
+                 {prompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -1967,7 +1955,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const memoFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 172, 252, 84, 100, 20]);
+  const resize = useResizableColumns(6, [18, 22, 172, 252, 84, 100]);
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -2329,7 +2317,6 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -2365,12 +2352,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectMemo(m)}>
-                       <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-yellow-600" />
-                     </td>
                    </tr>
                  ))}
-                 {memos.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
+                 {memos.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -2697,7 +2681,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 90, 92, 212, 100, 20]);
+  const resize = useResizableColumns(6, [18, 22, 90, 92, 212, 100]);
 
   useEffect(() => { loadIssues(); }, [appId]);
 
@@ -3109,7 +3093,6 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Severity<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -3147,12 +3130,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-right cursor-pointer" onClick={() => handleSelectIssue(issue)}>
-                         <ChevronRight size={16} className="text-slate-300 ml-auto group-hover:text-red-500" />
-                      </td>
                    </tr>
                  ))}
-                 {issues.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
+                 {issues.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
