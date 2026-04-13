@@ -59,7 +59,7 @@ const editorDomToStored = (el: HTMLElement | null): string => {
   const parts: string[] = [];
   function walk(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) {
-      parts.push((node.textContent || '').replace(/\u00A0/g, ' '));
+      parts.push((node.textContent || '').replace(/\u00A0/g, ' ').replace(/\u200B/g, ''));
       return;
     }
     if (node.nodeType === Node.ELEMENT_NODE) {
@@ -125,18 +125,32 @@ const RichPromptField: React.FC<RichPromptFieldProps> = ({
     img.alt = alt;
     img.className = 'max-w-full h-auto rounded my-1 border border-slate-200 inline-block';
     img.setAttribute('data-pasted-image', '1');
+    const placeCaretOnNewLineAfter = (after: HTMLElement) => {
+      const br = document.createElement('br');
+      const tail = document.createTextNode('\u200B');
+      const r = document.createRange();
+      r.setStartAfter(after);
+      r.collapse(true);
+      r.insertNode(br);
+      r.setStartAfter(br);
+      r.collapse(true);
+      r.insertNode(tail);
+      r.setStart(tail, 1);
+      r.collapse(true);
+      sel!.removeAllRanges();
+      sel!.addRange(r);
+    };
     try {
       if (sel.rangeCount) {
         const range = sel.getRangeAt(0);
         range.deleteContents();
         range.insertNode(img);
-        range.setStartAfter(img);
-        range.setEndAfter(img);
-        sel.removeAllRanges();
-        sel.addRange(range);
+        placeCaretOnNewLineAfter(img);
       } else {
         el.appendChild(img);
+        placeCaretOnNewLineAfter(img);
       }
+      el.focus();
     } finally {
       isInternalChange.current = true;
       onChange(editorDomToStored(el));

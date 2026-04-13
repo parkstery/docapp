@@ -82,7 +82,11 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
             continue;
           }
           const fi = await uploadFile(appId, `freeDocs/${docId}/inline`, file);
-          ed.chain().focus().setImage({ src: fi.url, alt: file.name }).run();
+          ed.chain()
+            .focus()
+            .setImage({ src: fi.url, alt: file.name })
+            .insertContent('<p></p>')
+            .run();
         }
       } catch (e: any) {
         console.error('[FreeDoc] 이미지 업로드 실패:', e);
