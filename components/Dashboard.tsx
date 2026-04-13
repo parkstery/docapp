@@ -87,27 +87,27 @@ const Dashboard: React.FC = () => {
   const resize = useResizableColumns(7, [34, 56, 200, 56, 356, 70, 56]);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">프로젝트 대시보드</h1>
             <p className="text-slate-500 text-sm mt-1">등록된 모든 애플리케이션 프로젝트 현황입니다.</p>
           </div>
-          <div className="flex gap-3 items-center">
-             <div className="relative">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center w-full lg:w-auto">
+             <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input 
                   type="text" 
                   placeholder="프로젝트 검색..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none w-64"
+                  className="pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none w-full sm:w-64"
                 />
              </div>
              {user && (
-               <div className="flex items-center gap-3">
+               <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
                  <div className="flex items-center gap-2 px-3 py-2 bg-white border rounded-lg">
                    {user.photoURL ? (
                      <img src={user.photoURL} alt={user.displayName || ''} className="w-6 h-6 rounded-full" />
@@ -118,7 +118,7 @@ const Dashboard: React.FC = () => {
                  </div>
                  <button
                    onClick={handleSignOut}
-                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
+                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors"
                  >
                    <LogOut size={16} /> 로그아웃
                  </button>
@@ -126,7 +126,7 @@ const Dashboard: React.FC = () => {
              )}
              <button
               onClick={() => openModal()}
-              className="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors shadow-sm"
+              className="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-sm w-full sm:w-auto"
             >
               <Plus size={16} /> 새 프로젝트
             </button>
@@ -141,97 +141,148 @@ const Dashboard: React.FC = () => {
               <p>데이터를 불러오는 중입니다...</p>
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
-              <colgroup>
-                {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
-              </colgroup>
-              <thead className="bg-slate-50">
-                <tr>
-                  <th scope="col" style={resize.getThStyle(0)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    No.<resize.ResizeHandle columnIndex={0} />
-                  </th>
-                  <th scope="col" style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Platform<resize.ResizeHandle columnIndex={1} />
-                  </th>
-                  <th scope="col" style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Project Name<resize.ResizeHandle columnIndex={2} />
-                  </th>
-                  <th scope="col" style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Version<resize.ResizeHandle columnIndex={3} />
-                  </th>
-                  <th scope="col" style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Description<resize.ResizeHandle columnIndex={4} />
-                  </th>
-                  <th scope="col" style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    DATE<resize.ResizeHandle columnIndex={5} />
-                  </th>
-                  <th scope="col" style={resize.getThStyle(6)} className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
-                {filteredApps.map((app, index) => (
-                  <tr 
-                    key={app.id} 
+            <>
+              <div className="lg:hidden p-3 space-y-3">
+                {filteredApps.map((app) => (
+                  <div
+                    key={app.id}
                     onClick={() => navigate(`/app/${app.id}`)}
-                    className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
+                    className="border border-slate-200 rounded-lg p-4 bg-white hover:bg-indigo-50/40 transition-colors cursor-pointer"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                      {index + 1}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
-                        ${app.platform === 'iOS' ? 'bg-slate-100 text-slate-800 border-slate-200' : 
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{app.name}</p>
+                        <p className="text-xs text-slate-500 mt-1">{new Date(app.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap
+                        ${app.platform === 'iOS' ? 'bg-slate-100 text-slate-800 border-slate-200' :
                           app.platform === 'Android' ? 'bg-green-100 text-green-800 border-green-200' :
                           app.platform === 'Web' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-purple-100 text-purple-800 border-purple-200'}`}>
                         {app.platform}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center min-w-0">
-                        <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3">
-                          <Smartphone size={16} />
-                        </div>
-                        <div className="text-sm font-semibold text-slate-900 truncate">{app.name}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-slate-600 font-mono">v{app.version}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-slate-500 truncate max-w-xs">{app.description || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                      {new Date(app.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openModal(app); }}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={(e) => handleDelete(e, app.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
+                      <Smartphone size={14} className="text-indigo-500" />
+                      <span className="font-mono">v{app.version}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-500 truncate">{app.description || '-'}</p>
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openModal(app); }}
+                        className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                        aria-label="프로젝트 수정"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(e, app.id)}
+                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"
+                        aria-label="프로젝트 삭제"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
                 ))}
                 {filteredApps.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
-                      {apps.length === 0 ? "등록된 프로젝트가 없습니다. '새 프로젝트'를 눌러 시작하세요." : "검색 결과가 없습니다."}
-                    </td>
-                  </tr>
+                  <div className="px-4 py-12 text-center text-slate-400 text-sm">
+                    {apps.length === 0 ? "등록된 프로젝트가 없습니다. '새 프로젝트'를 눌러 시작하세요." : "검색 결과가 없습니다."}
+                  </div>
                 )}
-              </tbody>
-            </table>
+              </div>
+
+              <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <colgroup>
+                  {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
+                </colgroup>
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th scope="col" style={resize.getThStyle(0)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      No.<resize.ResizeHandle columnIndex={0} />
+                    </th>
+                    <th scope="col" style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Platform<resize.ResizeHandle columnIndex={1} />
+                    </th>
+                    <th scope="col" style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Project Name<resize.ResizeHandle columnIndex={2} />
+                    </th>
+                    <th scope="col" style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Version<resize.ResizeHandle columnIndex={3} />
+                    </th>
+                    <th scope="col" style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Description<resize.ResizeHandle columnIndex={4} />
+                    </th>
+                    <th scope="col" style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      DATE<resize.ResizeHandle columnIndex={5} />
+                    </th>
+                    <th scope="col" style={resize.getThStyle(6)} className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {filteredApps.map((app, index) => (
+                    <tr
+                      key={app.id}
+                      onClick={() => navigate(`/app/${app.id}`)}
+                      className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
+                          ${app.platform === 'iOS' ? 'bg-slate-100 text-slate-800 border-slate-200' :
+                            app.platform === 'Android' ? 'bg-green-100 text-green-800 border-green-200' :
+                            app.platform === 'Web' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-purple-100 text-purple-800 border-purple-200'}`}>
+                          {app.platform}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center min-w-0">
+                          <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                            <Smartphone size={16} />
+                          </div>
+                          <div className="text-sm font-semibold text-slate-900 truncate">{app.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-slate-600 font-mono">v{app.version}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-slate-500 truncate max-w-xs">{app.description || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {new Date(app.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openModal(app); }}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(e, app.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredApps.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                        {apps.length === 0 ? "등록된 프로젝트가 없습니다. '새 프로젝트'를 눌러 시작하세요." : "검색 결과가 없습니다."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </>
           )}
         </div>
 
@@ -247,7 +298,7 @@ const Dashboard: React.FC = () => {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-md animate-in fade-in zoom-in duration-200">
             <h2 className="text-xl font-bold mb-4">{editingApp ? '프로젝트 수정' : '새 프로젝트 등록'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

@@ -53,7 +53,7 @@ const AppDetail: React.FC = () => {
   return (
     <div className="flex h-screen bg-slate-50 flex-col">
       {/* Header */}
-      <header className="bg-white border-b px-6 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
+      <header className="bg-white border-b px-3 sm:px-6 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/')} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
             <ArrowLeft size={20} />
@@ -63,14 +63,38 @@ const AppDetail: React.FC = () => {
               {app.name} 
               <span className="text-xs font-normal px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">v{app.version}</span>
             </h1>
-            <p className="text-xs text-slate-400">{app.platform} Development</p>
+            <p className="text-xs text-slate-400 hidden sm:block">{app.platform} Development</p>
           </div>
         </div>
       </header>
 
+      {/* Mobile Tab Bar */}
+      <nav className="lg:hidden bg-white border-b px-2 py-2 overflow-x-auto">
+        <div className="flex items-center gap-2 min-w-max">
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as Tab)}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                  isActive
+                    ? 'bg-indigo-50 text-primary'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Icon size={16} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation */}
-        <aside className="w-64 bg-white border-r flex flex-col flex-shrink-0">
+        <aside className="hidden lg:flex w-64 bg-white border-r flex-col flex-shrink-0">
           <nav className="p-4 space-y-1">
             {tabs.map(tab => {
               const Icon = tab.icon;
@@ -99,7 +123,7 @@ const AppDetail: React.FC = () => {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-50">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-slate-50">
           <div className="max-w-6xl mx-auto h-full">
             {activeTab === 'planning' && <PlanningView appId={app.id} />}
             {activeTab === 'reports' && <ReportView appId={app.id} />}

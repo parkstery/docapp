@@ -474,8 +474,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         )}
         <div className="h-full flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={handleBackToList}
@@ -490,7 +490,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                 </span>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={handleBackToList}
@@ -517,7 +517,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-            <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+            <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
               <div className="mb-2 pb-2 border-b">
                 <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
                   <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
@@ -557,9 +557,9 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">프리</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={openModal}
@@ -586,74 +586,115 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               <Loader2 className="animate-spin" /> 로딩 중…
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
-              <colgroup>
-                {resize.widths.map((_, i) => (
-                  <col key={i} style={resize.getColStyle(i)} />
-                ))}
-              </colgroup>
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th style={resize.getThStyle(0)} className="px-6 py-3 text-left">
+            <>
+              <div className="lg:hidden p-3 space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <label className="flex items-center gap-2 text-sm text-slate-600">
                     <input
                       type="checkbox"
                       checked={docs.length > 0 && selectedIds.size === docs.length}
                       onChange={handleSelectAll}
-                      onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                     />
-                    <resize.ResizeHandle columnIndex={0} />
-                  </th>
-                  <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    No.<resize.ResizeHandle columnIndex={1} />
-                  </th>
-                  <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Title<resize.ResizeHandle columnIndex={2} />
-                  </th>
-                  <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Preview<resize.ResizeHandle columnIndex={3} />
-                  </th>
-                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Date<resize.ResizeHandle columnIndex={4} />
-                  </th>
-                  
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
+                    전체 선택
+                  </label>
+                </div>
                 {docs.map((d, index) => (
-                  <tr key={d.id} className="hover:bg-violet-50/60 group transition-colors">
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                  <div key={d.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                    <div className="flex items-start justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleSelect(d)}
+                        className="text-left min-w-0 flex-1"
+                      >
+                        <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {d.title}</p>
+                        <p className="text-xs text-slate-500 mt-1">{new Date(d.createdAt).toLocaleDateString()}</p>
+                        <p className="text-sm text-slate-600 mt-2 truncate">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</p>
+                      </button>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(d.id)}
                         onChange={() => handleToggleSelect(d.id)}
+                        className="mt-1 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      />
+                    </div>
+                  </div>
+                ))}
+                {docs.length === 0 && (
+                  <div className="text-center py-12 text-slate-400 text-sm">
+                    작성된 프리 문서가 없습니다.
+                  </div>
+                )}
+              </div>
+
+              <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <colgroup>
+                  {resize.widths.map((_, i) => (
+                    <col key={i} style={resize.getColStyle(i)} />
+                  ))}
+                </colgroup>
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th style={resize.getThStyle(0)} className="px-6 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={docs.length > 0 && selectedIds.size === docs.length}
+                        onChange={handleSelectAll}
                         onClick={(e) => e.stopPropagation()}
                         className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
-                      {index + 1}
-                    </td>
-                    <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
-                      <div className="text-sm font-medium text-slate-900">{d.title}</div>
-                    </td>
-                    <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
-                      <div className="text-sm text-slate-600 line-clamp-2">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
-                      {new Date(d.createdAt).toLocaleDateString()}
-                    </td>
+                      <resize.ResizeHandle columnIndex={0} />
+                    </th>
+                    <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      No.<resize.ResizeHandle columnIndex={1} />
+                    </th>
+                    <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Title<resize.ResizeHandle columnIndex={2} />
+                    </th>
+                    <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Preview<resize.ResizeHandle columnIndex={3} />
+                    </th>
+                    <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Date<resize.ResizeHandle columnIndex={4} />
+                    </th>
                   </tr>
-                ))}
-                {docs.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="text-center py-12 text-slate-400">
-                      작성된 프리 문서가 없습니다.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {docs.map((d, index) => (
+                    <tr key={d.id} className="hover:bg-violet-50/60 group transition-colors">
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(d.id)}
+                          onChange={() => handleToggleSelect(d.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
+                        <div className="text-sm font-medium text-slate-900">{d.title}</div>
+                      </td>
+                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
+                        <div className="text-sm text-slate-600 line-clamp-2">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
+                        {new Date(d.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                  {docs.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center py-12 text-slate-400">
+                        작성된 프리 문서가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </>
           )}
         </div>
       </div>
@@ -667,7 +708,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                 <X size={20} className="text-slate-400 hover:text-slate-600" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
               {uploading && (
                 <p className="text-xs text-violet-600 flex items-center gap-1">
                   <Loader2 className="animate-spin" size={14} /> 이미지 업로드 중…

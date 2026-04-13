@@ -207,7 +207,7 @@ const TableHeader = ({ cols }: { cols: string[] }) => (
   <thead className="bg-slate-50 border-b border-slate-200">
     <tr>
       {cols.map((col, i) => (
-        <th key={i} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <th key={i} className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
           {col}
         </th>
       ))}
@@ -215,7 +215,7 @@ const TableHeader = ({ cols }: { cols: string[] }) => (
   </thead>
 );
 
-const Loading = () => <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={20}/> 불러오는 중...</div>;
+const Loading = () => <div className="p-4 sm:p-8 text-center text-slate-400 flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={20}/> 불러오는 중...</div>;
 
 // --- 1. Planning (Markdown) ---
 export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
@@ -419,30 +419,30 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         )}
       <div className="h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">기획서 수정</h3>
           </div>
-          <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors w-full sm:w-auto">
               목록으로
             </button>
-            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
               <Save size={14}/> 저장
             </button>
-            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
               <Trash2 size={14}/> 삭제
             </button>
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
             <div className="mb-2 pb-2 border-b">
-              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
                 <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                 {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                   <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
@@ -547,9 +547,9 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
         </div>
       )}
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">기획서</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button onClick={openModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
             <Plus size={16} /> 작성하기
           </button>
@@ -567,7 +567,44 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <>
+            <div className="lg:hidden p-3 space-y-3">
+              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+                <input
+                  type="checkbox"
+                  checked={docs.length > 0 && selectedIds.size === docs.length}
+                  onChange={handleSelectAll}
+                  className="rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                전체 선택
+              </label>
+              {docs.map((doc, index) => (
+                <div key={doc.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => handleSelectDoc(doc)} className="text-left min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {doc.title}</p>
+                      <p className="text-xs text-slate-500 mt-1">{new Date(doc.updatedAt).toLocaleDateString()}</p>
+                      <p className="text-sm text-slate-600 mt-2 truncate">{doc.content}</p>
+                      {getFileList(doc).length > 0 && (
+                        <p className="text-xs text-indigo-600 mt-1 truncate">첨부 {getFileList(doc).length}개</p>
+                      )}
+                    </button>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(doc.id)}
+                      onChange={() => handleToggleSelect(doc.id)}
+                      className="mt-1 rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              ))}
+              {docs.length === 0 && (
+                <div className="text-center py-12 text-slate-400 text-sm">
+                  등록된 기획서가 없습니다. 작성하기를 눌러 시작하세요.
+                </div>
+              )}
+            </div>
+            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -636,6 +673,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                 )}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
@@ -925,14 +963,14 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         )}
       <div className="h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">보고서 수정</h3>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
             <button
               type="button"
@@ -967,13 +1005,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
             {isMarkupMode ? (
               /* 마크업 전용 페이지: 보기/편집 전환 */
               <div className="flex flex-col h-full min-h-[28rem]">
                 <div className="flex items-center justify-between gap-2 mb-3 py-2 border-b border-slate-200">
                   <span className="text-sm font-medium text-slate-700">Markup 문서</span>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setMarkupSubMode('view')}
@@ -1051,7 +1089,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               /* 일반 편집: 제목, 유형, 요약, 첨부파일 */
               <>
                 <div className="mb-2 pb-2 border-b">
-                  <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
                     <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                     {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                       <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
@@ -1086,7 +1124,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
                     <textarea
-                      className="w-full border rounded-lg p-4 h-[32rem] resize-none focus:ring-2 ring-indigo-500 outline-none text-sm"
+                      className="w-full border rounded-lg p-4 h-64 sm:h-[32rem] resize-none focus:ring-2 ring-indigo-500 outline-none text-sm"
                       value={editForm.summary || ''}
                       onChange={e => setEditForm({...editForm, summary: e.target.value})}
                     />
@@ -1138,9 +1176,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   // 목록 페이지
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">보고서</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => openModal()} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
             <Plus size={16} /> 작성하기
           </button>
@@ -1161,7 +1199,49 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <>
+            <div className="lg:hidden p-3 space-y-3">
+              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+                <input
+                  type="checkbox"
+                  checked={reports.length > 0 && selectedIds.size === reports.length}
+                  onChange={handleSelectAll}
+                  className="rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                전체 선택
+              </label>
+              {reports.map((r, index) => (
+                <div key={r.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => handleSelectReport(r)} className="text-left min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {r.title}</p>
+                      <div className="mt-1">
+                        <span className={`px-2 py-1 rounded text-xs font-medium border ${
+                          r.type === 'Final' ? 'bg-green-50 text-green-700 border-green-200' :
+                          r.type === 'Interim' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          r.type === 'CodeAnalysis' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          'bg-slate-50 text-slate-600 border-slate-200'
+                        }`}>
+                          {r.type}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 mt-2 truncate">{r.summary}</p>
+                      <p className="text-xs text-slate-500 mt-1">{new Date(r.createdAt).toLocaleDateString()}</p>
+                    </button>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => handleToggleSelect(r.id)}
+                      className="mt-1 rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              ))}
+              {reports.length === 0 && (
+                <div className="text-center py-12 text-slate-400 text-sm">등록된 보고서가 없습니다.</div>
+              )}
+            </div>
+            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -1239,20 +1319,21 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                 )}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 보고서 작성</h3>
               <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
             </div>
-            <div className="p-6 overflow-y-auto space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
                   <input className="w-full border rounded-lg p-2.5 focus:ring-2 ring-primary outline-none" value={form.title || ''} onChange={e => setForm({...form, title: e.target.value})} />
                 </div>
@@ -1269,7 +1350,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">요약 내용</label>
-                <textarea className="w-full border rounded-lg p-3 h-[32rem] resize-none focus:ring-2 ring-primary outline-none" value={form.summary || ''} onChange={e => setForm({...form, summary: e.target.value})} />
+                <textarea className="w-full border rounded-lg p-3 h-64 sm:h-[32rem] resize-none focus:ring-2 ring-primary outline-none" value={form.summary || ''} onChange={e => setForm({...form, summary: e.target.value})} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
@@ -1348,7 +1429,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               </div>
             </div>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
                 {form.id ? <button onClick={() => deleteReport(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : null}
               </div>
@@ -1616,14 +1697,14 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         )}
       <div className="h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">프롬프트 수정</h3>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
@@ -1637,9 +1718,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
             <div className="mb-2 pb-2 border-b">
-              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
                 <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                 {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                   <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
@@ -1756,9 +1837,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
           저장되었습니다
         </div>
       )}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">프롬프트 로그</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => setIsAdding(true)} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
             <Plus size={16} /> 로그 추가
           </button>
@@ -1776,7 +1857,43 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <>
+            <div className="lg:hidden p-3 space-y-3">
+              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+                <input
+                  type="checkbox"
+                  checked={prompts.length > 0 && selectedIds.size === prompts.length}
+                  onChange={handleSelectAll}
+                  className="rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                전체 선택
+              </label>
+              {prompts.map((p, index) => (
+                <div key={p.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => handleSelectPrompt(p)} className="text-left min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {p.prompt}</p>
+                      <p className="text-xs text-slate-500 truncate mt-1">{p.response}</p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {p.tags.slice(0, 2).map((t, i) => (
+                          <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">{t}</span>
+                        ))}
+                        {p.tags.length > 2 && <span className="text-xs text-slate-400">+{p.tags.length - 2}</span>}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">{new Date(p.createdAt).toLocaleDateString()}</p>
+                    </button>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(p.id)}
+                      onChange={() => handleToggleSelect(p.id)}
+                      className="mt-1 rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              ))}
+              {prompts.length === 0 && <div className="text-center py-12 text-slate-400 text-sm">로그가 없습니다.</div>}
+            </div>
+            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -1843,6 +1960,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                  {prompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
                </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
@@ -1850,18 +1968,18 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       {/* Add Modal */}
       {isAdding && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
             <div className="p-4 border-b">
               <h3 className="font-bold text-lg">새 프롬프트 로그</h3>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">User Prompt</label>
-                <textarea className="w-full border rounded-lg p-3 h-24 focus:ring-2 ring-primary outline-none text-sm" placeholder="입력 내용..." value={input.prompt} onChange={e => setInput({...input, prompt: e.target.value})} />
+                <textarea className="w-full border rounded-lg p-3 h-28 sm:h-24 focus:ring-2 ring-primary outline-none text-sm" placeholder="입력 내용..." value={input.prompt} onChange={e => setInput({...input, prompt: e.target.value})} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">AI Response</label>
-                <textarea className="w-full border rounded-lg p-3 h-32 bg-slate-50 focus:bg-white focus:ring-2 ring-primary outline-none text-sm" placeholder="응답 내용..." value={input.response} onChange={e => setInput({...input, response: e.target.value})} />
+                <textarea className="w-full border rounded-lg p-3 h-36 sm:h-32 bg-slate-50 focus:bg-white focus:ring-2 ring-primary outline-none text-sm" placeholder="응답 내용..." value={input.response} onChange={e => setInput({...input, response: e.target.value})} />
               </div>
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">태그</label>
@@ -2167,14 +2285,14 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         )}
       <div className="h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">참고 수정</h3>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
@@ -2188,9 +2306,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
             <div className="mb-2 pb-2 border-b">
-              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
                 <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                 {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                   <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
@@ -2277,9 +2395,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   // 목록 페이지
   return (
     <div className="h-full flex flex-col">
-       <div className="flex justify-between items-center mb-4">
+       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">참고</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => openModal()} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
             <Plus size={16} /> 작성하기
           </button>
@@ -2297,7 +2415,37 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <>
+            <div className="lg:hidden p-3 space-y-3">
+              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+                <input
+                  type="checkbox"
+                  checked={memos.length > 0 && selectedIds.size === memos.length}
+                  onChange={handleSelectAll}
+                  className="rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                전체 선택
+              </label>
+              {memos.map((m, index) => (
+                <div key={m.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => handleSelectMemo(m)} className="text-left min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {m.title}</p>
+                      <p className="text-sm text-slate-600 mt-2 truncate">{m.content}</p>
+                      <p className="text-xs text-slate-500 mt-1">{new Date(m.createdAt).toLocaleDateString()}</p>
+                    </button>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(m.id)}
+                      onChange={() => handleToggleSelect(m.id)}
+                      className="mt-1 rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              ))}
+              {memos.length === 0 && <div className="text-center py-12 text-slate-400 text-sm">작성된 참고가 없습니다.</div>}
+            </div>
+            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -2358,6 +2506,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                  {memos.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
                </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
@@ -2365,12 +2514,12 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       {/* Create Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 참고 작성</h3>
               <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
             </div>
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
                 <input 
@@ -2383,7 +2532,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
                 <textarea 
-                  className="w-full border rounded-lg p-3 h-64 focus:ring-2 ring-yellow-400 outline-none text-sm bg-yellow-50/50 focus:bg-white transition-colors" 
+                  className="w-full border rounded-lg p-3 h-48 sm:h-64 focus:ring-2 ring-yellow-400 outline-none text-sm bg-yellow-50/50 focus:bg-white transition-colors"
                   placeholder="내용을 입력하세요..." 
                   value={form.content || ''} 
                   onChange={e => setForm({...form, content: e.target.value})} 
@@ -2504,14 +2653,14 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         )}
         <div className="h-full flex flex-col">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
             <div className="flex items-center gap-3">
               <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
                 <ArrowLeft size={20} />
               </button>
               <h3 className="font-bold text-lg text-slate-800">메모 수정</h3>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
                 목록으로
               </button>
@@ -2525,9 +2674,9 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-            <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+            <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
               <div className="mb-2 pb-2 border-b">
-                <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
                   <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                   {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                     <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
@@ -2563,7 +2712,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">메모</h3>
         <button
           onClick={openCreate}
@@ -2924,14 +3073,14 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         )}
       <div className="h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">트러블슈팅 수정</h3>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
@@ -2945,9 +3094,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
+          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
             <div className="mb-2 pb-2 border-b">
-              <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
                 <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                 {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                   <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
@@ -3053,9 +3202,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   // 목록 페이지
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">트러블슈팅 이슈</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => openModal()} className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
             <AlertCircle size={16} /> 이슈 등록
           </button>
@@ -3073,7 +3222,47 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <>
+            <div className="lg:hidden p-3 space-y-3">
+              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+                <input
+                  type="checkbox"
+                  checked={issues.length > 0 && selectedIds.size === issues.length}
+                  onChange={handleSelectAll}
+                  className="rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                전체 선택
+              </label>
+              {issues.map((issue, index) => (
+                <div key={issue.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => handleSelectIssue(issue)} className="text-left min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {issue.title}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
+                          ${issue.status === 'Resolved' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                          {issue.status}
+                        </span>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold
+                          ${issue.severity === 'High' ? 'text-red-600 bg-red-50' : issue.severity === 'Medium' ? 'text-orange-600 bg-orange-50' : 'text-slate-500 bg-slate-100'}`}>
+                          {issue.severity}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 truncate mt-2">{issue.description}</p>
+                      <p className="text-xs text-slate-500 mt-1">{new Date(issue.updatedAt).toLocaleDateString()}</p>
+                    </button>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(issue.id)}
+                      onChange={() => handleToggleSelect(issue.id)}
+                      className="mt-1 rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              ))}
+              {issues.length === 0 && <div className="text-center py-12 text-slate-400 text-sm">등록된 이슈가 없습니다.</div>}
+            </div>
+            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -3136,13 +3325,14 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                  {issues.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
                </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
                <h3 className="font-bold text-lg">새 이슈 등록</h3>
                <div className="flex items-center gap-2">
@@ -3150,9 +3340,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                  <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
                </div>
             </div>
-            <div className="p-6 space-y-4">
-               <div className="grid grid-cols-4 gap-4">
-                  <div className="col-span-3">
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="sm:col-span-3">
                     <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
                     <input className="w-full border rounded-lg p-2.5 focus:ring-2 ring-red-500 outline-none" value={form.title || ''} onChange={e => setForm({...form, title: e.target.value})} placeholder="문제 상황 요약" />
                   </div>
@@ -3165,8 +3355,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                      </select>
                   </div>
                </div>
-               <div className="grid grid-cols-4 gap-4">
-                  <div className="col-span-1">
+               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="sm:col-span-1">
                      <label className="block text-sm font-medium text-slate-700 mb-1">상태</label>
                      <select className="w-full border rounded-lg p-2.5 outline-none" value={form.status} onChange={e => setForm({...form, status: e.target.value as any})}>
                        <option value="Open">Open</option>
@@ -3177,11 +3367,11 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                </div>
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">문제 설명</label>
-                  <textarea className="w-full border rounded-lg p-3 h-24 resize-none outline-none" value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} placeholder="발생한 문제에 대한 상세 설명" />
+                  <textarea className="w-full border rounded-lg p-3 h-28 sm:h-24 resize-none outline-none" value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} placeholder="발생한 문제에 대한 상세 설명" />
                </div>
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">해결 방법 (Solution)</label>
-                  <textarea className="w-full border border-green-200 bg-green-50 rounded-lg p-3 h-24 resize-none outline-none focus:ring-2 ring-green-500" value={form.solution || ''} onChange={e => setForm({...form, solution: e.target.value})} placeholder="해결 방안 기록..." />
+                  <textarea className="w-full border border-green-200 bg-green-50 rounded-lg p-3 h-28 sm:h-24 resize-none outline-none focus:ring-2 ring-green-500" value={form.solution || ''} onChange={e => setForm({...form, solution: e.target.value})} placeholder="해결 방안 기록..." />
                </div>
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
@@ -3219,7 +3409,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                </div>
             </div>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                  {form.id ? <button onClick={() => deleteIssue(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : null}
               </div>
             </div>
@@ -3396,22 +3586,22 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">스크린샷 갤러리</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button 
             onClick={(e) => {
               e.stopPropagation();
               fileInputRef.current?.click();
             }} 
-            className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-medium hover:bg-slate-700"
+            className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 shadow-sm font-medium hover:bg-slate-700 w-full sm:w-auto"
           >
             <ImageIcon size={16} /> 이미지 추가
           </button>
           {selectedIds.size > 0 && (
             <button 
               onClick={handleDeleteSelected} 
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-1 shadow-sm w-full sm:w-auto"
             >
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
@@ -3427,7 +3617,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
         </div>
       </div>
       
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 p-3 sm:p-4 overflow-y-auto">
         {loading ? <Loading /> : (
           <>
             {images.length === 0 && (
@@ -3435,7 +3625,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
+                  className={`border-2 border-dashed rounded-xl p-6 sm:p-12 text-center transition-colors ${
                     isDragging 
                       ? 'border-primary bg-indigo-50' 
                       : 'border-slate-300 hover:border-slate-400 bg-slate-50'
@@ -3474,7 +3664,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                   />
                   <span className="text-sm text-slate-600">전체 선택</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                   {images.map(img => (
                     <div key={img.id} className="group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all">
                       <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
@@ -3487,7 +3677,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                         />
                       </div>
                       <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <div className="absolute inset-0 bg-black/45 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <a href={img.imageUrl} download={img.title} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-slate-800 hover:text-indigo-600 shadow-lg transform hover:scale-110 transition-transform"><Download size={16} /></a>
                         <button onClick={() => handleDelete(img.id, img.imageUrl)} className="p-2 bg-white rounded-full text-slate-800 hover:text-red-600 shadow-lg transform hover:scale-110 transition-transform"><Trash2 size={16} /></button>
                       </div>

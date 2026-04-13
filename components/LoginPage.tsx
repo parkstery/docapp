@@ -23,14 +23,14 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-slate-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+        <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8 space-y-6">
           {/* 로고/제목 영역 */}
           <div className="text-center space-y-2">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
               <LogIn className="text-indigo-600" size={32} />
             </div>
-            <h1 className="text-3xl font-bold text-slate-800">DevManager Pro</h1>
-            <p className="text-slate-500">앱 개발 관리 시스템에 오신 것을 환영합니다</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">DevManager Pro</h1>
+            <p className="text-sm sm:text-base text-slate-500">앱 개발 관리 시스템에 오신 것을 환영합니다</p>
           </div>
 
           {/* 로그인 버튼 */}
@@ -80,11 +80,11 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Play 심사용: 도움말·개인정보처리방침·문의 */}
-        <footer className="mt-8 text-center text-xs text-slate-400">
+        <footer className="mt-8 text-center text-xs text-slate-400 flex flex-wrap justify-center gap-2 px-2 break-all">
           <Link to="/help" className="underline hover:text-slate-600">도움말</Link>
-          <span className="mx-2">|</span>
+          <span className="hidden sm:inline">|</span>
           <Link to="/privacy" className="underline hover:text-slate-600">개인정보처리방침</Link>
-          <span className="mx-2">|</span>
+          <span className="hidden sm:inline">|</span>
           <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:text-slate-600">문의: {CONTACT_EMAIL}</a>
         </footer>
       </div>
