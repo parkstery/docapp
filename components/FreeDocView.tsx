@@ -495,7 +495,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               <button
                 type="button"
                 onClick={handleBackToList}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors"
+                className="px-4 py-2 bg-indigo-50 text-primary hover:bg-indigo-100 rounded-lg text-sm transition-colors"
               >
                 목록으로
               </button>

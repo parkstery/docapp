@@ -427,7 +427,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">기획서 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-indigo-50 text-primary hover:bg-indigo-100 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -937,7 +937,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">보고서 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">목록으로</button>
+            <button onClick={handleBackToList} className="px-4 py-2 bg-indigo-50 text-primary hover:bg-indigo-100 rounded-lg text-sm transition-colors">목록으로</button>
             <button
               type="button"
               onClick={() => {
@@ -1631,7 +1631,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">프롬프트 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-indigo-50 text-primary hover:bg-indigo-100 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2186,7 +2186,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">참고 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-indigo-50 text-primary hover:bg-indigo-100 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2526,7 +2526,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
               <h3 className="font-bold text-lg text-slate-800">메모 수정</h3>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+              <button onClick={handleBackToList} className="px-4 py-2 bg-indigo-50 text-primary hover:bg-indigo-100 rounded-lg text-sm transition-colors">
                 목록으로
               </button>
               <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2946,7 +2946,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
             <h3 className="font-bold text-lg text-slate-800">트러블슈팅 수정</h3>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm transition-colors">
+            <button onClick={handleBackToList} className="px-4 py-2 bg-indigo-50 text-primary hover:bg-indigo-100 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
