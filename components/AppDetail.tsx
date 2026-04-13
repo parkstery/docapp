@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, FileText, MessageSquare, StickyNote, ClipboardList, AlertTriangle, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, MessageSquare, StickyNote, ClipboardList, AlertTriangle, Image as ImageIcon, Loader2, ScrollText } from 'lucide-react';
 import { storage } from '../services/storage';
 import { AppProject } from '../types';
 import { PlanningView, ReportView, PromptView, MemoView, NoteView, IssueView, ScreenshotView } from './TabViews';
+import { FreeDocView } from './FreeDocView';
 
-type Tab = 'planning' | 'reports' | 'prompts' | 'memos' | 'notes' | 'issues' | 'screenshots';
+type Tab = 'planning' | 'reports' | 'prompts' | 'memos' | 'free' | 'notes' | 'issues' | 'screenshots';
 
 const AppDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +44,7 @@ const AppDetail: React.FC = () => {
     { id: 'reports', label: '보고서', icon: FileText },
     { id: 'prompts', label: '프롬프트', icon: MessageSquare },
     { id: 'memos', label: '참고', icon: StickyNote },
+    { id: 'free', label: '프리', icon: ScrollText },
     { id: 'notes', label: '메모', icon: ClipboardList },
     { id: 'issues', label: '트러블슈팅', icon: AlertTriangle },
     { id: 'screenshots', label: '스크린샷', icon: ImageIcon },
@@ -103,6 +105,7 @@ const AppDetail: React.FC = () => {
             {activeTab === 'reports' && <ReportView appId={app.id} />}
             {activeTab === 'prompts' && <PromptView appId={app.id} />}
             {activeTab === 'memos' && <MemoView appId={app.id} />}
+            {activeTab === 'free' && <FreeDocView appId={app.id} />}
             {activeTab === 'notes' && <NoteView appId={app.id} />}
             {activeTab === 'issues' && <IssueView appId={app.id} />}
             {activeTab === 'screenshots' && <ScreenshotView appId={app.id} />}
