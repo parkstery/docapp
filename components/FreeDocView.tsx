@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
@@ -82,11 +82,9 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
             continue;
           }
           const fi = await uploadFile(appId, `freeDocs/${docId}/inline`, file);
-          ed.chain()
-            .focus()
-            .setImage({ src: fi.url, alt: file.name })
-            .insertContent('<p></p>')
-            .run();
+          const edNow = editorRef.current;
+          if (!edNow || edNow.isDestroyed) break;
+          edNow.chain().focus().setImage({ src: fi.url, alt: file.name }).run();
         }
       } catch (e: any) {
         console.error('[FreeDoc] 이미지 업로드 실패:', e);
@@ -102,8 +100,14 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
     uploadImagesRef.current = uploadImages;
   }, [uploadImages]);
 
-  const editor = useEditor({
-    extensions: [
+  const onHtmlChangeRef = useRef(onHtmlChange);
+  useEffect(() => {
+    onHtmlChangeRef.current = onHtmlChange;
+  }, [onHtmlChange]);
+
+  /** 참조가 매 렌더마다 바뀌면 TipTap이 setOptions로 content(구 initialHtml)를 다시 넣어 방금 삽입한 이미지가 사라짐 */
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
         heading: { levels: [2, 3] },
       }),
@@ -116,14 +120,16 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
         placeholder,
       }),
     ],
-    content: initialHtml || '',
-    editable: !disabled,
-    editorProps: {
+    [placeholder]
+  );
+
+  const editorProps = useMemo(
+    () => ({
       attributes: {
         class:
           'tiptap focus:outline-none min-h-[420px] px-4 py-3 text-sm text-slate-800 prose prose-sm max-w-none [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3',
       },
-      handleDrop(view, event, _slice, moved) {
+      handleDrop(_view: unknown, event: DragEvent, _slice: unknown, moved: boolean) {
         if (moved) return false;
         const dt = event.dataTransfer;
         if (!dt?.files?.length) return false;
@@ -133,7 +139,7 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
         void uploadImagesRef.current(imgs);
         return true;
       },
-      handlePaste(_view, event) {
+      handlePaste(_view: unknown, event: ClipboardEvent) {
         const files = event.clipboardData?.files;
         if (!files?.length) return false;
         const imgs = Array.from(files).filter((f) => f.type.startsWith('image/'));
@@ -142,17 +148,28 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
         void uploadImagesRef.current(imgs);
         return true;
       },
+    }),
+    []
+  );
+
+  const editor = useEditor(
+    {
+      extensions,
+      content: initialHtml || '',
+      editable: !disabled,
+      editorProps,
+      onCreate: ({ editor: ed }) => {
+        editorRef.current = ed;
+      },
+      onDestroy: () => {
+        editorRef.current = null;
+      },
+      onUpdate: ({ editor: ed }) => {
+        onHtmlChangeRef.current(ed.getHTML());
+      },
     },
-    onCreate: ({ editor: ed }) => {
-      editorRef.current = ed;
-    },
-    onDestroy: () => {
-      editorRef.current = null;
-    },
-    onUpdate: ({ editor: ed }) => {
-      onHtmlChange(ed.getHTML());
-    },
-  });
+    [docId]
+  );
 
   useEffect(() => {
     if (editor) {
