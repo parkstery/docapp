@@ -65,6 +65,7 @@ export function useResizableColumns(
     width: widths[i],
     minWidth: MIN_COL_WIDTH,
     position: 'relative' as const,
+    borderRight: i < numColumns - 1 ? '1px solid #000000' : undefined,
   });
 
   const ResizeHandle = useCallback(
@@ -82,8 +83,6 @@ export function useResizableColumns(
             width: 8,
             cursor: 'col-resize',
             zIndex: 1,
-            background:
-              'linear-gradient(to right, transparent 3px, #000000 3px, #000000 4px, transparent 4px)',
           }}
           className="bg-transparent hover:bg-slate-500/10"
         />
