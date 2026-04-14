@@ -82,8 +82,9 @@ export function useResizableColumns(
             width: 8,
             cursor: 'col-resize',
             zIndex: 1,
+            borderRight: '1px solid #4b5563',
           }}
-          className="hover:bg-indigo-200/50"
+          className="hover:bg-slate-500/10"
         />
       ) : null,
     [numColumns, handleMouseDown]
