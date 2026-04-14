@@ -147,25 +147,25 @@ const Dashboard: React.FC = () => {
               </colgroup>
               <thead className="bg-slate-50">
                 <tr>
-                  <th scope="col" style={resize.getThStyle(0)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(0)} className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     No.<resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Platform<resize.ResizeHandle columnIndex={1} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Project Name<resize.ResizeHandle columnIndex={2} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Version<resize.ResizeHandle columnIndex={3} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Description<resize.ResizeHandle columnIndex={4} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Created At<resize.ResizeHandle columnIndex={5} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(6)} className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(6)} className="px-6 py-3 text-right text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
