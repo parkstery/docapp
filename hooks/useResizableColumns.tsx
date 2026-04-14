@@ -82,9 +82,10 @@ export function useResizableColumns(
             width: 8,
             cursor: 'col-resize',
             zIndex: 1,
-            borderRight: '1px solid #4b5563',
+            background:
+              'linear-gradient(to right, transparent 3px, #000000 3px, #000000 4px, transparent 4px)',
           }}
-          className="hover:bg-slate-500/10"
+          className="bg-transparent hover:bg-slate-500/10"
         />
       ) : null,
     [numColumns, handleMouseDown]
