@@ -98,6 +98,16 @@ const App: React.FC = () => {
   
   return (
     <AuthProvider>
+      <style>{`
+        .report-table-separators {
+          border-collapse: separate !important;
+          border-spacing: 0 !important;
+        }
+        .report-table-separators thead th:not(:last-child),
+        .report-table-separators tbody td:not(:last-child) {
+          border-right: 1px solid #000 !important;
+        }
+      `}</style>
       <HashRouter>
         <AppRoutes />
       </HashRouter>

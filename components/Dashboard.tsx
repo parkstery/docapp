@@ -141,7 +141,7 @@ const Dashboard: React.FC = () => {
               <p>데이터를 불러오는 중입니다...</p>
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0] [&_thead_th:not(:last-child)]:border-r [&_thead_th:not(:last-child)]:border-black [&_tbody_td:not(:last-child)]:border-r [&_tbody_td:not(:last-child)]:border-black" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="report-table-separators min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0]" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
