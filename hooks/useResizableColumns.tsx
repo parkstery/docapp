@@ -65,7 +65,7 @@ export function useResizableColumns(
     width: widths[i],
     minWidth: MIN_COL_WIDTH,
     position: 'relative' as const,
-    borderRight: i < numColumns - 1 ? '1px solid #000000' : undefined,
+    boxShadow: i < numColumns - 1 ? 'inset -1px 0 0 #000000' : undefined,
   });
 
   const ResizeHandle = useCallback(
