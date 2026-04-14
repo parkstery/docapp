@@ -177,10 +177,10 @@ const Dashboard: React.FC = () => {
                     onClick={() => navigate(`/app/${app.id}`)}
                     className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-500">
                       {index + 1}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
                         ${app.platform === 'iOS' ? 'bg-slate-100 text-slate-800 border-slate-200' : 
                           app.platform === 'Android' ? 'bg-green-100 text-green-800 border-green-200' :
@@ -188,7 +188,7 @@ const Dashboard: React.FC = () => {
                         {app.platform}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-3 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3">
                           <Smartphone size={16} />
@@ -196,16 +196,16 @@ const Dashboard: React.FC = () => {
                         <div className="text-sm font-semibold text-slate-900">{app.name}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-3 whitespace-nowrap">
                       <span className="text-sm text-slate-600 font-mono">v{app.version}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <div className="text-sm text-slate-500 truncate max-w-xs">{app.description || '-'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-500">
                       {new Date(app.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => { e.stopPropagation(); openModal(app); }}

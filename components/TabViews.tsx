@@ -593,7 +593,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               <tbody className="divide-y divide-slate-200">
                 {docs.map((doc, index) => (
                   <tr key={doc.id} className="hover:bg-indigo-50/50 group transition-colors">
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-6 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(doc.id)}
@@ -602,16 +602,16 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {index + 1}
                     </td>
-                    <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="px-6 py-3 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       <div className="text-sm font-medium text-slate-900">{doc.title}</div>
                     </td>
-                    <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="px-6 py-3 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       <div className="text-sm text-slate-600 line-clamp-2">{doc.content}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="px-6 py-3 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {getFileList(doc).length > 0 && (
                         <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
                           {getFileList(doc).map((f) => (
@@ -622,7 +622,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {new Date(doc.updatedAt).toLocaleDateString()}
                     </td>
                   </tr>
@@ -1191,7 +1191,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               <tbody className="bg-white divide-y divide-slate-200">
                 {reports.map((r, index) => (
                   <tr key={r.id} className="hover:bg-slate-50 group">
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-6 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(r.id)}
@@ -1200,10 +1200,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {index + 1}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="px-6 py-3 whitespace-nowrap cursor-pointer" onClick={() => handleSelectReport(r)}>
                       <span className={`px-2 py-1 rounded text-xs font-medium border ${
                         r.type === 'Final' ? 'bg-green-50 text-green-700 border-green-200' : 
                         r.type === 'Interim' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
@@ -1213,13 +1213,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         {r.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 min-w-0 overflow-hidden text-sm font-medium text-slate-900 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="px-6 py-3 min-w-0 overflow-hidden text-sm font-medium text-slate-900 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       <div className="truncate" title={r.title}>{r.title}</div>
                     </td>
-                    <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="px-6 py-3 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       <div className="truncate" title={r.summary}>{r.summary}</div>
                     </td>
-                    <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="px-6 py-3 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {getFileList(r).length > 0 && (
                         <div className="flex flex-col gap-1 min-w-0 overflow-hidden" onClick={e => e.stopPropagation()}>
                           {getFileList(r).map((f) => (
@@ -1231,7 +1231,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectReport(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectReport(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))}
                 {reports.length === 0 && (
@@ -1802,7 +1802,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                <tbody className="divide-y divide-slate-200">
                  {prompts.map((p, index) => (
                    <tr key={p.id} className="hover:bg-slate-50 group">
-                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                     <td className="px-6 py-3" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
                          checked={selectedIds.has(p.id)}
@@ -1811,14 +1811,14 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                     <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        {index + 1}
                      </td>
-                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                     <td className="px-6 py-3 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <div className="text-sm text-slate-900 truncate font-medium">{p.prompt}</div>
                        <div className="text-xs text-slate-500 truncate mt-1">{p.response}</div>
                      </td>
-                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                     <td className="px-6 py-3 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <div className="flex flex-wrap gap-1">
                          {p.tags.slice(0, 3).map((t, i) => (
                            <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">{t}</span>
@@ -1826,7 +1826,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          {p.tags.length > 3 && <span className="text-xs text-slate-400">+{p.tags.length - 3}</span>}
                        </div>
                      </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                    <td className="px-6 py-3 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                       {getFileList(p).length > 0 && (
                         <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
                           {getFileList(p).map((f) => (
@@ -1837,7 +1837,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
                    </tr>
                  ))}
                  {prompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
@@ -2323,7 +2323,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                <tbody className="divide-y divide-slate-200">
                  {memos.map((m, index) => (
                    <tr key={m.id} className="hover:bg-yellow-50 group transition-colors">
-                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                     <td className="px-6 py-3" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
                          checked={selectedIds.has(m.id)}
@@ -2332,16 +2332,16 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                     <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        {index + 1}
                      </td>
-                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                     <td className="px-6 py-3 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        <div className="text-sm font-medium text-slate-900">{m.title}</div>
                      </td>
-                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                     <td className="px-6 py-3 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        <div className="text-sm text-slate-600 line-clamp-2">{m.content}</div>
                      </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                    <td className="px-6 py-3 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                       {getFileList(m).length > 0 && (
                         <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
                           {getFileList(m).map((f) => (
@@ -2352,7 +2352,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
                    </tr>
                  ))}
                  {memos.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
@@ -3099,7 +3099,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                <tbody className="divide-y divide-slate-200">
                  {issues.map((issue, index) => (
                    <tr key={issue.id} className="hover:bg-slate-50 group">
-                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                     <td className="px-6 py-3" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
                          checked={selectedIds.has(issue.id)}
@@ -3108,27 +3108,27 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                     <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                        {index + 1}
                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                      <td className="px-6 py-3 whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
                            ${issue.status === 'Resolved' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                            {issue.status === 'Resolved' ? <CheckCircle size={12}/> : <AlertCircle size={12}/>}
                            {issue.status}
                          </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                      <td className="px-6 py-3 whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                          <span className={`px-2 py-1 rounded text-xs font-semibold
                            ${issue.severity === 'High' ? 'text-red-600 bg-red-50' : issue.severity === 'Medium' ? 'text-orange-600 bg-orange-50' : 'text-slate-500 bg-slate-100'}`}>
                            {issue.severity}
                          </span>
                       </td>
-                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                      <td className="px-6 py-3 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         <div className={`text-sm font-medium ${issue.status === 'Resolved' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{issue.title}</div>
                         <div className="text-xs text-slate-500 truncate">{issue.description}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
                       </td>
                    </tr>
