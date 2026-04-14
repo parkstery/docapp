@@ -567,7 +567,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0] [&_thead_th:not(:last-child)]:border-r [&_thead_th:not(:last-child)]:border-black [&_tbody_td:not(:last-child)]:border-r [&_tbody_td:not(:last-child)]:border-black" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -1161,7 +1161,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0] [&_thead_th:not(:last-child)]:border-r [&_thead_th:not(:last-child)]:border-black [&_tbody_td:not(:last-child)]:border-r [&_tbody_td:not(:last-child)]:border-black" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -1776,7 +1776,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0] [&_thead_th:not(:last-child)]:border-r [&_thead_th:not(:last-child)]:border-black [&_tbody_td:not(:last-child)]:border-r [&_tbody_td:not(:last-child)]:border-black" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -2297,7 +2297,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0] [&_thead_th:not(:last-child)]:border-r [&_thead_th:not(:last-child)]:border-black [&_tbody_td:not(:last-child)]:border-r [&_tbody_td:not(:last-child)]:border-black" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -3073,7 +3073,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           {loading ? <Loading /> : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0] [&_thead_th:not(:last-child)]:border-r [&_thead_th:not(:last-child)]:border-black [&_tbody_td:not(:last-child)]:border-r [&_tbody_td:not(:last-child)]:border-black" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
