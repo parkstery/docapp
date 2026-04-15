@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { Extension } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
+import TextStyle from '@tiptap/extension-text-style';
 import {
   ArrowLeft,
   Bold,
@@ -28,6 +30,28 @@ import { deleteFile, uploadFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const FONT_SIZE_OPTIONS = ['12px', '14px', '16px', '18px', '20px', '24px', '28px'];
+
+const FontSize = Extension.create({
+  name: 'fontSize',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['textStyle'],
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: (element: HTMLElement) => element.style.fontSize || null,
+            renderHTML: (attributes: { fontSize?: string | null }) => {
+              if (!attributes.fontSize) return {};
+              return { style: `font-size: ${attributes.fontSize}` };
+            },
+          },
+        },
+      },
+    ];
+  },
+});
 
 function stripHtml(html: string): string {
   if (!html) return '';
@@ -111,6 +135,8 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
       StarterKit.configure({
         heading: { levels: [2, 3] },
       }),
+      TextStyle,
+      FontSize,
       Image.configure({
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded border border-slate-200 my-2',
@@ -182,6 +208,8 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
   const runImagePick = () => {
     imageInputRef.current?.click();
   };
+
+  const currentFontSize = (editor.getAttributes('textStyle')?.fontSize as string) || '16px';
 
   const onImageInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -266,6 +294,23 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
         >
           <ListOrdered size={16} />
         </button>
+        <span className="w-px h-6 bg-slate-200 mx-1" />
+        <select
+          value={currentFontSize}
+          disabled={disabled}
+          onChange={(e) => {
+            const size = e.target.value;
+            editor.chain().focus().setMark('textStyle', { fontSize: size }).run();
+          }}
+          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700 disabled:opacity-40"
+          title="글자 크기"
+        >
+          {FONT_SIZE_OPTIONS.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
         <span className="w-px h-6 bg-slate-200 mx-1" />
         <button
           type="button"
