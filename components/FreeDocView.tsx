@@ -997,9 +997,22 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 프리 작성</h3>
-              <button type="button" onClick={() => setIsModalOpen(false)} aria-label="닫기">
-                <X size={20} className="text-slate-400 hover:text-slate-600" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={uploading}
+                  className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  저장
+                </button>
+                <button type="button" onClick={() => setIsModalOpen(false)} aria-label="닫기">
+                  <X size={20} className="text-slate-400 hover:text-slate-600" />
+                </button>
+              </div>
             </div>
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
               {uploading && (
@@ -1063,19 +1076,6 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                   </div>
                 )}
               </div>
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={uploading}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-              >
-                저장
-              </button>
             </div>
           </div>
         </div>

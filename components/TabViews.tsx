@@ -942,7 +942,11 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 기획서 작성</h3>
-              <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium">저장</button>
+                <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+              </div>
             </div>
             <div className="p-6 space-y-4">
               <div>
@@ -954,10 +958,6 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   onChange={e => setForm({...form, title: e.target.value})}
                 />
               </div>
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-              <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium">저장</button>
             </div>
           </div>
         </div>
@@ -1587,7 +1587,11 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 보고서 작성</h3>
-              <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
+                <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+              </div>
             </div>
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1685,13 +1689,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   </div>
                 )}
               </div>
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-between">
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                {form.id ? <button onClick={() => deleteReport(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : null}
-              </div>
-              <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
             </div>
           </div>
         </div>
@@ -2227,8 +2224,15 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       {isAdding && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
-            <div className="p-4 border-b">
+            <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 프롬프트 로그</h3>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setIsAdding(false); setInput({ prompt: '', response: '', tags: '', fileInfoList: [] }); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
+                <button type="button" onClick={() => { setIsAdding(false); setInput({ prompt: '', response: '', tags: '', fileInfoList: [] }); }} className="p-1 text-slate-400 hover:text-slate-600 rounded">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
             <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
@@ -2305,10 +2309,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   </div>
                 )}
               </div>
-            </div>
-            <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-xl">
-               <button onClick={() => { setIsAdding(false); setInput({ prompt: '', response: '', tags: '', fileInfoList: [] }); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-               <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
             </div>
           </div>
         </div>
@@ -2780,7 +2780,11 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 참고 작성</h3>
-              <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                <button onClick={handleSave} className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 rounded-lg text-sm font-medium">저장</button>
+                <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+              </div>
             </div>
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
               <div>
@@ -2801,10 +2805,6 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   onChange={e => setForm({...form, content: e.target.value})} 
                 />
               </div>
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-              <button onClick={handleSave} className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 rounded-lg text-sm font-medium">저장</button>
             </div>
           </div>
         </div>
@@ -3039,9 +3039,17 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-800">메모 추가</h3>
-              <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
+                  취소
+                </button>
+                <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-1">
+                  <Save size={14} /> 저장
+                </button>
+                <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
             <div className="p-4 space-y-4">
               <div>
@@ -3063,14 +3071,6 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
                   placeholder="내용"
                 />
               </div>
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
-              <button type="button" onClick={closeModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
-                취소
-              </button>
-              <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-1">
-                <Save size={14} /> 저장
-              </button>
             </div>
           </div>
         </div>
