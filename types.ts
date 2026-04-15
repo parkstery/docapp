@@ -62,6 +62,8 @@ export interface FreeDoc extends BaseItem {
   html: string;
   /** 첨부파일 목록 */
   fileInfoList?: FileInfo[];
+  /** 목록 정렬 순서 (작을수록 위) */
+  order?: number;
 }
 
 export interface Issue extends BaseItem {

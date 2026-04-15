@@ -393,6 +393,9 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [draggingDocId, setDraggingDocId] = useState<string | null>(null);
+  const [dragOverDocId, setDragOverDocId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
   const resize = useResizableColumns(5, [18, 22, 172, 252, 100]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
@@ -408,8 +411,47 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
 
   const loadDocs = async () => {
     setLoading(true);
-    setDocs(await storage.freeDocs.list(appId));
+    const list = await storage.freeDocs.list(appId);
+    const hasOrder = list.some((d) => typeof d.order === 'number');
+    const sorted = hasOrder
+      ? [...list].sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER))
+      : [...list].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    setDocs(sorted);
     setLoading(false);
+  };
+
+  const normalizeDocOrder = (list: FreeDoc[]) => list.map((d, index) => ({ ...d, order: index }));
+
+  const moveDoc = (list: FreeDoc[], fromId: string, toId: string): FreeDoc[] => {
+    const fromIndex = list.findIndex((d) => d.id === fromId);
+    const toIndex = list.findIndex((d) => d.id === toId);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return list;
+    const next = [...list];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+  };
+
+  const persistOrder = async (ordered: FreeDoc[]) => {
+    const normalized = normalizeDocOrder(ordered);
+    setDocs(normalized);
+    setReordering(true);
+    try {
+      await Promise.all(
+        normalized.map((d) =>
+          storage.freeDocs.save({
+            ...d,
+            updatedAt: Date.now(),
+          })
+        )
+      );
+    } catch (error) {
+      console.error('[FreeDoc] 순서 저장 실패:', error);
+      alert('순서 저장에 실패했습니다.');
+      await loadDocs();
+    } finally {
+      setReordering(false);
+    }
   };
 
   const openModal = () => {
@@ -468,6 +510,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
         fileInfoList: getFileList(form),
+        order: docs.length,
       };
       await storage.freeDocs.save(item);
       loadDocs();
@@ -498,6 +541,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now(),
         fileInfoList: getFileList(editForm),
+        order: editForm.order,
       };
       await storage.freeDocs.save(item);
       loadDocs();
@@ -624,6 +668,35 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
       console.error('파일 삭제 실패:', error);
       alert('파일 삭제에 실패했습니다.');
     }
+  };
+
+  const handleRowDragStart = (docId: string) => {
+    setDraggingDocId(docId);
+    setDragOverDocId(docId);
+  };
+
+  const handleRowDragOver = (e: React.DragEvent, targetDocId: string) => {
+    e.preventDefault();
+    if (dragOverDocId !== targetDocId) setDragOverDocId(targetDocId);
+  };
+
+  const handleRowDrop = async (e: React.DragEvent, targetDocId: string) => {
+    e.preventDefault();
+    if (!draggingDocId) return;
+    if (draggingDocId === targetDocId) {
+      setDraggingDocId(null);
+      setDragOverDocId(null);
+      return;
+    }
+    const reordered = moveDoc(docs, draggingDocId, targetDocId);
+    setDraggingDocId(null);
+    setDragOverDocId(null);
+    await persistOrder(reordered);
+  };
+
+  const handleRowDragEnd = () => {
+    setDraggingDocId(null);
+    setDragOverDocId(null);
   };
 
   if (selectedId && editForm.id) {
@@ -755,6 +828,11 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">프리</h3>
         <div className="flex flex-wrap gap-2">
+          {reordering && (
+            <span className="text-xs text-slate-500 flex items-center gap-1">
+              <Loader2 className="animate-spin" size={12} /> 순서 저장 중…
+            </span>
+          )}
           <button
             type="button"
             onClick={openModal}
@@ -795,7 +873,17 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                   </label>
                 </div>
                 {docs.map((d, index) => (
-                  <div key={d.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                  <div
+                    key={d.id}
+                    draggable
+                    onDragStart={() => handleRowDragStart(d.id)}
+                    onDragOver={(e) => handleRowDragOver(e, d.id)}
+                    onDrop={(e) => void handleRowDrop(e, d.id)}
+                    onDragEnd={handleRowDragEnd}
+                    className={`border rounded-lg p-3 bg-white transition-colors ${
+                      dragOverDocId === d.id ? 'border-violet-400 bg-violet-50' : 'border-slate-200'
+                    }`}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <button
                         type="button"
@@ -856,7 +944,17 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {docs.map((d, index) => (
-                    <tr key={d.id} className="hover:bg-violet-50/60 group transition-colors">
+                  <tr
+                    key={d.id}
+                    draggable
+                    onDragStart={() => handleRowDragStart(d.id)}
+                    onDragOver={(e) => handleRowDragOver(e, d.id)}
+                    onDrop={(e) => void handleRowDrop(e, d.id)}
+                    onDragEnd={handleRowDragEnd}
+                    className={`group transition-colors cursor-move ${
+                      dragOverDocId === d.id ? 'bg-violet-100/70' : 'hover:bg-violet-50/60'
+                    }`}
+                  >
                       <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
