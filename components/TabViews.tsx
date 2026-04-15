@@ -58,9 +58,10 @@ const isBodyEffectivelyEmpty = (html: string): boolean => {
   return stripHtml(html).length === 0;
 };
 
-interface RichMemoEditorProps {
+interface RichHtmlEditorProps {
   appId: string;
-  memoId: string;
+  docId: string;
+  uploadSection: string;
   initialHtml: string;
   onHtmlChange: (html: string) => void;
   placeholder?: string;
@@ -68,9 +69,10 @@ interface RichMemoEditorProps {
   setUploading: (v: boolean) => void;
 }
 
-const RichMemoEditor: React.FC<RichMemoEditorProps> = ({
+const RichHtmlEditor: React.FC<RichHtmlEditorProps> = ({
   appId,
-  memoId,
+  docId,
+  uploadSection,
   initialHtml,
   onHtmlChange,
   placeholder = '내용을 입력하세요. 이미지는 붙여넣기 또는 드래그 앤 드롭으로 넣을 수 있습니다.',
@@ -94,19 +96,19 @@ const RichMemoEditor: React.FC<RichMemoEditorProps> = ({
             alert(`이미지는 10MB 이하여야 합니다: ${file.name}`);
             continue;
           }
-          const fi = await uploadFile(appId, `memos/${memoId}/inline`, file);
+          const fi = await uploadFile(appId, `${uploadSection}/${docId}/inline`, file);
           const edNow = editorRef.current;
           if (!edNow || edNow.isDestroyed) break;
           edNow.chain().focus().setImage({ src: fi.url, alt: file.name }).run();
         }
       } catch (e: any) {
-        console.error('[MemoView] 이미지 업로드 실패:', e);
+        console.error('[RichHtmlEditor] 이미지 업로드 실패:', e);
         alert(e?.message || '이미지 업로드에 실패했습니다.');
       } finally {
         setUploading(false);
       }
     },
-    [appId, memoId, disabled, setUploading]
+    [appId, docId, disabled, setUploading, uploadSection]
   );
 
   useEffect(() => {
@@ -182,7 +184,7 @@ const RichMemoEditor: React.FC<RichMemoEditorProps> = ({
         onHtmlChangeRef.current(ed.getHTML());
       },
     },
-    [memoId]
+    [docId]
   );
 
   useEffect(() => {
@@ -982,6 +984,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [isMarkupMode, setIsMarkupMode] = useState(false);
   const [markupSubMode, setMarkupSubMode] = useState<'view' | 'edit'>('view');
+  const [editSummaryHtml, setEditSummaryHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(7, [18, 22, 80, 152, 212, 84, 100]);
@@ -999,11 +1002,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     setEditForm({});
     setIsMarkupMode(false);
     setMarkupSubMode('view');
+    setEditSummaryHtml('');
   };
 
   const handleSelectReport = (report: Report) => {
     setSelectedReportId(report.id);
     setEditForm({ ...report, fileInfoList: getFileList(report) });
+    setEditSummaryHtml(report.summary || '');
   };
 
   const processFile = async (file: File, target: 'form' | 'editForm') => {
@@ -1120,7 +1125,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
         appId,
         title: editForm.title.trim(),
         type: editForm.type || 'Other',
-        summary: editForm.summary || '',
+        summary: isMarkupMode ? (editForm.summary || '') : editSummaryHtml,
         createdAt: editForm.createdAt ?? Date.now(),
         updatedAt: Date.now(),
       };
@@ -1234,9 +1239,11 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               type="button"
               onClick={() => {
                 if (isMarkupMode) {
+                  setEditSummaryHtml(editForm.summary || '');
                   setIsMarkupMode(false);
                   setMarkupSubMode('view');
                 } else {
+                  setEditForm((prev) => ({ ...prev, summary: editSummaryHtml }));
                   setIsMarkupMode(true);
                   setMarkupSubMode('edit');
                 }
@@ -1381,10 +1388,14 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
-                    <textarea
-                      className="w-full border rounded-lg p-4 h-64 sm:h-[32rem] resize-none focus:ring-2 ring-indigo-500 outline-none text-sm"
-                      value={editForm.summary || ''}
-                      onChange={e => setEditForm({...editForm, summary: e.target.value})}
+                    <RichHtmlEditor
+                      key={`report-summary-${editForm.id}`}
+                      appId={appId}
+                      docId={editForm.id!}
+                      uploadSection="reports"
+                      initialHtml={editForm.summary || ''}
+                      onHtmlChange={setEditSummaryHtml}
+                      setUploading={setUploading}
                     />
                   </div>
                   <div>
@@ -1483,7 +1494,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                           {r.type}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-600 mt-2 truncate">{r.summary}</p>
+                      <p className="text-sm text-slate-600 mt-2 truncate">{stripHtml(r.summary) || (r.summary?.includes('<img') ? '[이미지]' : '')}</p>
                       <p className="text-xs text-slate-500 mt-1">{new Date(r.createdAt).toLocaleDateString()}</p>
                     </button>
                     <input
@@ -1555,7 +1566,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                       <div className="truncate" title={r.title}>{r.title}</div>
                     </td>
                     <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
-                      <div className="truncate" title={r.summary}>{r.summary}</div>
+                      <div className="truncate" title={stripHtml(r.summary)}>{stripHtml(r.summary) || (r.summary?.includes('<img') ? '[이미지]' : '')}</div>
                     </td>
                     <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {getFileList(r).length > 0 && (
@@ -1710,6 +1721,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [editPromptHtml, setEditPromptHtml] = useState('');
+  const [editResponseHtml, setEditResponseHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [18, 22, 284, 60, 84, 100]);
@@ -1819,7 +1832,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleEditSave = async () => {
-    if (!editForm.prompt) {
+    if (isBodyEffectivelyEmpty(editPromptHtml)) {
       alert('프롬프트를 입력하세요');
       return;
     }
@@ -1828,9 +1841,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       const item: any = {
         id: editForm.id!,
         appId,
-        title: editForm.prompt.substring(0, 30) + '...',
-        prompt: editForm.prompt,
-        response: editForm.response || '',
+        title: stripHtml(editPromptHtml).substring(0, 30) + '...',
+        prompt: editPromptHtml,
+        response: editResponseHtml || '',
         tags: editForm.tags || [],
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now()
@@ -1853,11 +1866,15 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const handleBackToList = () => {
     setSelectedPrompt(null);
     setEditForm({});
+    setEditPromptHtml('');
+    setEditResponseHtml('');
   };
 
   const handleSelectPrompt = (prompt: PromptLog) => {
     setSelectedPrompt(prompt);
     setEditForm({ ...prompt, fileInfoList: getFileList(prompt) });
+    setEditPromptHtml(prompt.prompt || '');
+    setEditResponseHtml(prompt.response || '');
   };
 
   const handleDelete = async (id: string) => {
@@ -1985,37 +2002,27 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
-                <div className="border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
-                  <RichPromptField
-                    key={`prompt-${editForm.id}`}
-                    field="prompt"
-                    value={editForm.prompt ?? ''}
-                    onChange={v => setEditForm(prev => ({ ...prev, prompt: v }))}
-                    placeholder="입력 내용... (클립보드 이미지 붙여넣기 시 편집 창에 바로 표시)"
-                    className="w-full min-h-[360px] p-3 text-sm outline-none overflow-y-auto [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-slate-400"
-                    appId={appId}
-                    promptId={editForm.id}
-                    setUploading={setUploading}
-                  />
-                </div>
-                <PromptPreview text={editForm.prompt ?? ''} label="User Prompt 미리보기" />
+                <RichHtmlEditor
+                  key={`prompt-${editForm.id}`}
+                  appId={appId}
+                  docId={editForm.id!}
+                  uploadSection="prompts"
+                  initialHtml={editForm.prompt ?? ''}
+                  onHtmlChange={setEditPromptHtml}
+                  setUploading={setUploading}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">AI Response</label>
-                <div className="border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-slate-50/50 focus-within:bg-white">
-                  <RichPromptField
-                    key={`response-${editForm.id}`}
-                    field="response"
-                    value={editForm.response ?? ''}
-                    onChange={v => setEditForm(prev => ({ ...prev, response: v }))}
-                    placeholder="응답 내용... (클립보드 이미지 붙여넣기 시 편집 창에 바로 표시)"
-                    className="w-full min-h-[256px] p-4 text-sm outline-none overflow-y-auto [&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-slate-400"
-                    appId={appId}
-                    promptId={editForm.id}
-                    setUploading={setUploading}
-                  />
-                </div>
-                <PromptPreview text={editForm.response ?? ''} label="AI Response 미리보기" />
+                <RichHtmlEditor
+                  key={`response-${editForm.id}`}
+                  appId={appId}
+                  docId={editForm.id!}
+                  uploadSection="prompts"
+                  initialHtml={editForm.response ?? ''}
+                  onHtmlChange={setEditResponseHtml}
+                  setUploading={setUploading}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">태그</label>
@@ -2127,8 +2134,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                 <div key={p.id} className="border border-slate-200 rounded-lg p-3 bg-white">
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectPrompt(p)} className="text-left min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {p.prompt}</p>
-                      <p className="text-xs text-slate-500 truncate mt-1">{p.response}</p>
+                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {stripHtml(p.prompt)}</p>
+                      <p className="text-xs text-slate-500 truncate mt-1">{stripHtml(p.response)}</p>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {p.tags.slice(0, 2).map((t, i) => (
                           <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">{t}</span>
@@ -2187,8 +2194,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                        {index + 1}
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
-                       <div className="text-sm text-slate-900 truncate font-medium">{p.prompt}</div>
-                       <div className="text-xs text-slate-500 truncate mt-1">{p.response}</div>
+                       <div className="text-sm text-slate-900 truncate font-medium">{stripHtml(p.prompt) || (p.prompt?.includes('<img') ? '[이미지]' : '')}</div>
+                       <div className="text-xs text-slate-500 truncate mt-1">{stripHtml(p.response) || (p.response?.includes('<img') ? '[이미지]' : '')}</div>
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <div className="flex flex-wrap gap-1">
@@ -2588,10 +2595,11 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">본문 (WYSIWYG)</label>
-                <RichMemoEditor
+                <RichHtmlEditor
                   key={editForm.id}
                   appId={appId}
-                  memoId={editForm.id!}
+                  docId={editForm.id!}
+                  uploadSection="memos"
                   initialHtml={editForm.content || ''}
                   onHtmlChange={setBodyHtml}
                   setUploading={setUploading}
