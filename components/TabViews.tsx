@@ -1,8 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { Extension } from '@tiptap/core';
+import type { Editor } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import TiptapImage from '@tiptap/extension-image';
+import Placeholder from '@tiptap/extension-placeholder';
+import TextStyle from '@tiptap/extension-text-style';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft
+  Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft,
+  Bold, Italic, Heading2, List, ListOrdered, Undo2, Redo2, Strikethrough
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note } from '../types';
 import { storage } from '../services/storage';
@@ -12,6 +20,256 @@ import { useResizableColumns } from '../hooks/useResizableColumns';
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
   item?.fileInfoList?.length ? item.fileInfoList : (item?.fileInfo ? [item.fileInfo] : []);
+
+const MEMO_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MEMO_FONT_SIZE_OPTIONS = ['12px', '14px', '16px', '18px', '20px', '24px', '28px'];
+
+const MemoFontSize = Extension.create({
+  name: 'memoFontSize',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['textStyle'],
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: (element: HTMLElement) => element.style.fontSize || null,
+            renderHTML: (attributes: { fontSize?: string | null }) => {
+              if (!attributes.fontSize) return {};
+              return { style: `font-size: ${attributes.fontSize}` };
+            },
+          },
+        },
+      },
+    ];
+  },
+});
+
+const stripHtml = (html: string): string => {
+  if (!html) return '';
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return (d.textContent || '').replace(/\s+/g, ' ').trim();
+};
+
+const isBodyEffectivelyEmpty = (html: string): boolean => {
+  if (!html.trim()) return true;
+  if (/<img\s/i.test(html)) return false;
+  return stripHtml(html).length === 0;
+};
+
+interface RichMemoEditorProps {
+  appId: string;
+  memoId: string;
+  initialHtml: string;
+  onHtmlChange: (html: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  setUploading: (v: boolean) => void;
+}
+
+const RichMemoEditor: React.FC<RichMemoEditorProps> = ({
+  appId,
+  memoId,
+  initialHtml,
+  onHtmlChange,
+  placeholder = '내용을 입력하세요. 이미지는 붙여넣기 또는 드래그 앤 드롭으로 넣을 수 있습니다.',
+  disabled,
+  setUploading,
+}) => {
+  const editorRef = useRef<Editor | null>(null);
+  const uploadImagesRef = useRef<(files: File[]) => Promise<void>>(async () => {});
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadImages = useCallback(
+    async (files: File[]) => {
+      const ed = editorRef.current;
+      if (!ed || disabled) return;
+      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      if (!imageFiles.length) return;
+      setUploading(true);
+      try {
+        for (const file of imageFiles) {
+          if (file.size > MEMO_MAX_IMAGE_BYTES) {
+            alert(`이미지는 10MB 이하여야 합니다: ${file.name}`);
+            continue;
+          }
+          const fi = await uploadFile(appId, `memos/${memoId}/inline`, file);
+          const edNow = editorRef.current;
+          if (!edNow || edNow.isDestroyed) break;
+          edNow.chain().focus().setImage({ src: fi.url, alt: file.name }).run();
+        }
+      } catch (e: any) {
+        console.error('[MemoView] 이미지 업로드 실패:', e);
+        alert(e?.message || '이미지 업로드에 실패했습니다.');
+      } finally {
+        setUploading(false);
+      }
+    },
+    [appId, memoId, disabled, setUploading]
+  );
+
+  useEffect(() => {
+    uploadImagesRef.current = uploadImages;
+  }, [uploadImages]);
+
+  const onHtmlChangeRef = useRef(onHtmlChange);
+  useEffect(() => {
+    onHtmlChangeRef.current = onHtmlChange;
+  }, [onHtmlChange]);
+
+  const extensions = useMemo(
+    () => [
+      StarterKit.configure({
+        heading: { levels: [2, 3] },
+      }),
+      TextStyle,
+      MemoFontSize,
+      TiptapImage.configure({
+        HTMLAttributes: {
+          class: 'max-w-full h-auto rounded border border-slate-200 my-2',
+        },
+      }),
+      Placeholder.configure({
+        placeholder,
+      }),
+    ],
+    [placeholder]
+  );
+
+  const editorProps = useMemo(
+    () => ({
+      attributes: {
+        class:
+          'tiptap focus:outline-none min-h-[420px] px-4 py-3 text-sm text-slate-800 prose prose-sm max-w-none [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3',
+      },
+      handleDrop(_view: unknown, event: DragEvent, _slice: unknown, moved: boolean) {
+        if (moved) return false;
+        const dt = event.dataTransfer;
+        if (!dt?.files?.length) return false;
+        const imgs = Array.from(dt.files).filter((f) => f.type.startsWith('image/'));
+        if (!imgs.length) return false;
+        event.preventDefault();
+        void uploadImagesRef.current(imgs);
+        return true;
+      },
+      handlePaste(_view: unknown, event: ClipboardEvent) {
+        const files = event.clipboardData?.files;
+        if (!files?.length) return false;
+        const imgs = Array.from(files).filter((f) => f.type.startsWith('image/'));
+        if (!imgs.length) return false;
+        event.preventDefault();
+        void uploadImagesRef.current(imgs);
+        return true;
+      },
+    }),
+    []
+  );
+
+  const editor = useEditor(
+    {
+      extensions,
+      content: initialHtml || '',
+      editable: !disabled,
+      editorProps,
+      onCreate: ({ editor: ed }) => {
+        editorRef.current = ed;
+      },
+      onDestroy: () => {
+        editorRef.current = null;
+      },
+      onUpdate: ({ editor: ed }) => {
+        onHtmlChangeRef.current(ed.getHTML());
+      },
+    },
+    [memoId]
+  );
+
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!disabled);
+    }
+  }, [editor, disabled]);
+
+  if (!editor) {
+    return (
+      <div className="flex items-center justify-center min-h-[420px] border rounded-lg bg-slate-50 text-slate-500 text-sm gap-2">
+        <Loader2 className="animate-spin" size={18} /> 에디터 로딩…
+      </div>
+    );
+  }
+
+  const currentFontSize = (editor.getAttributes('textStyle')?.fontSize as string) || '16px';
+
+  const applyFontSize = (size: string) => {
+    editor.chain().focus().setMark('textStyle', { fontSize: size }).run();
+    const markType = editor.state.schema.marks.textStyle;
+    if (markType) {
+      const tr = editor.state.tr.addStoredMark(markType.create({ fontSize: size }));
+      editor.view.dispatch(tr);
+    }
+  };
+
+  return (
+    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+      <style>{`
+        .tiptap p.is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          float: left;
+          color: #94a3b8;
+          pointer-events: none;
+          height: 0;
+        }
+      `}</style>
+      <div className="flex flex-wrap items-center gap-1 px-2 py-2 border-b border-slate-200 bg-slate-50">
+        <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} disabled={disabled} className={`p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40 ${editor.isActive('bold') ? 'bg-indigo-100 text-indigo-900' : ''}`} title="굵게"><Bold size={16} /></button>
+        <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} disabled={disabled} className={`p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40 ${editor.isActive('italic') ? 'bg-indigo-100 text-indigo-900' : ''}`} title="기울임"><Italic size={16} /></button>
+        <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} disabled={disabled} className={`p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40 ${editor.isActive('strike') ? 'bg-indigo-100 text-indigo-900' : ''}`} title="취소선"><Strikethrough size={16} /></button>
+        <span className="w-px h-6 bg-slate-200 mx-1" />
+        <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} disabled={disabled} className={`p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40 ${editor.isActive('heading', { level: 2 }) ? 'bg-indigo-100 text-indigo-900' : ''}`} title="제목 2"><Heading2 size={16} /></button>
+        <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} disabled={disabled} className={`p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40 ${editor.isActive('bulletList') ? 'bg-indigo-100 text-indigo-900' : ''}`} title="글머리 목록"><List size={16} /></button>
+        <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} disabled={disabled} className={`p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40 ${editor.isActive('orderedList') ? 'bg-indigo-100 text-indigo-900' : ''}`} title="번호 목록"><ListOrdered size={16} /></button>
+        <span className="w-px h-6 bg-slate-200 mx-1" />
+        <select
+          value={currentFontSize}
+          disabled={disabled}
+          onChange={(e) => applyFontSize(e.target.value)}
+          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700 disabled:opacity-40"
+          title="글자 크기"
+        >
+          {MEMO_FONT_SIZE_OPTIONS.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
+        <span className="w-px h-6 bg-slate-200 mx-1" />
+        <button type="button" onClick={() => imageInputRef.current?.click()} disabled={disabled} className="p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40" title="이미지 삽입">
+          <ImageIcon size={16} />
+        </button>
+        <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={async (e) => {
+          const files = e.target.files;
+          if (files?.length) await uploadImages(Array.from(files));
+          e.target.value = '';
+        }} />
+        <span className="w-px h-6 bg-slate-200 mx-1" />
+        <button type="button" onClick={() => editor.chain().focus().undo().run()} disabled={disabled || !editor.can().undo()} className="p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40" title="실행 취소">
+          <Undo2 size={16} />
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().redo().run()} disabled={disabled || !editor.can().redo()} className="p-2 rounded-md text-slate-700 hover:bg-slate-200 disabled:opacity-40" title="다시 실행">
+          <Redo2 size={16} />
+        </button>
+      </div>
+      <EditorContent editor={editor} />
+      {editor && (
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+          <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={`p-1.5 rounded ${editor.isActive('bold') ? 'bg-indigo-100' : 'hover:bg-slate-100'}`}><Bold size={14} /></button>
+          <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={`p-1.5 rounded ${editor.isActive('italic') ? 'bg-indigo-100' : 'hover:bg-slate-100'}`}><Italic size={14} /></button>
+        </BubbleMenu>
+      )}
+    </div>
+  );
+};
 
 /** 마크다운 이미지 ![alt](url) 를 실제 img로 렌더한 HTML (미리보기용, XSS 방지) */
 const renderMarkdownImages = (text: string): string => {
@@ -2075,6 +2333,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const memoFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [18, 22, 172, 252, 84, 100]);
+  const [bodyHtml, setBodyHtml] = useState('');
 
   useEffect(() => { loadMemos(); }, [appId]);
 
@@ -2092,6 +2351,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const handleSelectMemo = (memo: Memo) => {
     setSelectedMemoId(memo.id);
     setEditForm({ ...memo, fileInfoList: getFileList(memo) });
+    setBodyHtml(memo.content || '');
   };
 
   const processFile = async (file: File) => {
@@ -2160,6 +2420,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const handleBackToList = () => {
     setSelectedMemoId(null);
     setEditForm({});
+    setBodyHtml('');
   };
 
   const deleteMemo = async (id: string) => {
@@ -2212,7 +2473,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       alert('제목을 입력하세요');
       return;
     }
-    if (!editForm.content || editForm.content.trim() === '') {
+    if (isBodyEffectivelyEmpty(bodyHtml)) {
       alert('내용을 입력하세요');
       return;
     }
@@ -2222,7 +2483,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         id: editForm.id!,
         appId,
         title: editForm.title.trim(),
-        content: editForm.content.trim(),
+        content: bodyHtml,
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now()
       };
@@ -2326,12 +2587,14 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
-                <textarea 
-                  className="w-full border rounded-lg p-4 h-[500px] focus:ring-2 ring-indigo-500 outline-none text-sm resize-none" 
-                  placeholder="내용을 입력하세요..." 
-                  value={editForm.content || ''} 
-                  onChange={e => setEditForm({...editForm, content: e.target.value})} 
+                <label className="block text-sm font-medium text-slate-700 mb-2">본문 (WYSIWYG)</label>
+                <RichMemoEditor
+                  key={editForm.id}
+                  appId={appId}
+                  memoId={editForm.id!}
+                  initialHtml={editForm.content || ''}
+                  onHtmlChange={setBodyHtml}
+                  setUploading={setUploading}
                 />
               </div>
               <div>
@@ -2431,7 +2694,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectMemo(m)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {m.title}</p>
-                      <p className="text-sm text-slate-600 mt-2 truncate">{m.content}</p>
+                      <p className="text-sm text-slate-600 mt-2 truncate">{stripHtml(m.content) || (m.content?.includes('<img') ? '[이미지]' : '')}</p>
                       <p className="text-xs text-slate-500 mt-1">{new Date(m.createdAt).toLocaleDateString()}</p>
                     </button>
                     <input
@@ -2487,7 +2750,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                        <div className="text-sm font-medium text-slate-900">{m.title}</div>
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
-                       <div className="text-sm text-slate-600 line-clamp-2">{m.content}</div>
+                       <div className="text-sm text-slate-600 line-clamp-2">{stripHtml(m.content) || (m.content?.includes('<img') ? '[이미지]' : '')}</div>
                      </td>
                     <td className="px-6 py-4 text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                       {getFileList(m).length > 0 && (
