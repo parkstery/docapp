@@ -2831,6 +2831,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Note>>({});
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [editContentHtml, setEditContentHtml] = useState('');
 
   useEffect(() => {
     loadNotes();
@@ -2850,6 +2851,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const openEdit = (note: Note) => {
     setSelectedNoteId(note.id);
     setEditForm({ ...note });
+    setEditContentHtml(note.content || '');
   };
 
   const closeModal = () => {
@@ -2860,6 +2862,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const handleBackToList = () => {
     setSelectedNoteId(null);
     setEditForm({});
+    setEditContentHtml('');
   };
 
   const handleSave = async () => {
@@ -2896,7 +2899,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
       id: editForm.id || crypto.randomUUID(),
       appId,
       title: editForm.title.trim(),
-      content: (editForm.content ?? '').trim(),
+      content: editContentHtml,
       createdAt: editForm.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
@@ -2909,7 +2912,8 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 
   const contentPreview = (text: string, maxLen: number) => {
     if (!text) return '';
-    const t = text.replace(/\s+/g, ' ').trim();
+    const plain = stripHtml(text);
+    const t = plain || (text.includes('<img') ? '[이미지]' : '');
     return t.length <= maxLen ? t : t.slice(0, maxLen) + '…';
   };
 
@@ -2966,11 +2970,14 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
-                  <textarea
-                    className="w-full border rounded-lg p-4 h-[560px] focus:ring-2 ring-indigo-500 outline-none text-sm resize-none"
-                    placeholder="내용"
-                    value={editForm.content || ''}
-                    onChange={e => setEditForm({ ...editForm, content: e.target.value })}
+                  <RichHtmlEditor
+                    key={`note-${editForm.id}`}
+                    appId={appId}
+                    docId={editForm.id!}
+                    uploadSection="notes"
+                    initialHtml={editForm.content || ''}
+                    onHtmlChange={setEditContentHtml}
+                    setUploading={() => {}}
                   />
                 </div>
               </div>
@@ -3100,6 +3107,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [editDescriptionHtml, setEditDescriptionHtml] = useState('');
+  const [editSolutionHtml, setEditSolutionHtml] = useState('');
+  const [editorUploading, setEditorUploading] = useState(false);
   const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [18, 22, 90, 92, 212, 100]);
@@ -3115,11 +3125,15 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const handleBackToList = () => {
     setSelectedIssueId(null);
     setEditForm({});
+    setEditDescriptionHtml('');
+    setEditSolutionHtml('');
   };
 
   const handleSelectIssue = (issue: Issue) => {
     setSelectedIssueId(issue.id);
     setEditForm({ ...issue, fileInfoList: getFileList(issue) });
+    setEditDescriptionHtml(issue.description || '');
+    setEditSolutionHtml(issue.solution || '');
   };
 
   const processFile = async (file: File, target: 'form' | 'editForm') => {
@@ -3263,8 +3277,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
         id: editForm.id!,
         appId,
         title: editForm.title.trim(),
-        description: editForm.description || '',
-        solution: editForm.solution || '',
+        description: editDescriptionHtml,
+        solution: editSolutionHtml,
         status: editForm.status || 'Open',
         severity: editForm.severity || 'Medium',
         createdAt: editForm.createdAt || Date.now(),
@@ -3412,20 +3426,26 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">문제 설명</label>
-                <textarea
-                  className="w-full border rounded-lg p-4 h-40 focus:ring-2 ring-indigo-500 outline-none text-sm resize-none"
-                  placeholder="발생한 문제에 대한 상세 설명"
-                  value={editForm.description || ''}
-                  onChange={e => setEditForm({...editForm, description: e.target.value})}
+                <RichHtmlEditor
+                  key={`issue-description-${editForm.id}`}
+                  appId={appId}
+                  docId={editForm.id!}
+                  uploadSection="issues"
+                  initialHtml={editForm.description || ''}
+                  onHtmlChange={setEditDescriptionHtml}
+                  setUploading={setEditorUploading}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">해결 방법 (Solution)</label>
-                <textarea
-                  className="w-full border border-green-200 bg-green-50/50 rounded-lg p-4 h-40 focus:ring-2 ring-green-500 outline-none text-sm resize-none"
-                  placeholder="해결 방안 기록..."
-                  value={editForm.solution || ''}
-                  onChange={e => setEditForm({...editForm, solution: e.target.value})}
+                <RichHtmlEditor
+                  key={`issue-solution-${editForm.id}`}
+                  appId={appId}
+                  docId={editForm.id!}
+                  uploadSection="issues"
+                  initialHtml={editForm.solution || ''}
+                  onHtmlChange={setEditSolutionHtml}
+                  setUploading={setEditorUploading}
                 />
               </div>
               <div>
@@ -3519,7 +3539,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                           {issue.severity}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 truncate mt-2">{issue.description}</p>
+                      <p className="text-xs text-slate-500 truncate mt-2">{stripHtml(issue.description) || (issue.description?.includes('<img') ? '[이미지]' : '')}</p>
                       <p className="text-xs text-slate-500 mt-1">{new Date(issue.updatedAt).toLocaleDateString()}</p>
                     </button>
                     <input
@@ -3586,7 +3606,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       </td>
                       <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         <div className={`text-sm font-medium ${issue.status === 'Resolved' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>{issue.title}</div>
-                        <div className="text-xs text-slate-500 truncate">{issue.description}</div>
+                        <div className="text-xs text-slate-500 truncate">{stripHtml(issue.description) || (issue.description?.includes('<img') ? '[이미지]' : '')}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
