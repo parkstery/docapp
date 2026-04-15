@@ -211,6 +211,15 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
 
   const currentFontSize = (editor.getAttributes('textStyle')?.fontSize as string) || '16px';
 
+  const applyFontSize = (size: string) => {
+    editor.chain().focus().setMark('textStyle', { fontSize: size }).run();
+    const markType = editor.state.schema.marks.textStyle;
+    if (markType) {
+      const tr = editor.state.tr.addStoredMark(markType.create({ fontSize: size }));
+      editor.view.dispatch(tr);
+    }
+  };
+
   const onImageInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files?.length) {
@@ -299,8 +308,7 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
           value={currentFontSize}
           disabled={disabled}
           onChange={(e) => {
-            const size = e.target.value;
-            editor.chain().focus().setMark('textStyle', { fontSize: size }).run();
+            applyFontSize(e.target.value);
           }}
           className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700 disabled:opacity-40"
           title="글자 크기"
