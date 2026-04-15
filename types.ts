@@ -60,6 +60,8 @@ export interface Memo extends BaseItem {
 export interface FreeDoc extends BaseItem {
   /** TipTap 등에서 저장하는 HTML 본문 */
   html: string;
+  /** 첨부파일 목록 */
+  fileInfoList?: FileInfo[];
 }
 
 export interface Issue extends BaseItem {

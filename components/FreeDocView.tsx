@@ -7,6 +7,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import {
   ArrowLeft,
   Bold,
+  FileText,
   Heading2,
   ImageIcon,
   Italic,
@@ -21,9 +22,9 @@ import {
   Undo2,
   X,
 } from 'lucide-react';
-import { FreeDoc } from '../types';
+import { FileInfo, FreeDoc } from '../types';
 import { storage } from '../services/storage';
-import { uploadFile } from '../services/fileService';
+import { deleteFile, uploadFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -336,7 +337,12 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const resize = useResizableColumns(5, [18, 22, 172, 252, 100]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const detailFileInputRef = useRef<HTMLInputElement>(null);
 
   const [bodyHtml, setBodyHtml] = useState('');
   const [modalHtml, setModalHtml] = useState('');
@@ -344,6 +350,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   useEffect(() => {
     loadDocs();
   }, [appId]);
+
+  const getFileList = (item: Partial<FreeDoc> | null | undefined): FileInfo[] => item?.fileInfoList || [];
 
   const loadDocs = async () => {
     setLoading(true);
@@ -353,14 +361,14 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
 
   const openModal = () => {
     const id = crypto.randomUUID();
-    setForm({ id, title: '', html: '' });
+    setForm({ id, title: '', html: '', fileInfoList: [] });
     setModalHtml('');
     setIsModalOpen(true);
   };
 
   const handleSelect = (d: FreeDoc) => {
     setSelectedId(d.id);
-    setEditForm({ ...d });
+    setEditForm({ ...d, fileInfoList: d.fileInfoList || [] });
     setBodyHtml(d.html || '');
   };
 
@@ -372,6 +380,14 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
 
   const deleteDoc = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
+    const doc = docs.find((item) => item.id === id);
+    for (const f of getFileList(doc)) {
+      try {
+        await deleteFile(f.url);
+      } catch (error) {
+        console.error('파일 삭제 실패:', error);
+      }
+    }
     await storage.freeDocs.delete(id);
     loadDocs();
     if (selectedId === id) {
@@ -398,6 +414,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
         html: modalHtml,
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
+        fileInfoList: getFileList(form),
       };
       await storage.freeDocs.save(item);
       loadDocs();
@@ -427,6 +444,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
         html: bodyHtml,
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now(),
+        fileInfoList: getFileList(editForm),
       };
       await storage.freeDocs.save(item);
       loadDocs();
@@ -455,6 +473,14 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개를 삭제하시겠습니까?`)) return;
     for (const id of selectedIds) {
+      const doc = docs.find((d) => d.id === id);
+      for (const f of getFileList(doc)) {
+        try {
+          await deleteFile(f.url);
+        } catch (error) {
+          console.error('파일 삭제 실패:', error);
+        }
+      }
       await storage.freeDocs.delete(id);
     }
     setSelectedIds(new Set());
@@ -462,6 +488,88 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
     if (selectedId && selectedIds.has(selectedId)) {
       setSelectedId(null);
       setEditForm({});
+    }
+  };
+
+  const processFile = async (file: File, target: 'form' | 'editForm') => {
+    if (uploadingAttachment) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+    setUploadingAttachment(true);
+    try {
+      const docId = target === 'editForm' ? editForm.id : form.id;
+      const fileInfo = await uploadFile(appId, `freeDocs/${docId || 'new'}`, file);
+      if (target === 'editForm') {
+        setEditForm((prev) => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
+      } else {
+        setForm((prev) => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
+      }
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 2000);
+    } catch (error: any) {
+      console.error('[FreeDoc] 파일 업로드 실패:', error);
+      alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}`);
+    } finally {
+      setUploadingAttachment(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (detailFileInputRef.current) detailFileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files?.length) {
+      for (let i = 0; i < files.length; i++) await processFile(files[i], 'form');
+    }
+    e.target.value = '';
+  };
+
+  const handleDetailFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files?.length) {
+      for (let i = 0; i < files.length; i++) await processFile(files[i], 'editForm');
+    }
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!uploadingAttachment) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent, target: 'form' | 'editForm') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files?.length) {
+      for (let i = 0; i < files.length; i++) await processFile(files[i], target);
+    }
+  };
+
+  const handleDeleteFile = async (fileInfo: FileInfo, target: 'form' | 'editForm') => {
+    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
+    try {
+      await deleteFile(fileInfo.url);
+      if (target === 'editForm') {
+        const list = getFileList(editForm).filter((f) => f.url !== fileInfo.url);
+        setEditForm({ ...editForm, fileInfoList: list });
+      } else {
+        const list = getFileList(form).filter((f) => f.url !== fileInfo.url);
+        setForm({ ...form, fileInfoList: list });
+      }
+    } catch (error) {
+      console.error('파일 삭제 실패:', error);
+      alert('파일 삭제에 실패했습니다.');
     }
   };
 
@@ -546,6 +654,40 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                     onHtmlChange={setBodyHtml}
                     setUploading={setUploading}
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
+                  {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
+                  <input ref={detailFileInputRef} type="file" multiple onChange={handleDetailFileInputChange} className="hidden" />
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => void handleDrop(e, 'editForm')}
+                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploadingAttachment ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                    <button type="button" onClick={() => detailFileInputRef.current?.click()} disabled={uploadingAttachment} className="w-full text-primary hover:text-indigo-800 text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50">
+                      클릭하여 파일 선택
+                    </button>
+                  </div>
+                  {getFileList(editForm).length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {getFileList(editForm).map((f) => (
+                        <div key={f.id || f.url} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <FileText size={16} className="text-slate-400 shrink-0" />
+                            <span className="text-sm text-slate-800 truncate">{f.name}</span>
+                            {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                            <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                            <button type="button" onClick={() => handleDeleteFile(f, 'editForm')} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -692,6 +834,42 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                   onHtmlChange={setModalHtml}
                   setUploading={setUploading}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
+                {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
+                <input ref={fileInputRef} type="file" multiple onChange={handleFileInputChange} className="hidden" />
+                <div className="space-y-2">
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => void handleDrop(e, 'form')}
+                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploadingAttachment ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
+                  </div>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingAttachment} className="w-full text-primary hover:text-indigo-800 hover:bg-indigo-50 cursor-pointer text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    클릭하여 파일 선택
+                  </button>
+                </div>
+                {getFileList(form).length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {getFileList(form).map((f) => (
+                      <div key={f.id || f.url} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText size={16} className="text-slate-400 shrink-0" />
+                          <span className="text-sm text-slate-800 truncate">{f.name}</span>
+                          {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <button type="button" onClick={() => handleDeleteFile(f, 'form')} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
