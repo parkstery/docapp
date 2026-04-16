@@ -15,6 +15,8 @@ Firebase 기반 **앱 개발 프로젝트별 문서·첨부·프롬프트·이�
    npm install
    ```
 
+   `Failed to resolve import "dompurify"` 오류가 나면 위 명령을 **프로젝트 루트**에서 다시 실행한 뒤 개발 서버를 재시작하세요. (`package.json`에 `dompurify`가 포함되어 있어야 합니다.)
+
 2. Firebase  
    클라이언트 설정은 [`services/storage.ts`](services/storage.ts)에 있습니다. 운영 시에는 본인의 Firebase 설정으로 교체하고, **Firestore·Storage 보안 규칙**을 반드시 설정하세요. 점검 항목은 [`docs/260416-OPERATIONS_SECURITY_CHECKLIST.md`](docs/260416-OPERATIONS_SECURITY_CHECKLIST.md)를 참고합니다.
 
