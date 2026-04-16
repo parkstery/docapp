@@ -115,12 +115,30 @@ const App: React.FC = () => {
         table.report-table-separators .report-col-tight {
           padding-left: 6px !important;
           padding-right: 6px !important;
+        }
+        table.report-table-separators .report-col-center {
           text-align: center !important;
         }
         table.report-table-separators .report-col-title {
           text-align: center !important;
           padding-left: 14px !important;
           padding-right: 14px !important;
+        }
+        table.report-table-separators > thead > tr > th:not(.report-col-title):not(.report-col-center):not(.report-col-actions),
+        table.report-table-separators > tbody > tr > td:not(.report-col-title):not(.report-col-center):not(.report-col-actions) {
+          text-align: left !important;
+        }
+        table.report-table-separators .report-col-actions {
+          text-align: right !important;
+        }
+        table.report-table-separators > tbody > tr > td[colspan] {
+          text-align: center !important;
+        }
+        table.report-table-separators .report-col-title > div:first-child {
+          text-align: center !important;
+        }
+        table.report-table-separators .report-col-title > div:not(:first-child) {
+          text-align: left !important;
         }
       `}</style>
       <HashRouter>

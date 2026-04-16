@@ -575,7 +575,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th style={resize.getThStyle(0)} className="report-col-tight text-left">
+                  <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
                       checked={docs.length > 0 && selectedIds.size === docs.length}
@@ -585,7 +585,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     />
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th style={resize.getThStyle(1)} className="report-col-tight text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
@@ -595,7 +595,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               <tbody className="divide-y divide-slate-200">
                 {docs.map((doc, index) => (
                   <tr key={doc.id} className="hover:bg-indigo-50/50 group transition-colors">
-                    <td className="report-col-tight" onClick={(e) => e.stopPropagation()}>
+                    <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(doc.id)}
@@ -604,7 +604,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
                     </td>
-                    <td className="report-col-tight whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {index + 1}
                     </td>
                     <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelectDoc(doc)}>
@@ -1169,7 +1169,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th style={resize.getThStyle(0)} className="report-col-tight text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  <th style={resize.getThStyle(0)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-2 justify-center">
                       <input
                         type="checkbox"
@@ -1182,7 +1182,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     </div>
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th style={resize.getThStyle(1)} className="report-col-tight text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Type<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Summary<resize.ResizeHandle columnIndex={4} /></th>
@@ -1193,7 +1193,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               <tbody className="bg-white divide-y divide-slate-200">
                 {reports.map((r, index) => (
                   <tr key={r.id} className="hover:bg-slate-50 group">
-                    <td className="report-col-tight" onClick={(e) => e.stopPropagation()}>
+                    <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(r.id)}
@@ -1202,7 +1202,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
                     </td>
-                    <td className="report-col-tight whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {index + 1}
                     </td>
                     <td className="whitespace-nowrap cursor-pointer" onClick={() => handleSelectReport(r)}>
@@ -1784,7 +1784,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
               </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th style={resize.getThStyle(0)} className="report-col-tight text-left">
+                  <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
                       checked={prompts.length > 0 && selectedIds.size === prompts.length}
@@ -1794,7 +1794,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                     />
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th style={resize.getThStyle(1)} className="report-col-tight text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Prompt (Preview)<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
@@ -1804,7 +1804,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                <tbody className="divide-y divide-slate-200">
                  {prompts.map((p, index) => (
                    <tr key={p.id} className="hover:bg-slate-50 group">
-                     <td className="report-col-tight" onClick={(e) => e.stopPropagation()}>
+                     <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
                          checked={selectedIds.has(p.id)}
@@ -1813,7 +1813,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="report-col-tight whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                     <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        {index + 1}
                      </td>
                      <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelectPrompt(p)}>
@@ -2305,7 +2305,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th style={resize.getThStyle(0)} className="report-col-tight text-left">
+                  <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
                       checked={memos.length > 0 && selectedIds.size === memos.length}
@@ -2315,7 +2315,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                     />
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th style={resize.getThStyle(1)} className="report-col-tight text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
@@ -2325,7 +2325,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                <tbody className="divide-y divide-slate-200">
                  {memos.map((m, index) => (
                    <tr key={m.id} className="hover:bg-yellow-50 group transition-colors">
-                     <td className="report-col-tight" onClick={(e) => e.stopPropagation()}>
+                     <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
                          checked={selectedIds.has(m.id)}
@@ -2334,7 +2334,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="report-col-tight whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                     <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        {index + 1}
                      </td>
                      <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelectMemo(m)}>
@@ -3081,7 +3081,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
               </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th style={resize.getThStyle(0)} className="report-col-tight text-left">
+                  <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
                       checked={issues.length > 0 && selectedIds.size === issues.length}
@@ -3091,7 +3091,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                     />
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th style={resize.getThStyle(1)} className="report-col-tight text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
+                  <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Severity<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
@@ -3101,7 +3101,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                <tbody className="divide-y divide-slate-200">
                  {issues.map((issue, index) => (
                    <tr key={issue.id} className="hover:bg-slate-50 group">
-                     <td className="report-col-tight" onClick={(e) => e.stopPropagation()}>
+                     <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
                          checked={selectedIds.has(issue.id)}
@@ -3110,7 +3110,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="report-col-tight whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                     <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                        {index + 1}
                      </td>
                       <td className="whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>

@@ -736,7 +736,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th style={resize.getThStyle(0)} className="report-col-tight text-left">
+                  <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
                       checked={docs.length > 0 && selectedIds.size === docs.length}
@@ -746,7 +746,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                     />
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th style={resize.getThStyle(1)} className="report-col-tight text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     No.<resize.ResizeHandle columnIndex={1} />
                   </th>
                   <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -764,7 +764,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               <tbody className="divide-y divide-slate-200">
                 {docs.map((d, index) => (
                   <tr key={d.id} className="hover:bg-violet-50/60 group transition-colors">
-                    <td className="report-col-tight" onClick={(e) => e.stopPropagation()}>
+                    <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(d.id)}
@@ -773,7 +773,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       />
                     </td>
-                    <td className="report-col-tight whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
+                    <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
                       {index + 1}
                     </td>
                     <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelect(d)}>

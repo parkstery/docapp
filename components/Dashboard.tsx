@@ -147,7 +147,7 @@ const Dashboard: React.FC = () => {
               </colgroup>
               <thead className="bg-slate-50">
                 <tr>
-                  <th scope="col" style={resize.getThStyle(0)} className="report-col-tight text-xs font-medium text-slate-700 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(0)} className="report-col-tight report-col-center text-xs font-medium text-slate-700 uppercase tracking-wider">
                     No.<resize.ResizeHandle columnIndex={0} />
                   </th>
                   <th scope="col" style={resize.getThStyle(1)} className="report-col-tight text-xs font-medium text-slate-700 uppercase tracking-wider">
@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
                   <th scope="col" style={resize.getThStyle(2)} className="report-col-title text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Project Name<resize.ResizeHandle columnIndex={2} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(3)} className="text-center text-xs font-medium text-slate-700 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(3)} className="text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Version<resize.ResizeHandle columnIndex={3} />
                   </th>
                   <th scope="col" style={resize.getThStyle(4)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
@@ -165,7 +165,7 @@ const Dashboard: React.FC = () => {
                   <th scope="col" style={resize.getThStyle(5)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Created At<resize.ResizeHandle columnIndex={5} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(6)} className="text-right text-xs font-medium text-slate-700 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(6)} className="report-col-actions text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -177,7 +177,7 @@ const Dashboard: React.FC = () => {
                     onClick={() => navigate(`/app/${app.id}`)}
                     className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
                   >
-                    <td className="report-col-tight whitespace-nowrap text-sm text-slate-500">
+                    <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500">
                       {index + 1}
                     </td>
                     <td className="report-col-tight whitespace-nowrap">
@@ -196,7 +196,7 @@ const Dashboard: React.FC = () => {
                         <div className="text-sm font-semibold text-slate-900 truncate min-w-0" title={app.name}>{app.name}</div>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap text-center">
+                    <td className="whitespace-nowrap">
                       <span className="text-sm text-slate-600 font-mono">v{app.version}</span>
                     </td>
                     <td className="min-w-0">
@@ -205,7 +205,7 @@ const Dashboard: React.FC = () => {
                     <td className="whitespace-nowrap text-sm text-slate-500">
                       {new Date(app.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="whitespace-nowrap text-right text-sm font-medium">
+                    <td className="report-col-actions whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => { e.stopPropagation(); openModal(app); }}
