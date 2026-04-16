@@ -340,7 +340,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const resize = useResizableColumns(5, [18, 22, 172, 252, 100]);
+  const resize = useResizableColumns(5, [44, 52, 200, 268, 112]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -728,7 +728,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               <Loader2 className="animate-spin" /> 로딩 중…
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="report-table-separators min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0]" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => (
                   <col key={i} style={resize.getColStyle(i)} />
@@ -736,7 +736,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th style={resize.getThStyle(0)} className="px-6 py-3 text-left">
+                  <th style={resize.getThStyle(0)} className="report-col-tight text-left">
                     <input
                       type="checkbox"
                       checked={docs.length > 0 && selectedIds.size === docs.length}
@@ -746,16 +746,16 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                     />
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
-                  <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th style={resize.getThStyle(1)} className="report-col-tight text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     No.<resize.ResizeHandle columnIndex={1} />
                   </th>
-                  <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Title<resize.ResizeHandle columnIndex={2} />
                   </th>
-                  <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Preview<resize.ResizeHandle columnIndex={3} />
                   </th>
-                  <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Date<resize.ResizeHandle columnIndex={4} />
                   </th>
                   
@@ -764,7 +764,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               <tbody className="divide-y divide-slate-200">
                 {docs.map((d, index) => (
                   <tr key={d.id} className="hover:bg-violet-50/60 group transition-colors">
-                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td className="report-col-tight" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(d.id)}
@@ -773,16 +773,16 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
+                    <td className="report-col-tight whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
                       {index + 1}
                     </td>
-                    <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
-                      <div className="text-sm font-medium text-slate-900">{d.title}</div>
+                    <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelect(d)}>
+                      <div className="text-sm font-medium text-slate-900 truncate" title={d.title}>{d.title}</div>
                     </td>
-                    <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
-                      <div className="text-sm text-slate-600 line-clamp-2">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</div>
+                    <td className="cursor-pointer min-w-0" onClick={() => handleSelect(d)}>
+                      <div className="text-sm text-slate-600 line-clamp-2 text-left">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
+                    <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
                       {new Date(d.createdAt).toLocaleDateString()}
                     </td>
                   </tr>

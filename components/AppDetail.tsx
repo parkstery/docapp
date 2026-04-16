@@ -96,14 +96,20 @@ const AppDetail: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as Tab)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-0 pl-3 pr-3 py-3 text-sm font-medium rounded-lg transition-colors ${
                     isActive 
                       ? 'bg-indigo-50 text-primary' 
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >
-                  <Icon size={18} />
-                  {tab.label}
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+                    <Icon size={18} className="shrink-0" />
+                  </span>
+                  <span
+                    className={`mx-2 h-5 w-px shrink-0 self-center ${isActive ? 'bg-indigo-200' : 'bg-slate-200'}`}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1 text-left leading-tight">{tab.label}</span>
                 </button>
               );
             })}

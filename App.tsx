@@ -102,6 +102,26 @@ const App: React.FC = () => {
         .report-table-separators tbody td:not(:last-child) {
           border-right: 1px solid #000 !important;
         }
+        table.report-table-separators > thead > tr > th,
+        table.report-table-separators > tbody > tr > td {
+          box-sizing: border-box !important;
+          vertical-align: middle !important;
+          padding: 10px 12px !important;
+        }
+        table.report-table-separators > thead > tr > th:not(:last-child),
+        table.report-table-separators > tbody > tr > td:not(:last-child) {
+          padding-right: 14px !important;
+        }
+        table.report-table-separators .report-col-tight {
+          padding-left: 6px !important;
+          padding-right: 6px !important;
+          text-align: center !important;
+        }
+        table.report-table-separators .report-col-title {
+          text-align: center !important;
+          padding-left: 14px !important;
+          padding-right: 14px !important;
+        }
       `}</style>
       <HashRouter>
         <AppRoutes />
