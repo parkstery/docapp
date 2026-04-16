@@ -918,18 +918,21 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                 </colgroup>
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th style={resize.getThStyle(0)} className="px-6 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        checked={docs.length > 0 && selectedIds.size === docs.length}
-                        onChange={handleSelectAll}
-                        onClick={(e) => e.stopPropagation()}
-                        className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                      />
+                    <th style={resize.getThStyle(0)} className="px-6 py-3 report-col-tight report-col-center">
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={docs.length > 0 && selectedIds.size === docs.length}
+                          onChange={handleSelectAll}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                        />
+                      </div>
                       <resize.ResizeHandle columnIndex={0} />
                     </th>
-                    <th style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      No.<resize.ResizeHandle columnIndex={1} />
+                    <th style={resize.getThStyle(1)} className="px-6 py-3 report-col-tight report-col-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      <div className="flex items-center justify-center">No.</div>
+                      <resize.ResizeHandle columnIndex={1} />
                     </th>
                     <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Title<resize.ResizeHandle columnIndex={2} />
@@ -955,7 +958,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                       dragOverDocId === d.id ? 'bg-violet-100/70' : 'hover:bg-violet-50/60'
                     }`}
                   >
-                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(d.id)}
@@ -964,7 +967,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                           className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
+                      <td className="px-6 py-4 report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
                         {index + 1}
                       </td>
                       <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
