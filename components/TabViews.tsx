@@ -586,7 +586,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
-                  <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
@@ -607,13 +607,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {index + 1}
                     </td>
-                    <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelectDoc(doc)}>
-                      <div className="text-sm font-medium text-slate-900 truncate" title={doc.title}>{doc.title}</div>
+                    <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelectDoc(doc)}>
+                      <div className="text-sm font-medium text-slate-900 truncate text-left" title={doc.title}>{doc.title}</div>
                     </td>
-                    <td className="cursor-pointer min-w-0" onClick={() => handleSelectDoc(doc)}>
+                    <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelectDoc(doc)}>
                       <div className="text-sm text-slate-600 line-clamp-2 text-left">{doc.content}</div>
                     </td>
-                    <td className="text-sm text-slate-500 cursor-pointer min-w-0" onClick={() => handleSelectDoc(doc)}>
+                    <td className="text-sm text-slate-500 cursor-pointer min-w-0 text-left" onClick={() => handleSelectDoc(doc)}>
                       {getFileList(doc).length > 0 && (
                         <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
                           {getFileList(doc).map((f) => (
@@ -1184,7 +1184,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   </th>
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Type<resize.ResizeHandle columnIndex={2} /></th>
-                  <th style={resize.getThStyle(3)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={3} /></th>
+                  <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Summary<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={5} /></th>
                   <th style={resize.getThStyle(6)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={6} /></th>
@@ -1205,7 +1205,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {index + 1}
                     </td>
-                    <td className="whitespace-nowrap cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="whitespace-nowrap cursor-pointer text-left" onClick={() => handleSelectReport(r)}>
                       <span className={`px-2 py-1 rounded text-xs font-medium border ${
                         r.type === 'Final' ? 'bg-green-50 text-green-700 border-green-200' : 
                         r.type === 'Interim' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
@@ -1215,13 +1215,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         {r.type}
                       </span>
                     </td>
-                    <td className="report-col-title min-w-0 overflow-hidden text-sm font-medium text-slate-900 cursor-pointer" onClick={() => handleSelectReport(r)}>
-                      <div className="truncate" title={r.title}>{r.title}</div>
+                    <td className="min-w-0 overflow-hidden text-sm font-medium text-slate-900 cursor-pointer text-left" onClick={() => handleSelectReport(r)}>
+                      <div className="truncate text-left" title={r.title}>{r.title}</div>
                     </td>
-                    <td className="min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer text-left" onClick={() => handleSelectReport(r)}>
                       <div className="truncate text-left" title={r.summary}>{r.summary}</div>
                     </td>
-                    <td className="min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer text-left" onClick={() => handleSelectReport(r)}>
                       {getFileList(r).length > 0 && (
                         <div className="flex flex-col gap-1 min-w-0 overflow-hidden" onClick={e => e.stopPropagation()}>
                           {getFileList(r).map((f) => (
@@ -1795,7 +1795,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
-                  <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Prompt (Preview)<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Prompt (Preview)<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
@@ -1816,12 +1816,12 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                      <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        {index + 1}
                      </td>
-                     <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelectPrompt(p)}>
-                       <div className="text-sm text-slate-900 truncate font-medium">{p.prompt}</div>
+                     <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelectPrompt(p)}>
+                       <div className="text-sm text-slate-900 truncate font-medium text-left">{p.prompt}</div>
                        <div className="text-xs text-slate-500 truncate mt-1 text-left">{p.response}</div>
                      </td>
-                     <td className="cursor-pointer min-w-0" onClick={() => handleSelectPrompt(p)}>
-                       <div className="flex flex-wrap gap-1">
+                     <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelectPrompt(p)}>
+                       <div className="flex flex-wrap gap-1 justify-start">
                          {p.tags.slice(0, 3).map((t, i) => (
                            <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">{t}</span>
                          ))}
@@ -2316,7 +2316,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
-                  <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
@@ -2337,10 +2337,10 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                      <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        {index + 1}
                      </td>
-                     <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelectMemo(m)}>
-                       <div className="text-sm font-medium text-slate-900 truncate" title={m.title}>{m.title}</div>
+                     <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelectMemo(m)}>
+                       <div className="text-sm font-medium text-slate-900 truncate text-left" title={m.title}>{m.title}</div>
                      </td>
-                     <td className="cursor-pointer min-w-0" onClick={() => handleSelectMemo(m)}>
+                     <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelectMemo(m)}>
                        <div className="text-sm text-slate-600 line-clamp-2 text-left">{m.content}</div>
                      </td>
                     <td className="text-sm text-slate-500 cursor-pointer min-w-0" onClick={() => handleSelectMemo(m)}>
@@ -3094,7 +3094,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No.<resize.ResizeHandle columnIndex={1} /></th>
                   <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status<resize.ResizeHandle columnIndex={2} /></th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Severity<resize.ResizeHandle columnIndex={3} /></th>
-                  <th style={resize.getThStyle(4)} className="report-col-title text-xs font-semibold text-slate-700 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
                 </tr>
               </thead>
@@ -3113,21 +3113,21 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                      <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                        {index + 1}
                      </td>
-                      <td className="whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                      <td className="whitespace-nowrap cursor-pointer text-left" onClick={() => handleSelectIssue(issue)}>
                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
                            ${issue.status === 'Resolved' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                            {issue.status === 'Resolved' ? <CheckCircle size={12}/> : <AlertCircle size={12}/>}
                            {issue.status}
                          </span>
                       </td>
-                      <td className="whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                      <td className="whitespace-nowrap cursor-pointer text-left" onClick={() => handleSelectIssue(issue)}>
                          <span className={`px-2 py-1 rounded text-xs font-semibold
                            ${issue.severity === 'High' ? 'text-red-600 bg-red-50' : issue.severity === 'Medium' ? 'text-orange-600 bg-orange-50' : 'text-slate-500 bg-slate-100'}`}>
                            {issue.severity}
                          </span>
                       </td>
-                      <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelectIssue(issue)}>
-                        <div className={`text-sm font-medium truncate ${issue.status === 'Resolved' ? 'text-slate-500 line-through' : 'text-slate-900'}`} title={issue.title}>{issue.title}</div>
+                      <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelectIssue(issue)}>
+                        <div className={`text-sm font-medium truncate text-left ${issue.status === 'Resolved' ? 'text-slate-500 line-through' : 'text-slate-900'}`} title={issue.title}>{issue.title}</div>
                         <div className="text-xs text-slate-500 truncate text-left">{issue.description}</div>
                       </td>
                       <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>

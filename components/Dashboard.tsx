@@ -153,7 +153,7 @@ const Dashboard: React.FC = () => {
                   <th scope="col" style={resize.getThStyle(1)} className="report-col-tight text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Platform<resize.ResizeHandle columnIndex={1} />
                   </th>
-                  <th scope="col" style={resize.getThStyle(2)} className="report-col-title text-xs font-medium text-slate-700 uppercase tracking-wider">
+                  <th scope="col" style={resize.getThStyle(2)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Project Name<resize.ResizeHandle columnIndex={2} />
                   </th>
                   <th scope="col" style={resize.getThStyle(3)} className="text-xs font-medium text-slate-700 uppercase tracking-wider">
@@ -188,8 +188,8 @@ const Dashboard: React.FC = () => {
                         {app.platform}
                       </span>
                     </td>
-                    <td className="report-col-title whitespace-nowrap min-w-0">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="whitespace-nowrap min-w-0 text-left">
+                      <div className="flex items-center justify-start gap-2">
                         <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center">
                           <Smartphone size={16} />
                         </div>

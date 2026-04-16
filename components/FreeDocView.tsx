@@ -749,7 +749,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     No.<resize.ResizeHandle columnIndex={1} />
                   </th>
-                  <th style={resize.getThStyle(2)} className="report-col-title text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Title<resize.ResizeHandle columnIndex={2} />
                   </th>
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -776,10 +776,10 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
                       {index + 1}
                     </td>
-                    <td className="report-col-title cursor-pointer min-w-0" onClick={() => handleSelect(d)}>
-                      <div className="text-sm font-medium text-slate-900 truncate" title={d.title}>{d.title}</div>
+                    <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelect(d)}>
+                      <div className="text-sm font-medium text-slate-900 truncate text-left" title={d.title}>{d.title}</div>
                     </td>
-                    <td className="cursor-pointer min-w-0" onClick={() => handleSelect(d)}>
+                    <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelect(d)}>
                       <div className="text-sm text-slate-600 line-clamp-2 text-left">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</div>
                     </td>
                     <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
