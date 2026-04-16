@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from 'firebase/auth';
 import { onAuthStateChange, signInWithGoogle, logout } from '../services/authService';
+import { devLog } from '../utils/devLog';
 
 interface AuthContextType {
   user: User | null;
@@ -28,20 +29,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('[AuthContext] 컴포넌트 마운트됨');
-    console.log('[AuthContext] 인증 상태 리스너 설정 시작');
+    devLog('[AuthContext] 컴포넌트 마운트됨');
+    devLog('[AuthContext] 인증 상태 리스너 설정 시작');
     
     try {
       const unsubscribe = onAuthStateChange((user) => {
-        console.log('[AuthContext] 인증 상태 변경:', user?.email || '로그아웃', user ? '로그인됨' : '로그아웃됨');
+        devLog('[AuthContext] 인증 상태 변경:', user?.email || '로그아웃', user ? '로그인됨' : '로그아웃됨');
         setUser(user);
         setLoading(false);
       });
 
-      console.log('[AuthContext] 인증 상태 리스너 설정 완료');
+      devLog('[AuthContext] 인증 상태 리스너 설정 완료');
 
       return () => {
-        console.log('[AuthContext] 인증 상태 리스너 해제');
+        devLog('[AuthContext] 인증 상태 리스너 해제');
         if (unsubscribe) {
           unsubscribe();
         }

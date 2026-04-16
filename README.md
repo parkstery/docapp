@@ -1,20 +1,47 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# DevManager Pro (docapp)
 
-# Run and deploy your AI Studio app
+Firebase 기반 **앱 개발 프로젝트별 문서·첨부·프롬프트·이슈** 관리 웹 앱입니다. Google 로그인 후 사용합니다.
 
-This contains everything you need to run your app locally.
+## 요구 사항
 
-View your app in AI Studio: https://ai.studio/apps/drive/1X2fIEmwOkhDe7ZQOlJB5thNVuS49tp_j
+- Node.js 18 이상 권장
+- Firebase 프로젝트(Firestore, Storage, Authentication — Google 제공자)
 
-## Run Locally
+## 로컬 실행
 
-**Prerequisites:**  Node.js
+1. 의존성 설치
 
+   ```bash
+   npm install
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+2. Firebase  
+   클라이언트 설정은 [`services/storage.ts`](services/storage.ts)에 있습니다. 운영 시에는 본인의 Firebase 설정으로 교체하고, **Firestore·Storage 보안 규칙**을 반드시 설정하세요. 점검 항목은 [`docs/260416-OPERATIONS_SECURITY_CHECKLIST.md`](docs/260416-OPERATIONS_SECURITY_CHECKLIST.md)를 참고합니다.
+
+3. 개발 서버
+
+   ```bash
+   npm run dev
+   ```
+
+4. 프로덕션 빌드
+
+   ```bash
+   npm run build
+   npm run preview
+   ```
+
+## 배포
+
+Vercel 등 정적 호스팅에 `dist`를 배포합니다. [`vercel.json`](vercel.json)에 SPA용 rewrite가 있습니다.
+
+## 문서
+
+- [종합 개발 보고서](docs/260416-개발보고서_docapp종합현황.md)
+- [장기 계획 — 문서 아키텍처](docs/260416-장기계획_문서아키텍처.md)
+- [첨부·인라인 이미지 정책](docs/260416-ATTACHMENTS_POLICY.md)
+- [에디터·저장 포맷 로드맵](docs/260416-EDITOR_ROADMAP.md)
+
+## 라이선스
+
+Private 프로젝트입니다.

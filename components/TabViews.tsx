@@ -8,6 +8,8 @@ import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note
 import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
+import { devLog, devWarn } from '../utils/devLog';
+import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -37,7 +39,7 @@ const renderMarkdownImages = (text: string): string => {
 
 /** 프롬프트/응답 미리보기 (이미지 렌더링) */
 const PromptPreview: React.FC<{ text: string; label?: string }> = ({ text, label }) => {
-  const html = renderMarkdownImages(text);
+  const html = sanitizePreviewHtml(renderMarkdownImages(text));
   if (!text.trim()) return null;
   return (
     <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3 text-sm">
@@ -1307,13 +1309,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log('[ReportView] 파일 선택 버튼 클릭 - 이벤트 발생 확인');
-                      console.log('[ReportView] fileInputRef:', fileInputRef.current);
+                      devLog('[ReportView] 파일 선택 버튼 클릭 - 이벤트 발생 확인');
+                      devLog('[ReportView] fileInputRef:', fileInputRef.current);
                       if (fileInputRef.current) {
-                        console.log('[ReportView] fileInputRef 존재, click() 호출');
+                        devLog('[ReportView] fileInputRef 존재, click() 호출');
                         try {
                           fileInputRef.current.click();
-                          console.log('[ReportView] input.click() 호출 완료');
+                          devLog('[ReportView] input.click() 호출 완료');
                         } catch (error) {
                           console.error('[ReportView] input.click() 호출 실패:', error);
                         }
@@ -3259,12 +3261,12 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
     }
 
     const fileId = crypto.randomUUID();
-    console.log('[ScreenshotView] 이미지 업로드 시작:', file.name, file.size);
+    devLog('[ScreenshotView] 이미지 업로드 시작:', file.name, file.size);
     setUploading(fileId);
     
     try {
       const fileInfo = await uploadFile(appId, 'screenshots', file);
-      console.log('[ScreenshotView] 이미지 업로드 성공:', fileInfo);
+      devLog('[ScreenshotView] 이미지 업로드 성공:', fileInfo);
       const newItem: Screenshot = {
         id: crypto.randomUUID(),
         appId,
@@ -3274,7 +3276,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
         updatedAt: Date.now()
       };
       await storage.screenshots.save(newItem);
-      console.log('[ScreenshotView] Firestore 저장 완료');
+      devLog('[ScreenshotView] Firestore 저장 완료');
       loadImages();
     } catch (error: any) {
       console.error('[ScreenshotView] 이미지 업로드 실패:', error);
@@ -3289,21 +3291,21 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[ScreenshotView] 파일 선택 이벤트 발생');
+    devLog('[ScreenshotView] 파일 선택 이벤트 발생');
     const files = Array.from(e.target.files || []) as File[];
-    console.log('[ScreenshotView] 선택된 파일 수:', files.length);
+    devLog('[ScreenshotView] 선택된 파일 수:', files.length);
     
     if (files.length === 0) {
-      console.warn('[ScreenshotView] 파일이 선택되지 않았습니다.');
+      devWarn('[ScreenshotView] 파일이 선택되지 않았습니다.');
       return;
     }
     
     for (const file of files) {
       if (file.type.startsWith('image/')) {
-        console.log('[ScreenshotView] 이미지 파일 처리:', file.name);
+        devLog('[ScreenshotView] 이미지 파일 처리:', file.name);
         await processFile(file);
       } else {
-        console.warn('[ScreenshotView] 이미지가 아닌 파일:', file.name, file.type);
+        devWarn('[ScreenshotView] 이미지가 아닌 파일:', file.name, file.type);
       }
     }
     
@@ -3447,7 +3449,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log('[ScreenshotView] 파일 선택 버튼 클릭 (빈 상태)');
+                    devLog('[ScreenshotView] 파일 선택 버튼 클릭 (빈 상태)');
                     fileInputRef.current?.click();
                   }}
                   className="text-primary hover:underline text-sm"
@@ -3507,7 +3509,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                     } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      console.log('[ScreenshotView] 드래그 영역 클릭 (갤러리)');
+                      devLog('[ScreenshotView] 드래그 영역 클릭 (갤러리)');
                       fileInputRef.current?.click();
                     }}
                   >

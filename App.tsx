@@ -7,15 +7,16 @@ import LoginPage from './components/LoginPage';
 import HelpPage from './components/HelpPage';
 import PrivacyPage from './components/PrivacyPage';
 import { Loader2 } from 'lucide-react';
+import { devLog } from './utils/devLog';
 
 // 인증이 필요한 라우트 보호 컴포넌트
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
 
-  console.log('[ProtectedRoute] 인증 상태 확인:', { user: user?.email || 'null', loading });
+  devLog('[ProtectedRoute] 인증 상태 확인:', { user: user?.email || 'null', loading });
 
   if (loading) {
-    console.log('[ProtectedRoute] 로딩 중...');
+    devLog('[ProtectedRoute] 로딩 중...');
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
@@ -27,21 +28,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!user) {
-    console.log('[ProtectedRoute] 사용자 없음, 로그인 페이지로 리다이렉트');
+    devLog('[ProtectedRoute] 사용자 없음, 로그인 페이지로 리다이렉트');
     return <Navigate to="/login" replace />;
   }
 
-  console.log('[ProtectedRoute] 인증된 사용자, 콘텐츠 표시');
+  devLog('[ProtectedRoute] 인증된 사용자, 콘텐츠 표시');
   return <>{children}</>;
 };
 
 const AppRoutes: React.FC = () => {
   const { user, loading } = useAuth();
 
-  console.log('[AppRoutes] 인증 상태:', { user: user?.email || 'null', loading, path: window.location.hash });
+  devLog('[AppRoutes] 인증 상태:', { user: user?.email || 'null', loading, path: window.location.hash });
 
   if (loading) {
-    console.log('[AppRoutes] 로딩 중...');
+    devLog('[AppRoutes] 로딩 중...');
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
@@ -60,15 +61,9 @@ const AppRoutes: React.FC = () => {
         path="/login" 
         element={
           user ? (
-            <>
-              {console.log('[AppRoutes] 로그인 페이지 접근, 이미 로그인됨, 대시보드로 리다이렉트')}
-              <Navigate to="/" replace />
-            </>
+            <Navigate to="/" replace />
           ) : (
-            <>
-              {console.log('[AppRoutes] 로그인 페이지 표시')}
-              <LoginPage />
-            </>
+            <LoginPage />
           )
         } 
       />
@@ -94,7 +89,7 @@ const AppRoutes: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  console.log('[App] 컴포넌트 렌더링 시작');
+  devLog('[App] 컴포넌트 렌더링 시작');
   
   return (
     <AuthProvider>

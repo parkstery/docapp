@@ -6,6 +6,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { auth } from './storage';
+import { devLog } from '../utils/devLog';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -14,10 +15,10 @@ const googleProvider = new GoogleAuthProvider();
  */
 export const signInWithGoogle = async (): Promise<User> => {
   try {
-    console.log('[AuthService] Google 로그인 시작');
+    devLog('[AuthService] Google 로그인 시작');
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
-    console.log('[AuthService] Google 로그인 성공:', user.email);
+    devLog('[AuthService] Google 로그인 성공:', user.email);
     return user;
   } catch (error: any) {
     console.error('[AuthService] Google 로그인 실패:', error);
@@ -30,9 +31,9 @@ export const signInWithGoogle = async (): Promise<User> => {
  */
 export const logout = async (): Promise<void> => {
   try {
-    console.log('[AuthService] 로그아웃 시작');
+    devLog('[AuthService] 로그아웃 시작');
     await signOut(auth);
-    console.log('[AuthService] 로그아웃 성공');
+    devLog('[AuthService] 로그아웃 성공');
   } catch (error: any) {
     console.error('[AuthService] 로그아웃 실패:', error);
     throw error;

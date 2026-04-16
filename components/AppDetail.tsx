@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, FileText, MessageSquare, StickyNote, ClipboardList, AlertTriangle, Image as ImageIcon, Loader2, ScrollText } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, MessageSquare, StickyNote, ClipboardList, AlertTriangle, Image as ImageIcon, Loader2, ScrollText, Search } from 'lucide-react';
 import { storage } from '../services/storage';
 import { AppProject } from '../types';
 import { PlanningView, ReportView, PromptView, MemoView, NoteView, IssueView, ScreenshotView } from './TabViews';
 import { FreeDocView } from './FreeDocView';
+import ProjectSearchModal from './ProjectSearchModal';
 
 type Tab = 'planning' | 'reports' | 'prompts' | 'memos' | 'free' | 'notes' | 'issues' | 'screenshots';
 
@@ -14,6 +15,7 @@ const AppDetail: React.FC = () => {
   const [app, setApp] = useState<AppProject | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('planning');
   const [loading, setLoading] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const fetchApp = async () => {
@@ -66,7 +68,22 @@ const AppDetail: React.FC = () => {
             <p className="text-xs text-slate-400">{app.platform} Development</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+        >
+          <Search size={18} />
+          통합 검색
+        </button>
       </header>
+
+      <ProjectSearchModal
+        appId={app.id}
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelectResult={(tabId) => setActiveTab(tabId as Tab)}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation */}
