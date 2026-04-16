@@ -864,7 +864,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                 </div>
               )}
             </div>
-            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -1510,7 +1510,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                 <div className="text-center py-12 text-slate-400 text-sm">등록된 보고서가 없습니다.</div>
               )}
             </div>
-            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -2155,7 +2155,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
               ))}
               {prompts.length === 0 && <div className="text-center py-12 text-slate-400 text-sm">로그가 없습니다.</div>}
             </div>
-            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -2716,7 +2716,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               ))}
               {memos.length === 0 && <div className="text-center py-12 text-slate-400 text-sm">작성된 참고가 없습니다.</div>}
             </div>
-            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>
@@ -3553,7 +3553,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
               ))}
               {issues.length === 0 && <div className="text-center py-12 text-slate-400 text-sm">등록된 이슈가 없습니다.</div>}
             </div>
-            <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
               </colgroup>

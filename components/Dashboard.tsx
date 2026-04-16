@@ -191,7 +191,7 @@ const Dashboard: React.FC = () => {
                 )}
               </div>
 
-              <table className="hidden lg:table min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <colgroup>
                   {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
                 </colgroup>
