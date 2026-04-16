@@ -1,6 +1,7 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { firebaseStorage, auth } from './storage';
 import { Timestamp } from 'firebase/firestore';
+import { devLog } from '../utils/devLog';
 
 export interface FileInfo {
   id: string;
@@ -24,7 +25,7 @@ export const uploadFile = async (
   file: File
 ): Promise<FileInfo> => {
   try {
-    console.log('[FileService] 업로드 시작:', { entityId, section, fileName: file.name, fileSize: file.size });
+    devLog('[FileService] 업로드 시작:', { entityId, section, fileName: file.name, fileSize: file.size });
     
     // Firebase Storage 초기화 확인
     if (!firebaseStorage) {
@@ -33,7 +34,7 @@ export const uploadFile = async (
     
     // 인증 상태 확인
     const currentUser = auth.currentUser;
-    console.log('[FileService] 현재 인증 상태:', currentUser ? {
+    devLog('[FileService] 현재 인증 상태:', currentUser ? {
       uid: currentUser.uid,
       email: currentUser.email,
       displayName: currentUser.displayName
@@ -49,18 +50,18 @@ export const uploadFile = async (
     const fileName = `${entityId}/${section}/${timestamp}_${encodedFileName}`;
     const storageRef = ref(firebaseStorage, fileName);
     
-    console.log('[FileService] Storage 경로:', fileName);
-    console.log('[FileService] 인증된 사용자로 업로드 시도:', currentUser.email);
-    console.log('[FileService] uploadBytes 시작...');
+    devLog('[FileService] Storage 경로:', fileName);
+    devLog('[FileService] 인증된 사용자로 업로드 시도:', currentUser.email);
+    devLog('[FileService] uploadBytes 시작...');
     
     // 파일 업로드
     await uploadBytes(storageRef, file);
-    console.log('[FileService] uploadBytes 완료');
+    devLog('[FileService] uploadBytes 완료');
     
     // 다운로드 URL 가져오기
-    console.log('[FileService] getDownloadURL 시작...');
+    devLog('[FileService] getDownloadURL 시작...');
     const downloadURL = await getDownloadURL(storageRef);
-    console.log('[FileService] getDownloadURL 완료:', downloadURL);
+    devLog('[FileService] getDownloadURL 완료:', downloadURL);
     
     const fileInfo: FileInfo = {
       id: `${timestamp}_${file.name}`,
@@ -71,7 +72,7 @@ export const uploadFile = async (
       date: timestamp,
     };
     
-    console.log('[FileService] 업로드 성공:', fileInfo);
+    devLog('[FileService] 업로드 성공:', fileInfo);
     return fileInfo;
   } catch (error: any) {
     console.error('[FileService] 업로드 실패:', error);
@@ -159,12 +160,12 @@ export const uploadFile = async (
  */
 export const deleteFile = async (fileURL: string): Promise<void> => {
   try {
-    console.log('[FileService] 파일 삭제 시작:', fileURL);
+    devLog('[FileService] 파일 삭제 시작:', fileURL);
     const filePath = getFilePathFromURL(fileURL);
-    console.log('[FileService] 추출된 경로:', filePath);
+    devLog('[FileService] 추출된 경로:', filePath);
     const fileRef = ref(firebaseStorage, filePath);
     await deleteObject(fileRef);
-    console.log('[FileService] 파일 삭제 완료');
+    devLog('[FileService] 파일 삭제 완료');
   } catch (error: any) {
     console.error('[FileService] 파일 삭제 실패:', error);
     console.error('[FileService] 에러 코드:', error.code);

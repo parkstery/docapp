@@ -83,7 +83,7 @@ export function useResizableColumns(
             cursor: 'col-resize',
             zIndex: 1,
           }}
-          className="hover:bg-indigo-200/50"
+          className="bg-transparent hover:bg-slate-500/10"
         />
       ) : null,
     [numColumns, handleMouseDown]

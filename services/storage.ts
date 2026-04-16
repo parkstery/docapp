@@ -13,6 +13,8 @@ import {
 import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 import { AppProject, PlanningDoc, Report, PromptLog, Memo, FreeDoc, Issue, Screenshot, Note } from '../types';
+import { devLog } from '../utils/devLog';
+import { withNormalizedAttachments } from './attachments';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDipTNPu4zT-03rjw-z21X2wiFgn4qGKqc",
@@ -29,12 +31,12 @@ import { getApp } from 'firebase/app';
 let app;
 try {
   app = initializeApp(firebaseConfig);
-  console.log('[Firebase] 앱 초기화 완료:', firebaseConfig.projectId);
+  devLog('[Firebase] 앱 초기화 완료:', firebaseConfig.projectId);
 } catch (error: any) {
   // 이미 초기화된 경우 기존 앱 사용
   if (error.code === 'app/duplicate-app') {
     app = getApp();
-    console.log('[Firebase] 기존 앱 인스턴스 사용');
+    devLog('[Firebase] 기존 앱 인스턴스 사용');
   } else {
     console.error('[Firebase] 초기화 실패:', error);
     throw error;
@@ -45,8 +47,8 @@ export const db = getFirestore(app);
 export const firebaseStorage = getStorage(app);
 export const auth = getAuth(app);
 
-console.log('[Firebase] Storage 초기화 완료:', firebaseConfig.storageBucket);
-console.log('[Firebase] Auth 초기화 완료');
+devLog('[Firebase] Storage 초기화 완료:', firebaseConfig.storageBucket);
+devLog('[Firebase] Auth 초기화 완료');
 
 // Helper: Fetch collection data, optionally filtering by appId and sorting by createdAt
 const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> => {
@@ -111,32 +113,32 @@ export const storage = {
   // Sub-modules
   planning: {
     list: (appId: string) => getCollection<PlanningDoc>('planning', appId),
-    save: (item: PlanningDoc) => saveDocument('planning', item),
+    save: (item: PlanningDoc) => saveDocument('planning', withNormalizedAttachments(item)),
     delete: (id: string) => deleteDocument('planning', id),
   },
   reports: {
     list: (appId: string) => getCollection<Report>('reports', appId),
-    save: (item: Report) => saveDocument('reports', item),
+    save: (item: Report) => saveDocument('reports', withNormalizedAttachments(item)),
     delete: (id: string) => deleteDocument('reports', id),
   },
   prompts: {
     list: (appId: string) => getCollection<PromptLog>('prompts', appId),
-    save: (item: PromptLog) => saveDocument('prompts', item),
+    save: (item: PromptLog) => saveDocument('prompts', withNormalizedAttachments(item)),
     delete: (id: string) => deleteDocument('prompts', id),
   },
   memos: {
     list: (appId: string) => getCollection<Memo>('memos', appId),
-    save: (item: Memo) => saveDocument('memos', item),
+    save: (item: Memo) => saveDocument('memos', withNormalizedAttachments(item)),
     delete: (id: string) => deleteDocument('memos', id),
   },
   freeDocs: {
     list: (appId: string) => getCollection<FreeDoc>('freeDocs', appId),
-    save: (item: FreeDoc) => saveDocument('freeDocs', item),
+    save: (item: FreeDoc) => saveDocument('freeDocs', withNormalizedAttachments(item)),
     delete: (id: string) => deleteDocument('freeDocs', id),
   },
   issues: {
     list: (appId: string) => getCollection<Issue>('issues', appId),
-    save: (item: Issue) => saveDocument('issues', item),
+    save: (item: Issue) => saveDocument('issues', withNormalizedAttachments(item)),
     delete: (id: string) => deleteDocument('issues', id),
   },
   screenshots: {
