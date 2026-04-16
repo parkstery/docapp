@@ -9,13 +9,48 @@ import TextStyle from '@tiptap/extension-text-style';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  Search, Loader2, Edit2, ArrowLeft, Code, AlignLeft,
+  Search, Loader2, Edit2, ArrowLeft,
   Bold, Italic, Heading2, List, ListOrdered, Undo2, Redo2, Strikethrough
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note } from '../types';
 import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
+
+function openMarkdownInBrowser(markdownText: string, title: string) {
+  const safeTitle = title || 'Markdown';
+  const md = markdownText ?? '';
+  const html = `<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${safeTitle.replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown.min.css" />
+    <style>
+      body { margin: 0; background: #fff; }
+      .markdown-body { box-sizing: border-box; min-width: 200px; max-width: 980px; margin: 0 auto; padding: 24px 16px 40px; }
+      @media (min-width: 768px) { .markdown-body { padding: 32px 24px 48px; } }
+    </style>
+  </head>
+  <body>
+    <article id="md" class="markdown-body"></article>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+    <script>
+      const raw = ${JSON.stringify(md)};
+      const el = document.getElementById('md');
+      try {
+        el.innerHTML = marked.parse(raw, { gfm: true, breaks: true });
+      } catch (e) {
+        el.textContent = raw;
+      }
+    </script>
+  </body>
+</html>`;
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  window.open(url, '_blank', 'noopener,noreferrer');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -690,6 +725,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
             <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors w-full sm:w-auto">
               목록으로
             </button>
+            <button
+              type="button"
+              onClick={() => openMarkdownInBrowser(editForm.content || '', editForm.title ? `기획서 - ${editForm.title}` : '기획서')}
+              className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors w-full sm:w-auto"
+            >
+              브라우저에서 Markdown 보기
+            </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
               <Save size={14}/> 저장
             </button>
@@ -721,24 +763,12 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">내용 (Markdown)</label>
-                <div className="flex border rounded-xl overflow-hidden min-h-[400px]">
-                  <textarea
-                    className="w-1/2 min-h-[400px] p-4 resize-none outline-none border-r font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
-                    placeholder="Markdown 작성..."
-                    value={editForm.content || ''}
-                    onChange={e => setEditForm({...editForm, content: e.target.value})}
-                  />
-                  <div className="w-1/2 p-4 overflow-y-auto prose prose-sm max-w-none prose-slate bg-white">
-                    {(editForm.content || '').split('\n').map((line, i) => {
-                      if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{line.replace('# ', '')}</h1>;
-                      if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{line.replace('## ', '')}</h2>;
-                      if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{line.replace('### ', '')}</h3>;
-                      if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{line.replace('- ', '')}</li>;
-                      if (line.trim() === '') return <div key={i} className="h-4" />;
-                      return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{line}</p>;
-                    })}
-                  </div>
-                </div>
+                <textarea
+                  className="w-full min-h-[400px] p-4 resize-none outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
+                  placeholder="Markdown 작성..."
+                  value={editForm.content || ''}
+                  onChange={e => setEditForm({...editForm, content: e.target.value})}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
@@ -989,8 +1019,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
-  const [isMarkupMode, setIsMarkupMode] = useState(false);
-  const [markupSubMode, setMarkupSubMode] = useState<'view' | 'edit'>('view');
   const [editSummaryHtml, setEditSummaryHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
@@ -1007,8 +1035,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const handleBackToList = () => {
     setSelectedReportId(null);
     setEditForm({});
-    setIsMarkupMode(false);
-    setMarkupSubMode('view');
     setEditSummaryHtml('');
   };
 
@@ -1132,7 +1158,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
         appId,
         title: editForm.title.trim(),
         type: editForm.type || 'Other',
-        summary: isMarkupMode ? (editForm.summary || '') : editSummaryHtml,
+        summary: editSummaryHtml,
         createdAt: editForm.createdAt ?? Date.now(),
         updatedAt: Date.now(),
       };
@@ -1244,28 +1270,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
             <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
             <button
               type="button"
-              onClick={() => {
-                if (isMarkupMode) {
-                  setEditSummaryHtml(editForm.summary || '');
-                  setIsMarkupMode(false);
-                  setMarkupSubMode('view');
-                } else {
-                  setEditForm((prev) => ({ ...prev, summary: editSummaryHtml }));
-                  setIsMarkupMode(true);
-                  setMarkupSubMode('edit');
-                }
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 hover:border-slate-400 transition-colors"
+              onClick={() => openMarkdownInBrowser(editForm.summary || '', editForm.title ? `보고서 - ${editForm.title}` : '보고서')}
+              className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors"
             >
-              {isMarkupMode ? (
-                <>
-                  <AlignLeft size={14} /> 일반 편집
-                </>
-              ) : (
-                <>
-                  <Code size={14} /> 마크업
-                </>
-              )}
+              브라우저에서 Markdown 보기
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
@@ -1278,88 +1286,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
           <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
-            {isMarkupMode ? (
-              /* 마크업 전용 페이지: 보기/편집 전환 */
-              <div className="flex flex-col h-full min-h-[28rem]">
-                <div className="flex items-center justify-between gap-2 mb-3 py-2 border-b border-slate-200">
-                  <span className="text-sm font-medium text-slate-700">Markup 문서</span>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setMarkupSubMode('view')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${markupSubMode === 'view' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      보기
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMarkupSubMode('edit')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${markupSubMode === 'edit' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      <Edit2 size={14} /> 편집
-                    </button>
-                  </div>
-                </div>
-                {markupSubMode === 'edit' ? (
-                  <div className="flex flex-col flex-1 min-h-[28rem]">
-                    <label className="block text-xs text-slate-500 mb-1">Markdown 등 마크업 문법으로 직접 편집 (# 제목, ## 소제목, - 목록, **굵게** 등)</label>
-                    <textarea
-                      className="flex-1 w-full min-h-[26rem] p-4 border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500 outline-none resize-none"
-                      placeholder="# 제목\n\n## 소제목\n\n- 목록 항목\n- 두 번째 항목\n\n**굵게** 또는 *기울임*"
-                      value={editForm.summary || ''}
-                      onChange={e => setEditForm({ ...editForm, summary: e.target.value })}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-1 p-4 overflow-y-auto rounded-xl border border-slate-200 bg-white prose prose-sm max-w-none prose-slate min-h-[28rem]">
-                    {(editForm.summary || '').trim() ? (
-                      (editForm.summary || '').split('\n').map((line, i) => {
-                        const renderInline = (text: string) => {
-                          const parts: React.ReactNode[] = [];
-                          let rest = text;
-                          let key = 0;
-                          while (rest.length > 0) {
-                            const b = rest.indexOf('**');
-                            const u = rest.indexOf('*');
-                            if (b >= 0 && (u < 0 || b <= u)) {
-                              const end = rest.indexOf('**', b + 2);
-                              if (end >= 0) {
-                                if (b > 0) parts.push(rest.slice(0, b));
-                                parts.push(<strong key={key++}>{rest.slice(b + 2, end)}</strong>);
-                                rest = rest.slice(end + 2);
-                                continue;
-                              }
-                            }
-                            if (u >= 0) {
-                              const end = rest.indexOf('*', u + 1);
-                              if (end >= 0 && end !== u + 1) {
-                                if (u > 0) parts.push(rest.slice(0, u));
-                                parts.push(<em key={key++}>{rest.slice(u + 1, end)}</em>);
-                                rest = rest.slice(end + 1);
-                                continue;
-                              }
-                            }
-                            parts.push(rest);
-                            break;
-                          }
-                          return <>{parts}</>;
-                        };
-                        if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mb-4 text-slate-800">{renderInline(line.replace('# ', ''))}</h1>;
-                        if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mb-3 mt-4 text-slate-800">{renderInline(line.replace('## ', ''))}</h2>;
-                        if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mb-2 mt-3 text-slate-800">{renderInline(line.replace('### ', ''))}</h3>;
-                        if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc marker:text-slate-400">{renderInline(line.replace('- ', ''))}</li>;
-                        if (line.trim() === '') return <div key={i} className="h-4" />;
-                        return <p key={i} className="mb-2 text-slate-600 leading-relaxed">{renderInline(line)}</p>;
-                      })
-                    ) : (
-                      <p className="text-slate-400">내용이 없습니다. 상단에서 &quot;편집&quot;을 눌러 작성하거나 붙여넣기 하세요.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* 일반 편집: 제목, 유형, 요약, 첨부파일 */
-              <>
+            <>
                 <div className="mb-2 pb-2 border-b">
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
                     <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
@@ -1440,8 +1367,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     )}
                   </div>
                 </div>
-              </>
-            )}
+            </>
           </div>
         </div>
       </div>
