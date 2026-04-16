@@ -21,7 +21,48 @@ function openMarkdownInBrowser(title: string, markdown: string): void {
     alert('표시할 Markdown 내용이 없습니다.');
     return;
   }
-  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+  const safeTitle = title || 'Markdown';
+  const markdownJson = JSON.stringify(text);
+  const titleJson = JSON.stringify(safeTitle);
+  const html = `<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${safeTitle}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown.min.css" />
+  <style>
+    body { margin: 0; background: #f8fafc; color: #0f172a; }
+    .markdown-body {
+      box-sizing: border-box;
+      min-width: 200px;
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 24px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <article id="md-root" class="markdown-body"></article>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    const title = ${titleJson};
+    const markdown = ${markdownJson};
+    const root = document.getElementById('md-root');
+    if (!root) throw new Error('root not found');
+    if (window.marked && typeof window.marked.parse === 'function') {
+      root.innerHTML = '<h1>' + title + '</h1>' + window.marked.parse(markdown);
+    } else {
+      root.innerHTML = '<h1>' + title + '</h1><pre></pre>';
+      root.querySelector('pre').textContent = markdown;
+    }
+  </script>
+</body>
+</html>`;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const opened = window.open(url, '_blank', 'noopener,noreferrer');
   if (!opened) {
