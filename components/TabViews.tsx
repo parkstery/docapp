@@ -782,7 +782,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               onClick={() => openMarkdownInBrowser(editForm.content || '', editForm.title ? `기획서 - ${editForm.title}` : '기획서')}
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors w-full sm:w-auto"
             >
-              브라우저에서 Markdown 보기
+              .md 보기
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
               <Save size={14}/> 저장
@@ -1375,7 +1375,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               onClick={() => openMarkdownInBrowser(editForm.summary || '', editForm.title ? `보고서 - ${editForm.title}` : '보고서')}
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors"
             >
-              브라우저에서 Markdown 보기
+              .md 보기
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
