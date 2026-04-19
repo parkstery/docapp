@@ -50,7 +50,32 @@ export const auth = getAuth(app);
 devLog('[Firebase] Storage 초기화 완료:', firebaseConfig.storageBucket);
 devLog('[Firebase] Auth 초기화 완료');
 
-// Helper: Fetch collection data, optionally filtering by appId and sorting by createdAt
+/** Firestore/레거시 문서에서 시각을 밀리초 숫자로 통일 */
+const toMillis = (value: unknown): number => {
+  if (value == null) return 0;
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  if (typeof value === 'object' && value !== null && typeof (value as { toMillis?: () => number }).toMillis === 'function') {
+    try {
+      return (value as { toMillis: () => number }).toMillis();
+    } catch {
+      return 0;
+    }
+  }
+  if (typeof value === 'object' && value !== null && 'seconds' in value) {
+    const s = (value as { seconds?: number }).seconds;
+    return typeof s === 'number' ? s * 1000 : 0;
+  }
+  return 0;
+};
+
+/** 목록 상단: 가장 최근에 작성·수정된 레코드 우선 (앱 목록은 createdAt만 있는 경우 동일) */
+const recencyMillis = (item: Record<string, unknown>): number => {
+  const created = toMillis(item.createdAt);
+  const updated = toMillis(item.updatedAt);
+  return Math.max(created, updated);
+};
+
+// Helper: Fetch collection data, optionally filtering by appId and sorting by recency
 const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> => {
   try {
     const colRef = collection(db, colName);
@@ -66,7 +91,7 @@ const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> =
     const data = snapshot.docs.map(doc => doc.data() as T);
     
     // Sort in memory to avoid needing composite indexes for every combination right away
-    return data.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+    return data.sort((a: any, b: any) => recencyMillis(b) - recencyMillis(a));
   } catch (error) {
     console.error(`Error getting collection ${colName}:`, error);
     return [];
