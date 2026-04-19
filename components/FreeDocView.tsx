@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
-import { Extension } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import TextStyle from '@tiptap/extension-text-style';
 import {
   ArrowLeft,
   Bold,
@@ -28,30 +26,11 @@ import { FileInfo, FreeDoc } from '../types';
 import { storage } from '../services/storage';
 import { deleteFile, uploadFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
+import { useListRowReorder } from '../hooks/useListRowReorder';
+import { ListRowReorderButtons } from './ListRowReorderButtons';
+import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const FONT_SIZE_OPTIONS = ['12px', '14px', '16px', '18px', '20px', '24px', '28px'];
-
-const FontSize = Extension.create({
-  name: 'fontSize',
-  addGlobalAttributes() {
-    return [
-      {
-        types: ['textStyle'],
-        attributes: {
-          fontSize: {
-            default: null,
-            parseHTML: (element: HTMLElement) => element.style.fontSize || null,
-            renderHTML: (attributes: { fontSize?: string | null }) => {
-              if (!attributes.fontSize) return {};
-              return { style: `font-size: ${attributes.fontSize}` };
-            },
-          },
-        },
-      },
-    ];
-  },
-});
 
 function stripHtml(html: string): string {
   if (!html) return '';
@@ -135,8 +114,6 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
       StarterKit.configure({
         heading: { levels: [2, 3] },
       }),
-      TextStyle,
-      FontSize,
       Image.configure({
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded border border-slate-200 my-2',
@@ -207,17 +184,6 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
 
   const runImagePick = () => {
     imageInputRef.current?.click();
-  };
-
-  const currentFontSize = (editor.getAttributes('textStyle')?.fontSize as string) || '16px';
-
-  const applyFontSize = (size: string) => {
-    editor.chain().focus().setMark('textStyle', { fontSize: size }).run();
-    const markType = editor.state.schema.marks.textStyle;
-    if (markType) {
-      const tr = editor.state.tr.addStoredMark(markType.create({ fontSize: size }));
-      editor.view.dispatch(tr);
-    }
   };
 
   const onImageInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,22 +270,6 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
           <ListOrdered size={16} />
         </button>
         <span className="w-px h-6 bg-slate-200 mx-1" />
-        <select
-          value={currentFontSize}
-          disabled={disabled}
-          onChange={(e) => {
-            applyFontSize(e.target.value);
-          }}
-          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700 disabled:opacity-40"
-          title="글자 크기"
-        >
-          {FONT_SIZE_OPTIONS.map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
-        <span className="w-px h-6 bg-slate-200 mx-1" />
         <button
           type="button"
           onClick={runImagePick}
@@ -393,10 +343,12 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [draggingDocId, setDraggingDocId] = useState<string | null>(null);
-  const [dragOverDocId, setDragOverDocId] = useState<string | null>(null);
-  const [reordering, setReordering] = useState(false);
-  const resize = useResizableColumns(5, [18, 22, 172, 252, 100]);
+  const resize = useResizableColumns(6, [44, 52, 200, 268, 112, 52]);
+  const { ordered: orderedDocs, move: moveFreeRow, moving: freeReorderBusy } = useListRowReorder(
+    docs,
+    setDocs,
+    (row) => storage.freeDocs.save(row)
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -412,46 +364,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const loadDocs = async () => {
     setLoading(true);
     const list = await storage.freeDocs.list(appId);
-    const hasOrder = list.some((d) => typeof d.order === 'number');
-    const sorted = hasOrder
-      ? [...list].sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER))
-      : [...list].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    setDocs(sorted);
+    setDocs(sortTabListItems(list));
     setLoading(false);
-  };
-
-  const normalizeDocOrder = (list: FreeDoc[]) => list.map((d, index) => ({ ...d, order: index }));
-
-  const moveDoc = (list: FreeDoc[], fromId: string, toId: string): FreeDoc[] => {
-    const fromIndex = list.findIndex((d) => d.id === fromId);
-    const toIndex = list.findIndex((d) => d.id === toId);
-    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return list;
-    const next = [...list];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    return next;
-  };
-
-  const persistOrder = async (ordered: FreeDoc[]) => {
-    const normalized = normalizeDocOrder(ordered);
-    setDocs(normalized);
-    setReordering(true);
-    try {
-      await Promise.all(
-        normalized.map((d) =>
-          storage.freeDocs.save({
-            ...d,
-            updatedAt: Date.now(),
-          })
-        )
-      );
-    } catch (error) {
-      console.error('[FreeDoc] 순서 저장 실패:', error);
-      alert('순서 저장에 실패했습니다.');
-      await loadDocs();
-    } finally {
-      setReordering(false);
-    }
   };
 
   const openModal = () => {
@@ -510,9 +424,9 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
         fileInfoList: getFileList(form),
-        order: docs.length,
       };
-      await storage.freeDocs.save(item);
+      const toSave = withListSortRankForCreate(sortTabListItems(docs), item);
+      await storage.freeDocs.save(toSave);
       loadDocs();
       setIsModalOpen(false);
       setForm({});
@@ -541,8 +455,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now(),
         fileInfoList: getFileList(editForm),
-        order: editForm.order,
       };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       await storage.freeDocs.save(item);
       loadDocs();
       setEditForm(item);
@@ -562,15 +476,15 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === docs.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(docs.map((d) => d.id)));
+    if (selectedIds.size === orderedDocs.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(orderedDocs.map((d) => d.id)));
   };
 
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개를 삭제하시겠습니까?`)) return;
     for (const id of selectedIds) {
-      const doc = docs.find((d) => d.id === id);
+      const doc = orderedDocs.find((d) => d.id === id);
       for (const f of getFileList(doc)) {
         try {
           await deleteFile(f.url);
@@ -670,35 +584,6 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
     }
   };
 
-  const handleRowDragStart = (docId: string) => {
-    setDraggingDocId(docId);
-    setDragOverDocId(docId);
-  };
-
-  const handleRowDragOver = (e: React.DragEvent, targetDocId: string) => {
-    e.preventDefault();
-    if (dragOverDocId !== targetDocId) setDragOverDocId(targetDocId);
-  };
-
-  const handleRowDrop = async (e: React.DragEvent, targetDocId: string) => {
-    e.preventDefault();
-    if (!draggingDocId) return;
-    if (draggingDocId === targetDocId) {
-      setDraggingDocId(null);
-      setDragOverDocId(null);
-      return;
-    }
-    const reordered = moveDoc(docs, draggingDocId, targetDocId);
-    setDraggingDocId(null);
-    setDragOverDocId(null);
-    await persistOrder(reordered);
-  };
-
-  const handleRowDragEnd = () => {
-    setDraggingDocId(null);
-    setDragOverDocId(null);
-  };
-
   if (selectedId && editForm.id) {
     return (
       <>
@@ -708,8 +593,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         )}
         <div className="h-full flex flex-col">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-            <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleBackToList}
@@ -724,7 +609,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleBackToList}
@@ -751,7 +636,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-            <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
+            <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
               <div className="mb-2 pb-2 border-b">
                 <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
                   <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
@@ -825,14 +710,9 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+      <div className="flex justify-between items-center mb-4">
         <h3 className="font-bold text-lg text-slate-800">프리</h3>
-        <div className="flex flex-wrap gap-2">
-          {reordering && (
-            <span className="text-xs text-slate-500 flex items-center gap-1">
-              <Loader2 className="animate-spin" size={12} /> 순서 저장 중…
-            </span>
-          )}
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={openModal}
@@ -859,138 +739,86 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               <Loader2 className="animate-spin" /> 로딩 중…
             </div>
           ) : (
-            <>
-              <div className="lg:hidden p-3 space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <label className="flex items-center gap-2 text-sm text-slate-600">
+            <table className="report-table-separators min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0]" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                {resize.widths.map((_, i) => (
+                  <col key={i} style={resize.getColStyle(i)} />
+                ))}
+              </colgroup>
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
-                      checked={docs.length > 0 && selectedIds.size === docs.length}
+                      checked={orderedDocs.length > 0 && selectedIds.size === orderedDocs.length}
                       onChange={handleSelectAll}
+                      onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                     />
-                    전체 선택
-                  </label>
-                </div>
-                {docs.map((d, index) => (
-                  <div
-                    key={d.id}
-                    draggable
-                    onDragStart={() => handleRowDragStart(d.id)}
-                    onDragOver={(e) => handleRowDragOver(e, d.id)}
-                    onDrop={(e) => void handleRowDrop(e, d.id)}
-                    onDragEnd={handleRowDragEnd}
-                    className={`border rounded-lg p-3 bg-white transition-colors ${
-                      dragOverDocId === d.id ? 'border-violet-400 bg-violet-50' : 'border-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleSelect(d)}
-                        className="text-left min-w-0 flex-1"
-                      >
-                        <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {d.title}</p>
-                        <p className="text-xs text-slate-500 mt-1">{new Date(d.createdAt).toLocaleDateString()}</p>
-                        <p className="text-sm text-slate-600 mt-2 truncate">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</p>
-                      </button>
+                    <resize.ResizeHandle columnIndex={0} />
+                  </th>
+                  <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    No.<resize.ResizeHandle columnIndex={1} />
+                  </th>
+                  <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Title<resize.ResizeHandle columnIndex={2} />
+                  </th>
+                  <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Preview<resize.ResizeHandle columnIndex={3} />
+                  </th>
+                  <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Date<resize.ResizeHandle columnIndex={4} />
+                  </th>
+                  <th style={resize.getThStyle(5)} className="report-col-actions text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    순서
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {orderedDocs.map((d, index) => (
+                  <tr key={d.id} className="hover:bg-violet-50/60 group transition-colors">
+                    <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(d.id)}
                         onChange={() => handleToggleSelect(d.id)}
-                        className="mt-1 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       />
-                    </div>
-                  </div>
-                ))}
-                {docs.length === 0 && (
-                  <div className="text-center py-12 text-slate-400 text-sm">
-                    작성된 프리 문서가 없습니다.
-                  </div>
-                )}
-              </div>
-
-              <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
-                <colgroup>
-                  {resize.widths.map((_, i) => (
-                    <col key={i} style={resize.getColStyle(i)} />
-                  ))}
-                </colgroup>
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th style={resize.getThStyle(0)} className="px-6 py-3 report-col-tight report-col-center">
-                      <div className="flex items-center justify-center">
-                        <input
-                          type="checkbox"
-                          checked={docs.length > 0 && selectedIds.size === docs.length}
-                          onChange={handleSelectAll}
-                          onClick={(e) => e.stopPropagation()}
-                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                        />
-                      </div>
-                      <resize.ResizeHandle columnIndex={0} />
-                    </th>
-                    <th style={resize.getThStyle(1)} className="px-6 py-3 report-col-tight report-col-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      <div className="flex items-center justify-center">No.</div>
-                      <resize.ResizeHandle columnIndex={1} />
-                    </th>
-                    <th style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Title<resize.ResizeHandle columnIndex={2} />
-                    </th>
-                    <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Preview<resize.ResizeHandle columnIndex={3} />
-                    </th>
-                    <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Date<resize.ResizeHandle columnIndex={4} />
-                    </th>
+                    </td>
+                    <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
+                      {index + 1}
+                    </td>
+                    <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelect(d)}>
+                      <div className="text-sm font-medium text-slate-900 truncate text-left" title={d.title}>{d.title}</div>
+                    </td>
+                    <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelect(d)}>
+                      <div className="text-sm text-slate-600 line-clamp-2 text-left">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</div>
+                    </td>
+                    <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
+                      {new Date(d.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="report-col-actions text-center align-middle">
+                      <ListRowReorderButtons
+                        variant="violet"
+                        busy={freeReorderBusy}
+                        disableUp={index === 0}
+                        disableDown={index === orderedDocs.length - 1}
+                        onMoveUp={() => void moveFreeRow(d.id, 'up')}
+                        onMoveDown={() => void moveFreeRow(d.id, 'down')}
+                      />
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {docs.map((d, index) => (
-                  <tr
-                    key={d.id}
-                    draggable
-                    onDragStart={() => handleRowDragStart(d.id)}
-                    onDragOver={(e) => handleRowDragOver(e, d.id)}
-                    onDrop={(e) => void handleRowDrop(e, d.id)}
-                    onDragEnd={handleRowDragEnd}
-                    className={`group transition-colors cursor-move ${
-                      dragOverDocId === d.id ? 'bg-violet-100/70' : 'hover:bg-violet-50/60'
-                    }`}
-                  >
-                      <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(d.id)}
-                          onChange={() => handleToggleSelect(d.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
-                        {index + 1}
-                      </td>
-                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
-                        <div className="text-sm font-medium text-slate-900">{d.title}</div>
-                      </td>
-                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelect(d)}>
-                        <div className="text-sm text-slate-600 line-clamp-2">{stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
-                        {new Date(d.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                  {docs.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="text-center py-12 text-slate-400">
-                        작성된 프리 문서가 없습니다.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </>
+                ))}
+                {orderedDocs.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center py-12 text-slate-400">
+                      작성된 프리 문서가 없습니다.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
@@ -1000,24 +828,11 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 프리 작성</h3>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
-                  취소
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={uploading}
-                  className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                >
-                  저장
-                </button>
-                <button type="button" onClick={() => setIsModalOpen(false)} aria-label="닫기">
-                  <X size={20} className="text-slate-400 hover:text-slate-600" />
-                </button>
-              </div>
+              <button type="button" onClick={() => setIsModalOpen(false)} aria-label="닫기">
+                <X size={20} className="text-slate-400 hover:text-slate-600" />
+              </button>
             </div>
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
               {uploading && (
                 <p className="text-xs text-violet-600 flex items-center gap-1">
                   <Loader2 className="animate-spin" size={14} /> 이미지 업로드 중…
@@ -1079,6 +894,19 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                   </div>
                 )}
               </div>
+            </div>
+            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={uploading}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                저장
+              </button>
             </div>
           </div>
         </div>

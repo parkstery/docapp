@@ -13,6 +13,8 @@ export interface BaseItem {
   title: string;
   createdAt: number;
   updatedAt: number;
+  /** 목록 수동 순서(작을수록 위). 없으면 작성·수정 시각으로만 정렬 */
+  listSortRank?: number;
 }
 
 export interface PlanningDoc extends BaseItem {

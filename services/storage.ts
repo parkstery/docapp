@@ -14,6 +14,8 @@ import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 import { AppProject, PlanningDoc, Report, PromptLog, Memo, FreeDoc, Issue, Screenshot, Note } from '../types';
 import { devLog } from '../utils/devLog';
+import { recencyMillis } from '../utils/itemRecency';
+import { sortTabListItems } from '../utils/listRowOrder';
 import { withNormalizedAttachments } from './attachments';
 
 const firebaseConfig = {
@@ -50,7 +52,7 @@ export const auth = getAuth(app);
 devLog('[Firebase] Storage 초기화 완료:', firebaseConfig.storageBucket);
 devLog('[Firebase] Auth 초기화 완료');
 
-// Helper: Fetch collection data, optionally filtering by appId and sorting by createdAt
+// Helper: Fetch collection data, optionally filtering by appId and sorting
 const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> => {
   try {
     const colRef = collection(db, colName);
@@ -66,7 +68,10 @@ const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> =
     const data = snapshot.docs.map(doc => doc.data() as T);
     
     // Sort in memory to avoid needing composite indexes for every combination right away
-    return data.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+    if (appId) {
+      return sortTabListItems(data as any) as T[];
+    }
+    return data.sort((a: any, b: any) => recencyMillis(b) - recencyMillis(a));
   } catch (error) {
     console.error(`Error getting collection ${colName}:`, error);
     return [];
