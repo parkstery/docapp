@@ -26,6 +26,9 @@ import { FileInfo, FreeDoc } from '../types';
 import { storage } from '../services/storage';
 import { deleteFile, uploadFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
+import { useListRowReorder } from '../hooks/useListRowReorder';
+import { ListRowReorderButtons } from './ListRowReorderButtons';
+import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -340,7 +343,12 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const resize = useResizableColumns(5, [44, 52, 200, 268, 112]);
+  const resize = useResizableColumns(6, [44, 52, 200, 268, 112, 52]);
+  const { ordered: orderedDocs, move: moveFreeRow, moving: freeReorderBusy } = useListRowReorder(
+    docs,
+    setDocs,
+    (row) => storage.freeDocs.save(row)
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -355,7 +363,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
 
   const loadDocs = async () => {
     setLoading(true);
-    setDocs(await storage.freeDocs.list(appId));
+    const list = await storage.freeDocs.list(appId);
+    setDocs(sortTabListItems(list));
     setLoading(false);
   };
 
@@ -416,7 +425,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
         updatedAt: Date.now(),
         fileInfoList: getFileList(form),
       };
-      await storage.freeDocs.save(item);
+      const toSave = withListSortRankForCreate(sortTabListItems(docs), item);
+      await storage.freeDocs.save(toSave);
       loadDocs();
       setIsModalOpen(false);
       setForm({});
@@ -446,6 +456,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
         updatedAt: Date.now(),
         fileInfoList: getFileList(editForm),
       };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       await storage.freeDocs.save(item);
       loadDocs();
       setEditForm(item);
@@ -465,15 +476,15 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === docs.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(docs.map((d) => d.id)));
+    if (selectedIds.size === orderedDocs.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(orderedDocs.map((d) => d.id)));
   };
 
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개를 삭제하시겠습니까?`)) return;
     for (const id of selectedIds) {
-      const doc = docs.find((d) => d.id === id);
+      const doc = orderedDocs.find((d) => d.id === id);
       for (const f of getFileList(doc)) {
         try {
           await deleteFile(f.url);
@@ -739,7 +750,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
-                      checked={docs.length > 0 && selectedIds.size === docs.length}
+                      checked={orderedDocs.length > 0 && selectedIds.size === orderedDocs.length}
                       onChange={handleSelectAll}
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
@@ -758,11 +769,13 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Date<resize.ResizeHandle columnIndex={4} />
                   </th>
-                  
+                  <th style={resize.getThStyle(5)} className="report-col-actions text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    순서
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {docs.map((d, index) => (
+                {orderedDocs.map((d, index) => (
                   <tr key={d.id} className="hover:bg-violet-50/60 group transition-colors">
                     <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -785,11 +798,21 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelect(d)}>
                       {new Date(d.createdAt).toLocaleDateString()}
                     </td>
+                    <td className="report-col-actions text-center align-middle">
+                      <ListRowReorderButtons
+                        variant="violet"
+                        busy={freeReorderBusy}
+                        disableUp={index === 0}
+                        disableDown={index === orderedDocs.length - 1}
+                        onMoveUp={() => void moveFreeRow(d.id, 'up')}
+                        onMoveDown={() => void moveFreeRow(d.id, 'down')}
+                      />
+                    </td>
                   </tr>
                 ))}
-                {docs.length === 0 && (
+                {orderedDocs.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="text-center py-12 text-slate-400">
+                    <td colSpan={6} className="text-center py-12 text-slate-400">
                       작성된 프리 문서가 없습니다.
                     </td>
                   </tr>

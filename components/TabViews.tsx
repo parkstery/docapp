@@ -8,6 +8,9 @@ import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note
 import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
+import { useListRowReorder } from '../hooks/useListRowReorder';
+import { ListRowReorderButtons } from './ListRowReorderButtons';
+import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 import { devLog, devWarn } from '../utils/devLog';
 import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 
@@ -289,7 +292,12 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [44, 52, 180, 240, 88, 104]);
+  const resize = useResizableColumns(7, [44, 52, 180, 240, 88, 104, 52]);
+  const { ordered: orderedDocs, move: movePlanningRow, moving: planningReorderBusy } = useListRowReorder(
+    docs,
+    setDocs,
+    (row) => storage.planning.save(row)
+  );
 
   useEffect(() => {
     loadDocs();
@@ -298,7 +306,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const loadDocs = async () => {
     setLoading(true);
     const list = await storage.planning.list(appId);
-    setDocs(list);
+    setDocs(sortTabListItems(list));
     if (selectedDocId && !list.find(d => d.id === selectedDocId)) {
       setSelectedDocId(null);
       setEditForm({});
@@ -334,11 +342,12 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    await storage.planning.save(newDoc);
+    const toSave = withListSortRankForCreate(sortTabListItems(docs), newDoc);
+    await storage.planning.save(toSave);
     loadDocs();
     setIsModalOpen(false);
     setForm({ title: '' });
-    handleSelectDoc(newDoc);
+    handleSelectDoc(toSave);
   };
 
   const handleEditSave = async () => {
@@ -354,6 +363,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       createdAt: editForm.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
+    if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
     const list = getFileList(editForm);
     if (list.length) item.fileInfoList = list;
     await storage.planning.save(item);
@@ -384,15 +394,15 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === docs.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(docs.map(d => d.id)));
+    if (selectedIds.size === orderedDocs.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(orderedDocs.map(d => d.id)));
   };
 
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
     for (const id of selectedIds) {
-      const doc = docs.find(d => d.id === id);
+      const doc = orderedDocs.find(d => d.id === id);
       for (const f of getFileList(doc)) {
         try { await deleteFile(f.url); } catch (err) { console.error('파일 삭제 실패:', err); }
       }
@@ -631,7 +641,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
-                      checked={docs.length > 0 && selectedIds.size === docs.length}
+                      checked={orderedDocs.length > 0 && selectedIds.size === orderedDocs.length}
                       onChange={handleSelectAll}
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-primary focus:ring-primary"
@@ -643,10 +653,11 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {docs.map((doc, index) => (
+                {orderedDocs.map((doc, index) => (
                   <tr key={doc.id} className="hover:bg-indigo-50/50 group transition-colors">
                     <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -680,11 +691,20 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {new Date(doc.updatedAt).toLocaleDateString()}
                     </td>
+                    <td className="report-col-actions text-center align-middle">
+                      <ListRowReorderButtons
+                        busy={planningReorderBusy}
+                        disableUp={index === 0}
+                        disableDown={index === orderedDocs.length - 1}
+                        onMoveUp={() => void movePlanningRow(doc.id, 'up')}
+                        onMoveDown={() => void movePlanningRow(doc.id, 'down')}
+                      />
+                    </td>
                   </tr>
                 ))}
-                {docs.length === 0 && (
+                {orderedDocs.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-400">
+                    <td colSpan={7} className="text-center py-12 text-slate-400">
                       등록된 기획서가 없습니다. 작성하기를 눌러 시작하세요.
                     </td>
                   </tr>
@@ -741,13 +761,19 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [44, 52, 96, 168, 204, 88, 104]);
+  const resize = useResizableColumns(8, [44, 52, 96, 168, 204, 88, 104, 52]);
+  const { ordered: orderedReports, move: moveReportRow, moving: reportReorderBusy } = useListRowReorder(
+    reports,
+    setReports,
+    (row) => storage.reports.save(row)
+  );
 
   useEffect(() => { loadReports(); }, [appId]);
   
   const loadReports = async () => {
     setLoading(true);
-    setReports(await storage.reports.list(appId));
+    const list = await storage.reports.list(appId);
+    setReports(sortTabListItems(list));
     setLoading(false);
   };
 
@@ -856,7 +882,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       };
       const list = getFileList(form);
       if (list.length) item.fileInfoList = list;
-      await storage.reports.save(item as Report);
+      const toSave = withListSortRankForCreate(sortTabListItems(reports), item as Report);
+      await storage.reports.save(toSave);
       setIsModalOpen(false);
       setForm({});
       loadReports();
@@ -881,6 +908,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: editForm.createdAt ?? Date.now(),
         updatedAt: Date.now(),
       };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
       await storage.reports.save(item as Report);
@@ -917,10 +945,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === reports.length) {
+    if (selectedIds.size === orderedReports.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(reports.map(r => r.id)));
+      setSelectedIds(new Set(orderedReports.map(r => r.id)));
     }
   };
 
@@ -928,7 +956,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
     for (const id of selectedIds) {
-      const report = reports.find(r => r.id === id);
+      const report = orderedReports.find(r => r.id === id);
       for (const f of getFileList(report)) {
         try { await deleteFile(f.url); } catch (error) { console.error('파일 삭제 실패:', error); }
       }
@@ -1129,7 +1157,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                     <div className="flex items-center gap-2 justify-center">
                       <input
                         type="checkbox"
-                        checked={reports.length > 0 && selectedIds.size === reports.length}
+                        checked={orderedReports.length > 0 && selectedIds.size === orderedReports.length}
                         onChange={handleSelectAll}
                         onClick={(e) => e.stopPropagation()}
                         className="rounded border-slate-300 text-primary focus:ring-primary"
@@ -1144,10 +1172,11 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Summary<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={5} /></th>
                   <th style={resize.getThStyle(6)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={6} /></th>
+                  <th style={resize.getThStyle(7)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
-                {reports.map((r, index) => (
+                {orderedReports.map((r, index) => (
                   <tr key={r.id} className="hover:bg-slate-50 group">
                     <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -1190,10 +1219,19 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectReport(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                    <td className="report-col-actions text-center align-middle">
+                      <ListRowReorderButtons
+                        busy={reportReorderBusy}
+                        disableUp={index === 0}
+                        disableDown={index === orderedReports.length - 1}
+                        onMoveUp={() => void moveReportRow(r.id, 'up')}
+                        onMoveDown={() => void moveReportRow(r.id, 'down')}
+                      />
+                    </td>
                   </tr>
                 ))}
-                {reports.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
+                {orderedReports.length === 0 && (
+                  <tr><td colSpan={8} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1334,13 +1372,19 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [44, 52, 228, 132, 88, 104]);
+  const resize = useResizableColumns(7, [44, 52, 228, 132, 88, 104, 52]);
+  const { ordered: orderedPrompts, move: movePromptRow, moving: promptReorderBusy } = useListRowReorder(
+    prompts,
+    setPrompts,
+    (row) => storage.prompts.save(row)
+  );
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
   const loadPrompts = async () => {
     setLoading(true);
-    setPrompts(await storage.prompts.list(appId));
+    const list = await storage.prompts.list(appId);
+    setPrompts(sortTabListItems(list));
     setLoading(false);
   };
 
@@ -1434,7 +1478,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     
     const list = input.fileInfoList?.length ? input.fileInfoList : [];
     if (list.length) item.fileInfoList = list;
-    await storage.prompts.save(item as PromptLog);
+    const toSave = withListSortRankForCreate(sortTabListItems(prompts), item as PromptLog);
+    await storage.prompts.save(toSave);
     loadPrompts();
     setIsAdding(false);
     setInput({ prompt: '', response: '', tags: '', fileInfoList: [] });
@@ -1457,6 +1502,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now()
       };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
@@ -1505,10 +1551,10 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === prompts.length) {
+    if (selectedIds.size === orderedPrompts.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(prompts.map(p => p.id)));
+      setSelectedIds(new Set(orderedPrompts.map(p => p.id)));
     }
   };
 
@@ -1516,7 +1562,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
     for (const id of selectedIds) {
-      const prompt = prompts.find(p => p.id === id);
+      const prompt = orderedPrompts.find(p => p.id === id);
       for (const f of getFileList(prompt)) {
         try { await deleteFile(f.url); } catch (err) { console.error('파일 삭제 실패:', err); }
       }
@@ -1743,7 +1789,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
-                      checked={prompts.length > 0 && selectedIds.size === prompts.length}
+                      checked={orderedPrompts.length > 0 && selectedIds.size === orderedPrompts.length}
                       onChange={handleSelectAll}
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-primary focus:ring-primary"
@@ -1755,10 +1801,11 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
-                 {prompts.map((p, index) => (
+                 {orderedPrompts.map((p, index) => (
                    <tr key={p.id} className="hover:bg-slate-50 group">
                      <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -1796,9 +1843,18 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
+                    <td className="report-col-actions text-center align-middle">
+                      <ListRowReorderButtons
+                        busy={promptReorderBusy}
+                        disableUp={index === 0}
+                        disableDown={index === orderedPrompts.length - 1}
+                        onMoveUp={() => void movePromptRow(p.id, 'up')}
+                        onMoveDown={() => void movePromptRow(p.id, 'down')}
+                      />
+                    </td>
                    </tr>
                  ))}
-                 {prompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
+                 {orderedPrompts.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -1914,13 +1970,19 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const memoFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [44, 52, 180, 240, 88, 104]);
+  const resize = useResizableColumns(7, [44, 52, 180, 240, 88, 104, 52]);
+  const { ordered: orderedMemos, move: moveMemoRow, moving: memoReorderBusy } = useListRowReorder(
+    memos,
+    setMemos,
+    (row) => storage.memos.save(row)
+  );
 
   useEffect(() => { loadMemos(); }, [appId]);
 
   const loadMemos = async () => {
     setLoading(true);
-    setMemos(await storage.memos.list(appId));
+    const list = await storage.memos.list(appId);
+    setMemos(sortTabListItems(list));
     setLoading(false);
   };
 
@@ -2036,8 +2098,8 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now()
       };
-      
-      await storage.memos.save(item);
+      const toSave = withListSortRankForCreate(sortTabListItems(memos), item);
+      await storage.memos.save(toSave);
       loadMemos();
       setIsModalOpen(false);
       setForm({});
@@ -2066,6 +2128,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now()
       };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
       await storage.memos.save(item as Memo);
@@ -2090,10 +2153,10 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === memos.length) {
+    if (selectedIds.size === orderedMemos.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(memos.map(m => m.id)));
+      setSelectedIds(new Set(orderedMemos.map(m => m.id)));
     }
   };
 
@@ -2101,7 +2164,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
     for (const id of selectedIds) {
-      const memo = memos.find(m => m.id === id);
+      const memo = orderedMemos.find(m => m.id === id);
       for (const f of getFileList(memo)) {
         try { await deleteFile(f.url); } catch (err) { console.error('파일 삭제 실패:', err); }
       }
@@ -2264,7 +2327,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
-                      checked={memos.length > 0 && selectedIds.size === memos.length}
+                      checked={orderedMemos.length > 0 && selectedIds.size === orderedMemos.length}
                       onChange={handleSelectAll}
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-primary focus:ring-primary"
@@ -2276,10 +2339,11 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
-                 {memos.map((m, index) => (
+                 {orderedMemos.map((m, index) => (
                    <tr key={m.id} className="hover:bg-yellow-50 group transition-colors">
                      <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -2311,9 +2375,18 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
+                    <td className="report-col-actions text-center align-middle">
+                      <ListRowReorderButtons
+                        busy={memoReorderBusy}
+                        disableUp={index === 0}
+                        disableDown={index === orderedMemos.length - 1}
+                        onMoveUp={() => void moveMemoRow(m.id, 'up')}
+                        onMoveDown={() => void moveMemoRow(m.id, 'down')}
+                      />
+                    </td>
                    </tr>
                  ))}
-                 {memos.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
+                 {orderedMemos.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -2369,6 +2442,11 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Note>>({});
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const { ordered: orderedNotes, move: moveNoteRow, moving: noteReorderBusy } = useListRowReorder(
+    notes,
+    setNotes,
+    (row) => storage.notes.save(row)
+  );
 
   useEffect(() => {
     loadNotes();
@@ -2376,7 +2454,8 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 
   const loadNotes = async () => {
     setLoading(true);
-    setNotes(await storage.notes.list(appId));
+    const list = await storage.notes.list(appId);
+    setNotes(sortTabListItems(list));
     setLoading(false);
   };
 
@@ -2413,7 +2492,8 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
       createdAt: form.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
-    await storage.notes.save(item);
+    const toSave = withListSortRankForCreate(sortTabListItems(notes), item);
+    await storage.notes.save(toSave);
     loadNotes();
     closeModal();
   };
@@ -2438,6 +2518,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
       createdAt: editForm.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
+    if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
     await storage.notes.save(item);
     loadNotes();
     setEditForm(item);
@@ -2532,7 +2613,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {notes.length === 0 ? (
+        {orderedNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
             <FileText size={48} className="mb-4 opacity-50" />
             <p className="text-sm">등록된 메모가 없습니다.</p>
@@ -2540,15 +2621,22 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {notes.map((note) => (
+            {orderedNotes.map((note, index) => (
               <div
                 key={note.id}
                 className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all"
               >
                 <div className="p-4 flex-1 flex flex-col min-h-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h4 className="font-semibold text-slate-800 truncate flex-1">{note.title}</h4>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <h4 className="font-semibold text-slate-800 truncate flex-1 min-w-0">{note.title}</h4>
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <ListRowReorderButtons
+                        busy={noteReorderBusy}
+                        disableUp={index === 0}
+                        disableDown={index === orderedNotes.length - 1}
+                        onMoveUp={() => void moveNoteRow(note.id, 'up')}
+                        onMoveDown={() => void moveNoteRow(note.id, 'down')}
+                      />
                       <button
                         type="button"
                         onClick={() => openEdit(note)}
@@ -2640,13 +2728,19 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [44, 52, 104, 104, 200, 104]);
+  const resize = useResizableColumns(7, [44, 52, 104, 104, 200, 104, 52]);
+  const { ordered: orderedIssues, move: moveIssueRow, moving: issueReorderBusy } = useListRowReorder(
+    issues,
+    setIssues,
+    (row) => storage.issues.save(row)
+  );
 
   useEffect(() => { loadIssues(); }, [appId]);
 
   const loadIssues = async () => {
     setLoading(true);
-    setIssues(await storage.issues.list(appId));
+    const list = await storage.issues.list(appId);
+    setIssues(sortTabListItems(list));
     setLoading(false);
   };
 
@@ -2785,7 +2879,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     };
     const list = getFileList(form);
     if (list.length) item.fileInfoList = list;
-    await storage.issues.save(item);
+    const toSave = withListSortRankForCreate(sortTabListItems(issues), item);
+    await storage.issues.save(toSave);
     loadIssues();
     setIsModalOpen(false);
     setForm({});
@@ -2808,6 +2903,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now()
       };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
       await storage.issues.save(item);
@@ -2844,10 +2940,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === issues.length) {
+    if (selectedIds.size === orderedIssues.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(issues.map(i => i.id)));
+      setSelectedIds(new Set(orderedIssues.map(i => i.id)));
     }
   };
 
@@ -2855,7 +2951,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개의 항목을 삭제하시겠습니까?`)) return;
     for (const id of selectedIds) {
-      const issue = issues.find(i => i.id === id);
+      const issue = orderedIssues.find(i => i.id === id);
       for (const f of getFileList(issue)) {
         try { await deleteFile(f.url); } catch (error) { console.error('파일 삭제 실패:', error); }
       }
@@ -3040,7 +3136,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
                     <input
                       type="checkbox"
-                      checked={issues.length > 0 && selectedIds.size === issues.length}
+                      checked={orderedIssues.length > 0 && selectedIds.size === orderedIssues.length}
                       onChange={handleSelectAll}
                       onClick={(e) => e.stopPropagation()}
                       className="rounded border-slate-300 text-primary focus:ring-primary"
@@ -3052,10 +3148,11 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Severity<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
-                 {issues.map((issue, index) => (
+                 {orderedIssues.map((issue, index) => (
                    <tr key={issue.id} className="hover:bg-slate-50 group">
                      <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -3089,9 +3186,18 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       <td className="whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
                       </td>
+                      <td className="report-col-actions text-center align-middle">
+                        <ListRowReorderButtons
+                          busy={issueReorderBusy}
+                          disableUp={index === 0}
+                          disableDown={index === orderedIssues.length - 1}
+                          onMoveUp={() => void moveIssueRow(issue.id, 'up')}
+                          onMoveDown={() => void moveIssueRow(issue.id, 'down')}
+                        />
+                      </td>
                    </tr>
                  ))}
-                 {issues.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
+                 {orderedIssues.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
                </tbody>
             </table>
           )}
@@ -3196,12 +3302,18 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { ordered: orderedImages, move: moveImageRow, moving: screenshotReorderBusy } = useListRowReorder(
+    images,
+    setImages,
+    (row) => storage.screenshots.save(row)
+  );
 
   useEffect(() => { loadImages(); }, [appId]);
 
   const loadImages = async () => {
     setLoading(true);
-    setImages(await storage.screenshots.list(appId));
+    const list = await storage.screenshots.list(appId);
+    setImages(sortTabListItems(list));
     setLoading(false);
   };
 
@@ -3231,7 +3343,8 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
-      await storage.screenshots.save(newItem);
+      const toSave = withListSortRankForCreate(sortTabListItems(images), newItem);
+      await storage.screenshots.save(toSave);
       devLog('[ScreenshotView] Firestore 저장 완료');
       loadImages();
     } catch (error: any) {
@@ -3326,10 +3439,10 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === images.length) {
+    if (selectedIds.size === orderedImages.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(images.map(img => img.id)));
+      setSelectedIds(new Set(orderedImages.map(img => img.id)));
     }
   };
 
@@ -3421,19 +3534,19 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                 )}
               </div>
             )}
-            {images.length > 0 && (
+            {orderedImages.length > 0 && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <input
                     type="checkbox"
-                    checked={images.length > 0 && selectedIds.size === images.length}
+                    checked={orderedImages.length > 0 && selectedIds.size === orderedImages.length}
                     onChange={handleSelectAll}
                     className="rounded border-slate-300 text-primary focus:ring-primary"
                   />
                   <span className="text-sm text-slate-600">전체 선택</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {images.map(img => (
+                  {orderedImages.map((img, index) => (
                     <div key={img.id} className="group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all">
                       <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
                         <input
@@ -3442,6 +3555,15 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                           onChange={() => handleToggleSelect(img.id)}
                           onClick={(e) => e.stopPropagation()}
                           className="rounded border-slate-300 text-primary focus:ring-primary bg-white p-1"
+                        />
+                      </div>
+                      <div className="absolute top-2 left-10 z-10 bg-white/95 rounded shadow-sm" onClick={(e) => e.stopPropagation()}>
+                        <ListRowReorderButtons
+                          busy={screenshotReorderBusy}
+                          disableUp={index === 0}
+                          disableDown={index === orderedImages.length - 1}
+                          onMoveUp={() => void moveImageRow(img.id, 'up')}
+                          onMoveDown={() => void moveImageRow(img.id, 'down')}
                         />
                       </div>
                       <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover" />
