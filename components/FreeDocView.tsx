@@ -27,6 +27,9 @@ import { storage } from '../services/storage';
 import { deleteFile, uploadFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useDragListReorder } from '../hooks/useDragListReorder';
+import { useUnsavedEditGuard } from '../hooks/useUnsavedEditGuard';
+import { UnsavedChangesDialog } from './UnsavedChangesDialog';
+import { freeDocEditSnapshot } from '../utils/editSnapshots';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -384,11 +387,52 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
     setBodyHtml(d.html || '');
   };
 
-  const handleBackToList = () => {
+  const exitFreeDetail = useCallback(() => {
     setSelectedId(null);
     setEditForm({});
     setBodyHtml('');
-  };
+  }, []);
+
+  const persistFreeEdit = useCallback(async (): Promise<boolean> => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return false;
+    }
+    if (isBodyEffectivelyEmpty(bodyHtml)) {
+      alert('내용을 입력하세요');
+      return false;
+    }
+    try {
+      const item: FreeDoc = {
+        id: editForm.id!,
+        appId,
+        title: editForm.title.trim(),
+        html: bodyHtml,
+        createdAt: editForm.createdAt || Date.now(),
+        updatedAt: Date.now(),
+        fileInfoList: getFileList(editForm),
+      };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
+      await storage.freeDocs.save(item);
+      await loadDocs();
+      setEditForm(item);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
+      return true;
+    } catch (error: any) {
+      console.error('[FreeDoc] 저장 실패:', error);
+      alert(`저장에 실패했습니다.\n\n${error?.message || ''}`);
+      return false;
+    }
+  }, [editForm, bodyHtml, appId]);
+
+  const freeUnsaved = useUnsavedEditGuard({
+    active: !!(selectedId && editForm.id),
+    editKey: selectedId ?? '',
+    buildSnapshot: () => freeDocEditSnapshot(editForm, bodyHtml),
+    exit: exitFreeDetail,
+    save: persistFreeEdit,
+  });
 
   const deleteDoc = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
@@ -403,8 +447,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
     await storage.freeDocs.delete(id);
     loadDocs();
     if (selectedId === id) {
-      setSelectedId(null);
-      setEditForm({});
+      exitFreeDetail();
     }
     setIsModalOpen(false);
   };
@@ -441,34 +484,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleEditSave = async () => {
-    if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    if (isBodyEffectivelyEmpty(bodyHtml)) {
-      alert('내용을 입력하세요');
-      return;
-    }
-    try {
-      const item: FreeDoc = {
-        id: editForm.id!,
-        appId,
-        title: editForm.title.trim(),
-        html: bodyHtml,
-        createdAt: editForm.createdAt || Date.now(),
-        updatedAt: Date.now(),
-        fileInfoList: getFileList(editForm),
-      };
-      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-      await storage.freeDocs.save(item);
-      loadDocs();
-      setEditForm(item);
-      setSaveMessageVisible(true);
-      setTimeout(() => setSaveMessageVisible(false), 2000);
-    } catch (error: any) {
-      console.error('[FreeDoc] 저장 실패:', error);
-      alert(`저장에 실패했습니다.\n\n${error?.message || ''}`);
-    }
+    const ok = await persistFreeEdit();
+    if (ok) freeUnsaved.syncBaseline();
   };
 
   const handleToggleSelect = (id: string) => {
@@ -500,8 +517,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
     setSelectedIds(new Set());
     loadDocs();
     if (selectedId && selectedIds.has(selectedId)) {
-      setSelectedId(null);
-      setEditForm({});
+      exitFreeDetail();
     }
   };
 
@@ -590,6 +606,13 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   if (selectedId && editForm.id) {
     return (
       <>
+        <UnsavedChangesDialog
+          open={freeUnsaved.dialogOpen}
+          saving={freeUnsaved.savingDialog}
+          onClose={freeUnsaved.closeDialog}
+          onDiscard={freeUnsaved.discardAndExit}
+          onSave={freeUnsaved.saveAndExit}
+        />
         {saveMessageVisible && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
             저장되었습니다
@@ -600,7 +623,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={handleBackToList}
+                onClick={freeUnsaved.requestExit}
                 className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
               >
                 <ArrowLeft size={20} />
@@ -615,7 +638,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleBackToList}
+                onClick={freeUnsaved.requestExit}
                 className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors"
               >
                 목록으로

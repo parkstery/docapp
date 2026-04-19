@@ -1,4 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useUnsavedEditGuard } from '../hooks/useUnsavedEditGuard';
+import { UnsavedChangesDialog } from './UnsavedChangesDialog';
+import {
+  planningEditSnapshot,
+  reportEditSnapshot,
+  promptEditSnapshot,
+  memoEditSnapshot,
+  noteEditSnapshot,
+  issueEditSnapshot,
+} from '../utils/editSnapshots';
 import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import { Extension } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
@@ -556,10 +566,48 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(false);
   };
 
-  const handleBackToList = () => {
+  const exitPlanningDetail = useCallback(() => {
     setSelectedDocId(null);
     setEditForm({});
-  };
+  }, []);
+
+  const persistPlanningEdit = useCallback(async (): Promise<boolean> => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return false;
+    }
+    try {
+      const item: PlanningDoc = {
+        id: editForm.id!,
+        appId,
+        title: editForm.title.trim(),
+        content: editForm.content ?? '',
+        createdAt: editForm.createdAt ?? Date.now(),
+        updatedAt: Date.now(),
+      };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
+      const list = getFileList(editForm);
+      if (list.length) item.fileInfoList = list;
+      await storage.planning.save(item);
+      await loadDocs();
+      setEditForm(item);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
+      return true;
+    } catch (e) {
+      console.error('[PlanningView] 저장 실패:', e);
+      alert('저장에 실패했습니다.');
+      return false;
+    }
+  }, [editForm, appId]);
+
+  const planningUnsaved = useUnsavedEditGuard({
+    active: !!(selectedDocId && editForm.id),
+    editKey: selectedDocId ?? '',
+    buildSnapshot: () => planningEditSnapshot(editForm),
+    exit: exitPlanningDetail,
+    save: persistPlanningEdit,
+  });
 
   const handleSelectDoc = (doc: PlanningDoc) => {
     setSelectedDocId(doc.id);
@@ -593,26 +641,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleEditSave = async () => {
-    if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    const item: PlanningDoc = {
-      id: editForm.id!,
-      appId,
-      title: editForm.title.trim(),
-      content: editForm.content ?? '',
-      createdAt: editForm.createdAt ?? Date.now(),
-      updatedAt: Date.now(),
-    };
-    if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-    const list = getFileList(editForm);
-    if (list.length) item.fileInfoList = list;
-    await storage.planning.save(item);
-    loadDocs();
-    setEditForm(item);
-    setSaveMessageVisible(true);
-    setTimeout(() => setSaveMessageVisible(false), 2000);
+    const ok = await persistPlanningEdit();
+    if (ok) planningUnsaved.syncBaseline();
   };
 
   const handleDelete = async (id: string) => {
@@ -624,7 +654,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
     await storage.planning.delete(id);
     loadDocs();
     if (selectedDocId === id) {
-      handleBackToList();
+      exitPlanningDetail();
     }
   };
 
@@ -652,7 +682,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
     }
     setSelectedIds(new Set());
     loadDocs();
-    if (selectedDocId && selectedIds.has(selectedDocId)) handleBackToList();
+    if (selectedDocId && selectedIds.has(selectedDocId)) exitPlanningDetail();
   };
 
   const processDetailFile = async (file: File) => {
@@ -723,6 +753,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   if (selectedDocId && editForm.id) {
     return (
       <>
+        <UnsavedChangesDialog
+          open={planningUnsaved.dialogOpen}
+          saving={planningUnsaved.savingDialog}
+          onClose={planningUnsaved.closeDialog}
+          onDiscard={planningUnsaved.discardAndExit}
+          onSave={planningUnsaved.saveAndExit}
+        />
         {saveMessageVisible && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
             저장되었습니다
@@ -731,13 +768,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       <div className="h-full flex flex-col">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+            <button type="button" onClick={planningUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">기획서 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors w-full sm:w-auto">
+            <button type="button" onClick={planningUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors w-full sm:w-auto">
               목록으로
             </button>
             <button
@@ -1073,11 +1110,50 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(false);
   };
 
-  const handleBackToList = () => {
+  const exitReportDetail = useCallback(() => {
     setSelectedReportId(null);
     setEditForm({});
     setEditSummaryHtml('');
-  };
+  }, []);
+
+  const persistReportEdit = useCallback(async (): Promise<boolean> => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return false;
+    }
+    try {
+      const item: any = {
+        id: editForm.id!,
+        appId,
+        title: editForm.title.trim(),
+        type: editForm.type || 'Other',
+        summary: editSummaryHtml,
+        createdAt: editForm.createdAt ?? Date.now(),
+        updatedAt: Date.now(),
+      };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
+      const list = getFileList(editForm);
+      if (list.length) item.fileInfoList = list;
+      await storage.reports.save(item as Report);
+      await loadReports();
+      setEditForm(item);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
+      return true;
+    } catch (error: any) {
+      console.error('[ReportView] 보고서 저장 실패:', error);
+      alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+      return false;
+    }
+  }, [editForm, editSummaryHtml, appId]);
+
+  const reportUnsaved = useUnsavedEditGuard({
+    active: !!(selectedReportId && editForm.id),
+    editKey: selectedReportId ?? '',
+    buildSnapshot: () => reportEditSnapshot(editForm, editSummaryHtml),
+    exit: exitReportDetail,
+    save: persistReportEdit,
+  });
 
   const handleSelectReport = (report: Report) => {
     setSelectedReportId(report.id);
@@ -1190,32 +1266,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleEditSave = async () => {
-    if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    try {
-      const item: any = {
-        id: editForm.id!,
-        appId,
-        title: editForm.title.trim(),
-        type: editForm.type || 'Other',
-        summary: editSummaryHtml,
-        createdAt: editForm.createdAt ?? Date.now(),
-        updatedAt: Date.now(),
-      };
-      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-      const list = getFileList(editForm);
-      if (list.length) item.fileInfoList = list;
-      await storage.reports.save(item as Report);
-      loadReports();
-      setEditForm(item);
-      setSaveMessageVisible(true);
-      setTimeout(() => setSaveMessageVisible(false), 2000);
-    } catch (error: any) {
-      console.error('[ReportView] 보고서 저장 실패:', error);
-      alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
-    }
+    const ok = await persistReportEdit();
+    if (ok) reportUnsaved.syncBaseline();
   };
 
   const handleDeleteDetailFile = async (fileInfo: FileInfo) => {
@@ -1260,7 +1312,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     }
     setSelectedIds(new Set());
     loadReports();
-    if (selectedReportId && selectedIds.has(selectedReportId)) handleBackToList();
+    if (selectedReportId && selectedIds.has(selectedReportId)) exitReportDetail();
   };
 
   const handleDeleteFile = async (fileInfo: FileInfo) => {
@@ -1283,7 +1335,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
     }
     await storage.reports.delete(id);
     loadReports();
-    if (selectedReportId === id) handleBackToList();
+    if (selectedReportId === id) exitReportDetail();
     setIsModalOpen(false);
   };
 
@@ -1296,6 +1348,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   if (selectedReportId && editForm.id) {
     return (
       <>
+        <UnsavedChangesDialog
+          open={reportUnsaved.dialogOpen}
+          saving={reportUnsaved.savingDialog}
+          onClose={reportUnsaved.closeDialog}
+          onDiscard={reportUnsaved.discardAndExit}
+          onSave={reportUnsaved.saveAndExit}
+        />
         {saveMessageVisible && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
             저장되었습니다
@@ -1304,13 +1363,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       <div className="h-full flex flex-col">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+            <button type="button" onClick={reportUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">보고서 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
+            <button type="button" onClick={reportUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
             <button
               type="button"
               onClick={() => openMarkdownInBrowser(editForm.summary || '', editForm.title ? `보고서 - ${editForm.title}` : '보고서')}
@@ -1836,12 +1895,18 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     setInput({ prompt: '', response: '', tags: '', fileInfoList: [] });
   };
 
-  const handleEditSave = async () => {
+  const exitPromptDetail = useCallback(() => {
+    setSelectedPrompt(null);
+    setEditForm({});
+    setEditPromptHtml('');
+    setEditResponseHtml('');
+  }, []);
+
+  const persistPromptEdit = useCallback(async (): Promise<boolean> => {
     if (isBodyEffectivelyEmpty(editPromptHtml)) {
       alert('프롬프트를 입력하세요');
-      return;
+      return false;
     }
-    
     try {
       const item: any = {
         id: editForm.id!,
@@ -1851,29 +1916,36 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
         response: editResponseHtml || '',
         tags: editForm.tags || [],
         createdAt: editForm.createdAt || Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
       if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-      
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
       await storage.prompts.save(item as PromptLog);
-      loadPrompts();
+      await loadPrompts();
       setEditForm(item);
       setSelectedPrompt(item as PromptLog);
       setSaveMessageVisible(true);
       setTimeout(() => setSaveMessageVisible(false), 2000);
+      return true;
     } catch (error: any) {
       console.error('프롬프트 저장 실패:', error);
       alert(`프롬프트 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+      return false;
     }
-  };
+  }, [editForm, editPromptHtml, editResponseHtml, appId]);
 
-  const handleBackToList = () => {
-    setSelectedPrompt(null);
-    setEditForm({});
-    setEditPromptHtml('');
-    setEditResponseHtml('');
+  const promptUnsaved = useUnsavedEditGuard({
+    active: !!(selectedPrompt && editForm.id),
+    editKey: selectedPrompt?.id ?? '',
+    buildSnapshot: () => promptEditSnapshot(editForm, editPromptHtml, editResponseHtml),
+    exit: exitPromptDetail,
+    save: persistPromptEdit,
+  });
+
+  const handleEditSave = async () => {
+    const ok = await persistPromptEdit();
+    if (ok) promptUnsaved.syncBaseline();
   };
 
   const handleSelectPrompt = (prompt: PromptLog) => {
@@ -1891,8 +1963,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     }
     await storage.prompts.delete(id);
     loadPrompts();
-    setSelectedPrompt(null);
-    setEditForm({});
+    exitPromptDetail();
   };
 
   const handleToggleSelect = (id: string) => {
@@ -1926,8 +1997,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     setSelectedIds(new Set());
     loadPrompts();
     if (selectedPrompt && selectedIds.has(selectedPrompt.id)) {
-      setSelectedPrompt(null);
-      setEditForm({});
+      exitPromptDetail();
     }
   };
 
@@ -1969,6 +2039,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   if (selectedPrompt && editForm.id) {
     return (
       <>
+        <UnsavedChangesDialog
+          open={promptUnsaved.dialogOpen}
+          saving={promptUnsaved.savingDialog}
+          onClose={promptUnsaved.closeDialog}
+          onDiscard={promptUnsaved.discardAndExit}
+          onSave={promptUnsaved.saveAndExit}
+        />
         {saveMessageVisible && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
             저장되었습니다
@@ -1977,13 +2054,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       <div className="h-full flex flex-col">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+            <button type="button" onClick={promptUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">프롬프트 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
+            <button type="button" onClick={promptUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2461,11 +2538,53 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     }
   };
 
-  const handleBackToList = () => {
+  const exitMemoDetail = useCallback(() => {
     setSelectedMemoId(null);
     setEditForm({});
     setBodyHtml('');
-  };
+  }, []);
+
+  const persistMemoEdit = useCallback(async (): Promise<boolean> => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return false;
+    }
+    if (isBodyEffectivelyEmpty(bodyHtml)) {
+      alert('내용을 입력하세요');
+      return false;
+    }
+    try {
+      const item: any = {
+        id: editForm.id!,
+        appId,
+        title: editForm.title.trim(),
+        content: bodyHtml,
+        createdAt: editForm.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
+      const list = getFileList(editForm);
+      if (list.length) item.fileInfoList = list;
+      await storage.memos.save(item as Memo);
+      await loadMemos();
+      setEditForm(item);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
+      return true;
+    } catch (error: any) {
+      console.error('참고 저장 실패:', error);
+      alert(`참고 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+      return false;
+    }
+  }, [editForm, bodyHtml, appId]);
+
+  const memoUnsaved = useUnsavedEditGuard({
+    active: !!(selectedMemoId && editForm.id),
+    editKey: selectedMemoId ?? '',
+    buildSnapshot: () => memoEditSnapshot(editForm, bodyHtml),
+    exit: exitMemoDetail,
+    save: persistMemoEdit,
+  });
 
   const deleteMemo = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
@@ -2476,8 +2595,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     await storage.memos.delete(id);
     loadMemos();
     if (selectedMemoId === id) {
-      setSelectedMemoId(null);
-      setEditForm({});
+      exitMemoDetail();
     }
     setIsModalOpen(false);
   };
@@ -2513,36 +2631,8 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleEditSave = async () => {
-    if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    if (isBodyEffectivelyEmpty(bodyHtml)) {
-      alert('내용을 입력하세요');
-      return;
-    }
-    
-    try {
-      const item: any = {
-        id: editForm.id!,
-        appId,
-        title: editForm.title.trim(),
-        content: bodyHtml,
-        createdAt: editForm.createdAt || Date.now(),
-        updatedAt: Date.now()
-      };
-      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-      const list = getFileList(editForm);
-      if (list.length) item.fileInfoList = list;
-      await storage.memos.save(item as Memo);
-      loadMemos();
-      setEditForm(item);
-      setSaveMessageVisible(true);
-      setTimeout(() => setSaveMessageVisible(false), 2000);
-    } catch (error: any) {
-      console.error('참고 저장 실패:', error);
-      alert(`참고 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
-    }
+    const ok = await persistMemoEdit();
+    if (ok) memoUnsaved.syncBaseline();
   };
 
   const handleToggleSelect = (id: string) => {
@@ -2576,8 +2666,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
     setSelectedIds(new Set());
     loadMemos();
     if (selectedMemoId && selectedIds.has(selectedMemoId)) {
-      setSelectedMemoId(null);
-      setEditForm({});
+      exitMemoDetail();
     }
   };
 
@@ -2585,6 +2674,13 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   if (selectedMemoId && editForm.id) {
     return (
       <>
+        <UnsavedChangesDialog
+          open={memoUnsaved.dialogOpen}
+          saving={memoUnsaved.savingDialog}
+          onClose={memoUnsaved.closeDialog}
+          onDiscard={memoUnsaved.discardAndExit}
+          onSave={memoUnsaved.saveAndExit}
+        />
         {saveMessageVisible && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
             저장되었습니다
@@ -2593,13 +2689,13 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       <div className="h-full flex flex-col">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+            <button type="button" onClick={memoUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">참고 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
+            <button type="button" onClick={memoUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2928,11 +3024,47 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
     setForm({ title: '', content: '' });
   };
 
-  const handleBackToList = () => {
+  const exitNoteDetail = useCallback(() => {
     setSelectedNoteId(null);
     setEditForm({});
     setEditContentHtml('');
-  };
+  }, []);
+
+  const persistNoteEdit = useCallback(async (): Promise<boolean> => {
+    if (!editForm.title?.trim()) {
+      alert('제목을 입력하세요');
+      return false;
+    }
+    try {
+      const item: Note = {
+        id: editForm.id || crypto.randomUUID(),
+        appId,
+        title: editForm.title.trim(),
+        content: editContentHtml,
+        createdAt: editForm.createdAt ?? Date.now(),
+        updatedAt: Date.now(),
+      };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
+      await storage.notes.save(item);
+      await loadNotes();
+      setEditForm(item);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
+      return true;
+    } catch (e) {
+      console.error('[NoteView] 저장 실패:', e);
+      alert('저장에 실패했습니다.');
+      return false;
+    }
+  }, [editForm, editContentHtml, appId]);
+
+  const noteUnsaved = useUnsavedEditGuard({
+    active: !!(selectedNoteId && editForm.id),
+    editKey: selectedNoteId ?? '',
+    buildSnapshot: () => noteEditSnapshot(editForm, editContentHtml),
+    exit: exitNoteDetail,
+    save: persistNoteEdit,
+  });
 
   const handleSave = async () => {
     if (!form.title?.trim()) {
@@ -2957,28 +3089,12 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
     await storage.notes.delete(id);
     loadNotes();
-    if (selectedNoteId === id) handleBackToList();
+    if (selectedNoteId === id) exitNoteDetail();
   };
 
   const handleEditSave = async () => {
-    if (!editForm.title?.trim()) {
-      alert('제목을 입력하세요');
-      return;
-    }
-    const item: Note = {
-      id: editForm.id || crypto.randomUUID(),
-      appId,
-      title: editForm.title.trim(),
-      content: editContentHtml,
-      createdAt: editForm.createdAt ?? Date.now(),
-      updatedAt: Date.now(),
-    };
-    if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-    await storage.notes.save(item);
-    loadNotes();
-    setEditForm(item);
-    setSaveMessageVisible(true);
-    setTimeout(() => setSaveMessageVisible(false), 2000);
+    const ok = await persistNoteEdit();
+    if (ok) noteUnsaved.syncBaseline();
   };
 
   const contentPreview = (text: string, maxLen: number) => {
@@ -2993,6 +3109,13 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   if (selectedNoteId && editForm.id) {
     return (
       <>
+        <UnsavedChangesDialog
+          open={noteUnsaved.dialogOpen}
+          saving={noteUnsaved.savingDialog}
+          onClose={noteUnsaved.closeDialog}
+          onDiscard={noteUnsaved.discardAndExit}
+          onSave={noteUnsaved.saveAndExit}
+        />
         {saveMessageVisible && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
             저장되었습니다
@@ -3001,13 +3124,13 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
         <div className="h-full flex flex-col">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
             <div className="flex items-center gap-3">
-              <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+              <button type="button" onClick={noteUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
                 <ArrowLeft size={20} />
               </button>
               <h3 className="font-bold text-lg text-slate-800">메모 수정</h3>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
+              <button type="button" onClick={noteUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
                 목록으로
               </button>
               <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -3208,12 +3331,53 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     setLoading(false);
   };
 
-  const handleBackToList = () => {
+  const exitIssueDetail = useCallback(() => {
     setSelectedIssueId(null);
     setEditForm({});
     setEditDescriptionHtml('');
     setEditSolutionHtml('');
-  };
+  }, []);
+
+  const persistIssueEdit = useCallback(async (): Promise<boolean> => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      alert('제목을 입력하세요');
+      return false;
+    }
+    try {
+      const item: Issue = {
+        id: editForm.id!,
+        appId,
+        title: editForm.title.trim(),
+        description: editDescriptionHtml,
+        solution: editSolutionHtml,
+        status: editForm.status || 'Open',
+        severity: editForm.severity || 'Medium',
+        createdAt: editForm.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
+      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
+      const list = getFileList(editForm);
+      if (list.length) item.fileInfoList = list;
+      await storage.issues.save(item);
+      await loadIssues();
+      setEditForm(item);
+      setSaveMessageVisible(true);
+      setTimeout(() => setSaveMessageVisible(false), 2000);
+      return true;
+    } catch (error: any) {
+      console.error('이슈 저장 실패:', error);
+      alert(`저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+      return false;
+    }
+  }, [editForm, editDescriptionHtml, editSolutionHtml, appId]);
+
+  const issueUnsaved = useUnsavedEditGuard({
+    active: !!(selectedIssueId && editForm.id),
+    editKey: selectedIssueId ?? '',
+    buildSnapshot: () => issueEditSnapshot(editForm, editDescriptionHtml, editSolutionHtml),
+    exit: exitIssueDetail,
+    save: persistIssueEdit,
+  });
 
   const handleSelectIssue = (issue: Issue) => {
     setSelectedIssueId(issue.id);
@@ -3355,34 +3519,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleEditSave = async () => {
-    if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    try {
-      const item: Issue = {
-        id: editForm.id!,
-        appId,
-        title: editForm.title.trim(),
-        description: editDescriptionHtml,
-        solution: editSolutionHtml,
-        status: editForm.status || 'Open',
-        severity: editForm.severity || 'Medium',
-        createdAt: editForm.createdAt || Date.now(),
-        updatedAt: Date.now()
-      };
-      if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-      const list = getFileList(editForm);
-      if (list.length) item.fileInfoList = list;
-      await storage.issues.save(item);
-      loadIssues();
-      setEditForm(item);
-      setSaveMessageVisible(true);
-      setTimeout(() => setSaveMessageVisible(false), 2000);
-    } catch (error: any) {
-      console.error('이슈 저장 실패:', error);
-      alert(`저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
-    }
+    const ok = await persistIssueEdit();
+    if (ok) issueUnsaved.syncBaseline();
   };
 
   const deleteIssue = async (id: string) => {
@@ -3393,7 +3531,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     }
     await storage.issues.delete(id);
     loadIssues();
-    if (selectedIssueId === id) handleBackToList();
+    if (selectedIssueId === id) exitIssueDetail();
     setIsModalOpen(false);
   };
 
@@ -3427,7 +3565,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     }
     setSelectedIds(new Set());
     loadIssues();
-    if (selectedIssueId && selectedIds.has(selectedIssueId)) handleBackToList();
+    if (selectedIssueId && selectedIds.has(selectedIssueId)) exitIssueDetail();
     setIsModalOpen(false);
   };
 
@@ -3440,6 +3578,13 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   if (selectedIssueId && editForm.id) {
     return (
       <>
+        <UnsavedChangesDialog
+          open={issueUnsaved.dialogOpen}
+          saving={issueUnsaved.savingDialog}
+          onClose={issueUnsaved.closeDialog}
+          onDiscard={issueUnsaved.discardAndExit}
+          onSave={issueUnsaved.saveAndExit}
+        />
         {saveMessageVisible && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-green-600 text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium">
             저장되었습니다
@@ -3448,13 +3593,13 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       <div className="h-full flex flex-col">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <button onClick={handleBackToList} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+            <button type="button" onClick={issueUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
             <h3 className="font-bold text-lg text-slate-800">트러블슈팅 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={handleBackToList} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
+            <button type="button" onClick={issueUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
