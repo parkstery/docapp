@@ -16,8 +16,7 @@ import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note
 import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
-import { useListRowReorder } from '../hooks/useListRowReorder';
-import { ListRowReorderButtons } from './ListRowReorderButtons';
+import { useDragListReorder } from '../hooks/useDragListReorder';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 import { devLog, devWarn } from '../utils/devLog';
 import { sanitizePreviewHtml } from '../services/sanitizeHtml';
@@ -531,12 +530,16 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 172, 252, 84, 100, 44]);
-  const { ordered: orderedDocs, move: movePlanningRow, moving: planningReorderBusy } = useListRowReorder(
-    docs,
-    setDocs,
-    (row) => storage.planning.save(row)
-  );
+  const resize = useResizableColumns(6, [18, 22, 172, 252, 84, 100]);
+  const {
+    ordered: orderedDocs,
+    savingOrder: planningReorderBusy,
+    onDragStart: onPlanningDragStart,
+    onDragEnd: onPlanningDragEnd,
+    onDragOver: onPlanningDragOver,
+    onDrop: onPlanningDrop,
+    dragRowClassName: planningDragRowClassName,
+  } = useDragListReorder(docs, setDocs, (row) => storage.planning.save(row));
 
   useEffect(() => {
     loadDocs();
@@ -881,7 +884,15 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                 전체 선택
               </label>
               {orderedDocs.map((doc, index) => (
-                <div key={doc.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                <div
+                  key={doc.id}
+                  draggable={!planningReorderBusy}
+                  onDragStart={(e) => onPlanningDragStart(e, doc.id)}
+                  onDragEnd={onPlanningDragEnd}
+                  onDragOver={(e) => onPlanningDragOver(e, doc.id)}
+                  onDrop={(e) => void onPlanningDrop(e, doc.id)}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${planningDragRowClassName(doc.id)} ${!planningReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectDoc(doc)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {doc.title}</p>
@@ -934,12 +945,19 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 report-col-actions text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {orderedDocs.map((doc, index) => (
-                  <tr key={doc.id} className="hover:bg-indigo-50/50 group transition-colors">
+                  <tr
+                    key={doc.id}
+                    draggable={!planningReorderBusy}
+                    onDragStart={(e) => onPlanningDragStart(e, doc.id)}
+                    onDragEnd={onPlanningDragEnd}
+                    onDragOver={(e) => onPlanningDragOver(e, doc.id)}
+                    onDrop={(e) => void onPlanningDrop(e, doc.id)}
+                    className={`hover:bg-indigo-50/50 group transition-colors ${planningDragRowClassName(doc.id)} ${!planningReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  >
                     <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
@@ -972,20 +990,11 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {new Date(doc.updatedAt).toLocaleDateString()}
                     </td>
-                    <td className="report-col-actions text-center align-middle">
-                      <ListRowReorderButtons
-                        busy={planningReorderBusy}
-                        disableUp={index === 0}
-                        disableDown={index === orderedDocs.length - 1}
-                        onMoveUp={() => void movePlanningRow(doc.id, 'up')}
-                        onMoveDown={() => void movePlanningRow(doc.id, 'down')}
-                      />
-                    </td>
                   </tr>
                 ))}
                 {orderedDocs.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-400">
+                    <td colSpan={6} className="text-center py-12 text-slate-400">
                       등록된 기획서가 없습니다. 작성하기를 눌러 시작하세요.
                     </td>
                   </tr>
@@ -1044,12 +1053,16 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [editSummaryHtml, setEditSummaryHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(8, [18, 22, 80, 152, 212, 84, 100, 44]);
-  const { ordered: orderedReports, move: moveReportRow, moving: reportReorderBusy } = useListRowReorder(
-    reports,
-    setReports,
-    (row) => storage.reports.save(row)
-  );
+  const resize = useResizableColumns(7, [18, 22, 80, 152, 212, 84, 100]);
+  const {
+    ordered: orderedReports,
+    savingOrder: reportReorderBusy,
+    onDragStart: onReportDragStart,
+    onDragEnd: onReportDragEnd,
+    onDragOver: onReportDragOver,
+    onDrop: onReportDrop,
+    dragRowClassName: reportDragRowClassName,
+  } = useDragListReorder(reports, setReports, (row) => storage.reports.save(row));
 
   useEffect(() => { loadReports(); }, [appId]);
   
@@ -1443,7 +1456,15 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                 전체 선택
               </label>
               {orderedReports.map((r, index) => (
-                <div key={r.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                <div
+                  key={r.id}
+                  draggable={!reportReorderBusy}
+                  onDragStart={(e) => onReportDragStart(e, r.id)}
+                  onDragEnd={onReportDragEnd}
+                  onDragOver={(e) => onReportDragOver(e, r.id)}
+                  onDrop={(e) => void onReportDrop(e, r.id)}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${reportDragRowClassName(r.id)} ${!reportReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectReport(r)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {r.title}</p>
@@ -1500,12 +1521,19 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Summary<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={5} /></th>
                   <th style={resize.getThStyle(6)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={6} /></th>
-                  <th style={resize.getThStyle(7)} className="px-6 py-3 report-col-actions text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
                 {orderedReports.map((r, index) => (
-                  <tr key={r.id} className="hover:bg-slate-50 group">
+                  <tr
+                    key={r.id}
+                    draggable={!reportReorderBusy}
+                    onDragStart={(e) => onReportDragStart(e, r.id)}
+                    onDragEnd={onReportDragEnd}
+                    onDragOver={(e) => onReportDragOver(e, r.id)}
+                    onDrop={(e) => void onReportDrop(e, r.id)}
+                    className={`hover:bg-slate-50 group ${reportDragRowClassName(r.id)} ${!reportReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  >
                     <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
@@ -1547,19 +1575,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectReport(r)}>{new Date(r.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 report-col-actions text-center align-middle">
-                      <ListRowReorderButtons
-                        busy={reportReorderBusy}
-                        disableUp={index === 0}
-                        disableDown={index === orderedReports.length - 1}
-                        onMoveUp={() => void moveReportRow(r.id, 'up')}
-                        onMoveDown={() => void moveReportRow(r.id, 'down')}
-                      />
-                    </td>
                   </tr>
                 ))}
                 {orderedReports.length === 0 && (
-                  <tr><td colSpan={8} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 보고서가 없습니다.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1700,12 +1719,16 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [editResponseHtml, setEditResponseHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 284, 60, 84, 100, 44]);
-  const { ordered: orderedPrompts, move: movePromptRow, moving: promptReorderBusy } = useListRowReorder(
-    prompts,
-    setPrompts,
-    (row) => storage.prompts.save(row)
-  );
+  const resize = useResizableColumns(6, [18, 22, 284, 60, 84, 100]);
+  const {
+    ordered: orderedPrompts,
+    savingOrder: promptReorderBusy,
+    onDragStart: onPromptDragStart,
+    onDragEnd: onPromptDragEnd,
+    onDragOver: onPromptDragOver,
+    onDrop: onPromptDrop,
+    dragRowClassName: promptDragRowClassName,
+  } = useDragListReorder(prompts, setPrompts, (row) => storage.prompts.save(row));
 
   useEffect(() => { loadPrompts(); }, [appId]);
 
@@ -2114,7 +2137,15 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                 전체 선택
               </label>
               {orderedPrompts.map((p, index) => (
-                <div key={p.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                <div
+                  key={p.id}
+                  draggable={!promptReorderBusy}
+                  onDragStart={(e) => onPromptDragStart(e, p.id)}
+                  onDragEnd={onPromptDragEnd}
+                  onDragOver={(e) => onPromptDragOver(e, p.id)}
+                  onDrop={(e) => void onPromptDrop(e, p.id)}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${promptDragRowClassName(p.id)} ${!promptReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectPrompt(p)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {stripHtml(p.prompt)}</p>
@@ -2164,12 +2195,19 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 report-col-actions text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
                  {orderedPrompts.map((p, index) => (
-                   <tr key={p.id} className="hover:bg-slate-50 group">
+                   <tr
+                     key={p.id}
+                     draggable={!promptReorderBusy}
+                     onDragStart={(e) => onPromptDragStart(e, p.id)}
+                     onDragEnd={onPromptDragEnd}
+                     onDragOver={(e) => onPromptDragOver(e, p.id)}
+                     onDrop={(e) => void onPromptDrop(e, p.id)}
+                     className={`hover:bg-slate-50 group ${promptDragRowClassName(p.id)} ${!promptReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                   >
                      <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
@@ -2206,18 +2244,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 report-col-actions text-center align-middle">
-                      <ListRowReorderButtons
-                        busy={promptReorderBusy}
-                        disableUp={index === 0}
-                        disableDown={index === orderedPrompts.length - 1}
-                        onMoveUp={() => void movePromptRow(p.id, 'up')}
-                        onMoveDown={() => void movePromptRow(p.id, 'down')}
-                      />
-                    </td>
                    </tr>
                  ))}
-                 {orderedPrompts.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
+                 {orderedPrompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
                </tbody>
             </table>
             </>
@@ -2337,12 +2366,16 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const memoFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 172, 252, 84, 100, 44]);
-  const { ordered: orderedMemos, move: moveMemoRow, moving: memoReorderBusy } = useListRowReorder(
-    memos,
-    setMemos,
-    (row) => storage.memos.save(row)
-  );
+  const resize = useResizableColumns(6, [18, 22, 172, 252, 84, 100]);
+  const {
+    ordered: orderedMemos,
+    savingOrder: memoReorderBusy,
+    onDragStart: onMemoDragStart,
+    onDragEnd: onMemoDragEnd,
+    onDragOver: onMemoDragOver,
+    onDrop: onMemoDrop,
+    dragRowClassName: memoDragRowClassName,
+  } = useDragListReorder(memos, setMemos, (row) => storage.memos.save(row));
   const [bodyHtml, setBodyHtml] = useState('');
 
   useEffect(() => { loadMemos(); }, [appId]);
@@ -2703,7 +2736,15 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                 전체 선택
               </label>
               {orderedMemos.map((m, index) => (
-                <div key={m.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                <div
+                  key={m.id}
+                  draggable={!memoReorderBusy}
+                  onDragStart={(e) => onMemoDragStart(e, m.id)}
+                  onDragEnd={onMemoDragEnd}
+                  onDragOver={(e) => onMemoDragOver(e, m.id)}
+                  onDrop={(e) => void onMemoDrop(e, m.id)}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${memoDragRowClassName(m.id)} ${!memoReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectMemo(m)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {m.title}</p>
@@ -2747,12 +2788,19 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 report-col-actions text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
                  {orderedMemos.map((m, index) => (
-                   <tr key={m.id} className="hover:bg-yellow-50 group transition-colors">
+                   <tr
+                     key={m.id}
+                     draggable={!memoReorderBusy}
+                     onDragStart={(e) => onMemoDragStart(e, m.id)}
+                     onDragEnd={onMemoDragEnd}
+                     onDragOver={(e) => onMemoDragOver(e, m.id)}
+                     onDrop={(e) => void onMemoDrop(e, m.id)}
+                     className={`hover:bg-yellow-50 group transition-colors ${memoDragRowClassName(m.id)} ${!memoReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                   >
                      <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
@@ -2783,18 +2831,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectMemo(m)}>{new Date(m.createdAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 report-col-actions text-center align-middle">
-                      <ListRowReorderButtons
-                        busy={memoReorderBusy}
-                        disableUp={index === 0}
-                        disableDown={index === orderedMemos.length - 1}
-                        onMoveUp={() => void moveMemoRow(m.id, 'up')}
-                        onMoveDown={() => void moveMemoRow(m.id, 'down')}
-                      />
-                    </td>
                    </tr>
                  ))}
-                 {orderedMemos.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
+                 {orderedMemos.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">작성된 참고가 없습니다.</td></tr>}
                </tbody>
             </table>
             </>
@@ -2852,11 +2891,15 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const [editForm, setEditForm] = useState<Partial<Note>>({});
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [editContentHtml, setEditContentHtml] = useState('');
-  const { ordered: orderedNotes, move: moveNoteRow, moving: noteReorderBusy } = useListRowReorder(
-    notes,
-    setNotes,
-    (row) => storage.notes.save(row)
-  );
+  const {
+    ordered: orderedNotes,
+    savingOrder: noteReorderBusy,
+    onDragStart: onNoteDragStart,
+    onDragEnd: onNoteDragEnd,
+    onDragOver: onNoteDragOver,
+    onDrop: onNoteDrop,
+    dragRowClassName: noteDragRowClassName,
+  } = useDragListReorder(notes, setNotes, (row) => storage.notes.save(row));
 
   useEffect(() => {
     loadNotes();
@@ -3037,22 +3080,20 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {orderedNotes.map((note, index) => (
+            {orderedNotes.map((note) => (
               <div
                 key={note.id}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all"
+                draggable={!noteReorderBusy}
+                onDragStart={(e) => onNoteDragStart(e, note.id)}
+                onDragEnd={onNoteDragEnd}
+                onDragOver={(e) => onNoteDragOver(e, note.id)}
+                onDrop={(e) => void onNoteDrop(e, note.id)}
+                className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all ${noteDragRowClassName(note.id)} ${!noteReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
               >
                 <div className="p-4 flex-1 flex flex-col min-h-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="font-semibold text-slate-800 truncate flex-1 min-w-0">{note.title}</h4>
                     <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <ListRowReorderButtons
-                        busy={noteReorderBusy}
-                        disableUp={index === 0}
-                        disableDown={index === orderedNotes.length - 1}
-                        onMoveUp={() => void moveNoteRow(note.id, 'up')}
-                        onMoveDown={() => void moveNoteRow(note.id, 'down')}
-                      />
                       <button
                         type="button"
                         onClick={() => openEdit(note)}
@@ -3147,12 +3188,16 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [editorUploading, setEditorUploading] = useState(false);
   const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [18, 22, 90, 92, 212, 100, 44]);
-  const { ordered: orderedIssues, move: moveIssueRow, moving: issueReorderBusy } = useListRowReorder(
-    issues,
-    setIssues,
-    (row) => storage.issues.save(row)
-  );
+  const resize = useResizableColumns(6, [18, 22, 90, 92, 212, 100]);
+  const {
+    ordered: orderedIssues,
+    savingOrder: issueReorderBusy,
+    onDragStart: onIssueDragStart,
+    onDragEnd: onIssueDragEnd,
+    onDragOver: onIssueDragOver,
+    onDrop: onIssueDrop,
+    dragRowClassName: issueDragRowClassName,
+  } = useDragListReorder(issues, setIssues, (row) => storage.issues.save(row));
 
   useEffect(() => { loadIssues(); }, [appId]);
 
@@ -3568,7 +3613,15 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                 전체 선택
               </label>
               {orderedIssues.map((issue, index) => (
-                <div key={issue.id} className="border border-slate-200 rounded-lg p-3 bg-white">
+                <div
+                  key={issue.id}
+                  draggable={!issueReorderBusy}
+                  onDragStart={(e) => onIssueDragStart(e, issue.id)}
+                  onDragEnd={onIssueDragEnd}
+                  onDragOver={(e) => onIssueDragOver(e, issue.id)}
+                  onDrop={(e) => void onIssueDrop(e, issue.id)}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${issueDragRowClassName(issue.id)} ${!issueReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectIssue(issue)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {issue.title}</p>
@@ -3622,12 +3675,19 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Severity<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="px-6 py-3 report-col-actions text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
                  {orderedIssues.map((issue, index) => (
-                   <tr key={issue.id} className="hover:bg-slate-50 group">
+                   <tr
+                     key={issue.id}
+                     draggable={!issueReorderBusy}
+                     onDragStart={(e) => onIssueDragStart(e, issue.id)}
+                     onDragEnd={onIssueDragEnd}
+                     onDragOver={(e) => onIssueDragOver(e, issue.id)}
+                     onDrop={(e) => void onIssueDrop(e, issue.id)}
+                     className={`hover:bg-slate-50 group ${issueDragRowClassName(issue.id)} ${!issueReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                   >
                      <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
                          type="checkbox"
@@ -3660,18 +3720,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                         {new Date(issue.updatedAt).toLocaleDateString()}
                       </td>
-                      <td className="report-col-actions text-center align-middle">
-                        <ListRowReorderButtons
-                          busy={issueReorderBusy}
-                          disableUp={index === 0}
-                          disableDown={index === orderedIssues.length - 1}
-                          onMoveUp={() => void moveIssueRow(issue.id, 'up')}
-                          onMoveDown={() => void moveIssueRow(issue.id, 'down')}
-                        />
-                      </td>
                    </tr>
                  ))}
-                 {orderedIssues.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
+                 {orderedIssues.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">등록된 이슈가 없습니다.</td></tr>}
                </tbody>
             </table>
             </>
@@ -3777,11 +3828,15 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { ordered: orderedImages, move: moveImageRow, moving: screenshotReorderBusy } = useListRowReorder(
-    images,
-    setImages,
-    (row) => storage.screenshots.save(row)
-  );
+  const {
+    ordered: orderedImages,
+    savingOrder: screenshotReorderBusy,
+    onDragStart: onScreenshotDragStart,
+    onDragEnd: onScreenshotDragEnd,
+    onDragOver: onScreenshotDragOver,
+    onDrop: onScreenshotDrop,
+    dragRowClassName: screenshotDragRowClassName,
+  } = useDragListReorder(images, setImages, (row) => storage.screenshots.save(row));
 
   useEffect(() => { loadImages(); }, [appId]);
 
@@ -4022,7 +4077,15 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                   {orderedImages.map((img, index) => (
-                    <div key={img.id} className="group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all">
+                    <div
+                      key={img.id}
+                      draggable={!screenshotReorderBusy}
+                      onDragStart={(e) => onScreenshotDragStart(e, img.id)}
+                      onDragEnd={onScreenshotDragEnd}
+                      onDragOver={(e) => onScreenshotDragOver(e, img.id)}
+                      onDrop={(e) => void onScreenshotDrop(e, img.id)}
+                      className={`group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all ${screenshotDragRowClassName(img.id)} ${!screenshotReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    >
                       <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
@@ -4032,16 +4095,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                           className="rounded border-slate-300 text-primary focus:ring-primary bg-white p-1"
                         />
                       </div>
-                      <div className="absolute top-2 left-10 z-10 bg-white/95 rounded shadow-sm" onClick={(e) => e.stopPropagation()}>
-                        <ListRowReorderButtons
-                          busy={screenshotReorderBusy}
-                          disableUp={index === 0}
-                          disableDown={index === orderedImages.length - 1}
-                          onMoveUp={() => void moveImageRow(img.id, 'up')}
-                          onMoveDown={() => void moveImageRow(img.id, 'down')}
-                        />
-                      </div>
-                      <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover" />
+                      <img src={img.imageUrl} alt={img.title} draggable={false} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/45 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <a href={img.imageUrl} download={img.title} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-slate-800 hover:text-indigo-600 shadow-lg transform hover:scale-110 transition-transform"><Download size={16} /></a>
                         <button onClick={() => handleDelete(img.id, img.imageUrl)} className="p-2 bg-white rounded-full text-slate-800 hover:text-red-600 shadow-lg transform hover:scale-110 transition-transform"><Trash2 size={16} /></button>

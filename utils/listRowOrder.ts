@@ -65,3 +65,32 @@ export async function persistListRowMove<T extends ListOrderItem & { id: string 
     return null;
   }
 }
+
+/**
+ * 드래그로 한 행을 다른 행 위치로 옮긴 뒤 listSortRank를 0..n-1로 재부여하고 저장한다.
+ * dropTargetId는 원본 정렬 기준에서의 목표 인덱스(toIdx)로 취급한다.
+ */
+export async function persistListOrderAfterDrag<T extends ListOrderItem & { id: string }>(
+  items: T[],
+  draggedId: string,
+  dropTargetId: string,
+  save: (row: T) => Promise<unknown>
+): Promise<T[] | null> {
+  if (draggedId === dropTargetId) return null;
+  try {
+    const sorted = sortTabListItems([...items]);
+    const fromIdx = sorted.findIndex((x) => x.id === draggedId);
+    const toIdx = sorted.findIndex((x) => x.id === dropTargetId);
+    if (fromIdx < 0 || toIdx < 0) return null;
+    const next = [...sorted];
+    const [removed] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, removed);
+    const withRanks = next.map((row, idx) => ({ ...row, listSortRank: idx }));
+    await Promise.all(withRanks.map((row) => save(row)));
+    return sortTabListItems(withRanks);
+  } catch (e) {
+    console.error('[persistListOrderAfterDrag]', e);
+    alert('순서 저장에 실패했습니다.');
+    return null;
+  }
+}
