@@ -107,6 +107,26 @@ const isBodyEffectivelyEmpty = (html: string): boolean => {
   return stripHtml(html).length === 0;
 };
 
+const escapeHtmlText = (text: string): string =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const normalizeLegacyTextToHtml = (raw: string): string => {
+  const text = raw ?? '';
+  if (!text) return '';
+  // 이미 HTML로 저장된 데이터는 그대로 사용한다.
+  if (/<\/?[a-z][\s\S]*>/i.test(text)) return text;
+
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  return lines
+    .map((line) => (line.trim() === '' ? '<p><br></p>' : `<p>${escapeHtmlText(line)}</p>`))
+    .join('');
+};
+
 interface RichHtmlEditorProps {
   appId: string;
   docId: string;
@@ -1150,7 +1170,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const reportUnsaved = useUnsavedEditGuard({
     active: !!(selectedReportId && editForm.id),
     editKey: selectedReportId ?? '',
-    buildSnapshot: () => reportEditSnapshot(editForm, editSummaryHtml),
+    buildSnapshot: () => reportEditSnapshot(editForm, editSummaryHtml || editForm.summary || ''),
     exit: exitReportDetail,
     save: persistReportEdit,
   });
@@ -1938,7 +1958,12 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const promptUnsaved = useUnsavedEditGuard({
     active: !!(selectedPrompt && editForm.id),
     editKey: selectedPrompt?.id ?? '',
-    buildSnapshot: () => promptEditSnapshot(editForm, editPromptHtml, editResponseHtml),
+    buildSnapshot: () =>
+      promptEditSnapshot(
+        editForm,
+        editPromptHtml || editForm.prompt || '',
+        editResponseHtml || editForm.response || ''
+      ),
     exit: exitPromptDetail,
     save: persistPromptEdit,
   });
@@ -2442,6 +2467,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [modalBodyHtml, setModalBodyHtml] = useState('');
   const memoFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [18, 22, 172, 252, 84, 100]);
   const {
@@ -2466,13 +2492,14 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
 
   const openModal = () => {
     setForm({ title: '', content: '' });
+    setModalBodyHtml('');
     setIsModalOpen(true);
   };
 
   const handleSelectMemo = (memo: Memo) => {
     setSelectedMemoId(memo.id);
     setEditForm({ ...memo, fileInfoList: getFileList(memo) });
-    setBodyHtml(memo.content || '');
+    setBodyHtml(normalizeLegacyTextToHtml(memo.content || ''));
   };
 
   const processFile = async (file: File) => {
@@ -2581,7 +2608,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const memoUnsaved = useUnsavedEditGuard({
     active: !!(selectedMemoId && editForm.id),
     editKey: selectedMemoId ?? '',
-    buildSnapshot: () => memoEditSnapshot(editForm, bodyHtml),
+    buildSnapshot: () => memoEditSnapshot(editForm, bodyHtml || editForm.content || ''),
     exit: exitMemoDetail,
     save: persistMemoEdit,
   });
@@ -2605,7 +2632,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       alert('제목을 입력하세요');
       return;
     }
-    if (!form.content || form.content.trim() === '') {
+    if (isBodyEffectivelyEmpty(modalBodyHtml)) {
       alert('내용을 입력하세요');
       return;
     }
@@ -2615,7 +2642,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         id: form.id || crypto.randomUUID(),
         appId,
         title: form.title.trim(),
-        content: form.content.trim(),
+        content: modalBodyHtml,
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now()
       };
@@ -2624,6 +2651,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       loadMemos();
       setIsModalOpen(false);
       setForm({});
+      setModalBodyHtml('');
     } catch (error: any) {
       console.error('참고 저장 실패:', error);
       alert(`참고 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
@@ -2961,11 +2989,14 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
-                <textarea 
-                  className="w-full border rounded-lg p-3 h-48 sm:h-64 focus:ring-2 ring-yellow-400 outline-none text-sm bg-yellow-50/50 focus:bg-white transition-colors"
-                  placeholder="내용을 입력하세요..." 
-                  value={form.content || ''} 
-                  onChange={e => setForm({...form, content: e.target.value})} 
+                <RichHtmlEditor
+                  key={isModalOpen ? 'memo-create' : 'memo-create-closed'}
+                  appId={appId}
+                  docId={form.id || 'new'}
+                  uploadSection="memos"
+                  initialHtml={modalBodyHtml}
+                  onHtmlChange={setModalBodyHtml}
+                  setUploading={setUploading}
                 />
               </div>
             </div>
@@ -3061,7 +3092,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const noteUnsaved = useUnsavedEditGuard({
     active: !!(selectedNoteId && editForm.id),
     editKey: selectedNoteId ?? '',
-    buildSnapshot: () => noteEditSnapshot(editForm, editContentHtml),
+    buildSnapshot: () => noteEditSnapshot(editForm, editContentHtml || editForm.content || ''),
     exit: exitNoteDetail,
     save: persistNoteEdit,
   });
@@ -3374,7 +3405,12 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const issueUnsaved = useUnsavedEditGuard({
     active: !!(selectedIssueId && editForm.id),
     editKey: selectedIssueId ?? '',
-    buildSnapshot: () => issueEditSnapshot(editForm, editDescriptionHtml, editSolutionHtml),
+    buildSnapshot: () =>
+      issueEditSnapshot(
+        editForm,
+        editDescriptionHtml || editForm.description || '',
+        editSolutionHtml || editForm.solution || ''
+      ),
     exit: exitIssueDetail,
     save: persistIssueEdit,
   });

@@ -16,7 +16,20 @@ export function useUnsavedEditGuard({ active, editKey, buildSnapshot, exit, save
   buildRef.current = buildSnapshot;
 
   useLayoutEffect(() => {
-    if (active) baselineRef.current = buildRef.current();
+    if (!active) return;
+
+    // 에디터 마운트 직후의 자동 정규화(예: HTML 포맷 보정)를
+    // 실제 사용자 편집으로 오인하지 않도록 기준 스냅샷을 한 번 더 동기화한다.
+    baselineRef.current = buildRef.current();
+    let cancelled = false;
+    const rafId = requestAnimationFrame(() => {
+      if (!cancelled) baselineRef.current = buildRef.current();
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
   }, [active, editKey]);
 
   const isDirty = useCallback(() => buildRef.current() !== baselineRef.current, []);
