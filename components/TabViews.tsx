@@ -245,6 +245,9 @@ const RichHtmlEditor: React.FC<RichHtmlEditorProps> = ({
       editorProps,
       onCreate: ({ editor: ed }) => {
         editorRef.current = ed;
+        queueMicrotask(() => {
+          if (!ed.isDestroyed) onHtmlChangeRef.current(ed.getHTML());
+        });
       },
       onDestroy: () => {
         editorRef.current = null;

@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type UseUnsavedEditGuardParams = {
   active: boolean;
@@ -15,20 +15,40 @@ export function useUnsavedEditGuard({ active, editKey, buildSnapshot, exit, save
   const buildRef = useRef(buildSnapshot);
   buildRef.current = buildSnapshot;
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!active) return;
 
-    // 에디터 마운트 직후의 자동 정규화(예: HTML 포맷 보정)를
-    // 실제 사용자 편집으로 오인하지 않도록 기준 스냅샷을 한 번 더 동기화한다.
-    baselineRef.current = buildRef.current();
-    let cancelled = false;
-    const rafId = requestAnimationFrame(() => {
-      if (!cancelled) baselineRef.current = buildRef.current();
-    });
+    // 부모의 이 훅은 자식(TipTap 등) 마운트·정규화보다 먼저 실행될 수 있다.
+    // paint 이후와 다음 프레임들에서 기준을 다시 잡아, 무편집인데 dirty로 오인하지 않게 한다.
+    let alive = true;
+    const sync = () => {
+      if (alive) baselineRef.current = buildRef.current();
+    };
+
+    sync();
+    queueMicrotask(sync);
+
+    const runRafChain = () => {
+      requestAnimationFrame(() => {
+        if (!alive) return;
+        sync();
+        requestAnimationFrame(() => {
+          if (!alive) return;
+          sync();
+          requestAnimationFrame(() => {
+            if (!alive) return;
+            sync();
+          });
+        });
+      });
+    };
+    runRafChain();
+
+    const timeoutId = window.setTimeout(sync, 0);
 
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafId);
+      alive = false;
+      clearTimeout(timeoutId);
     };
   }, [active, editKey]);
 

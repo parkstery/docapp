@@ -165,6 +165,9 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
       editorProps,
       onCreate: ({ editor: ed }) => {
         editorRef.current = ed;
+        queueMicrotask(() => {
+          if (!ed.isDestroyed) onHtmlChangeRef.current(ed.getHTML());
+        });
       },
       onDestroy: () => {
         editorRef.current = null;
