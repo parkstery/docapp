@@ -28,6 +28,7 @@ import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useDragListReorder } from '../hooks/useDragListReorder';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
+import { ensureReadablePromptHtml, htmlToPlainTextWithBreaks, promptPreviewPlain } from '../utils/promptReadability';
 import { devLog, devWarn } from '../utils/devLog';
 import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 
@@ -1898,12 +1899,15 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleSave = async () => {
     if (!input.prompt) return;
+    const promptHtml = ensureReadablePromptHtml(input.prompt);
+    const responseHtml = ensureReadablePromptHtml(input.response || '');
+    const titlePlain = (htmlToPlainTextWithBreaks(promptHtml) || input.prompt).replace(/\s+/g, ' ').trim();
     const item: any = {
       id: crypto.randomUUID(),
       appId,
-      title: input.prompt.substring(0, 30) + '...',
-      prompt: input.prompt,
-      response: input.response,
+      title: titlePlain.substring(0, 30) + (titlePlain.length > 30 ? '...' : ''),
+      prompt: promptHtml,
+      response: responseHtml,
       tags: input.tags.split(',').map(t => t.trim()).filter(Boolean),
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -1978,9 +1982,11 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleSelectPrompt = (prompt: PromptLog) => {
     setSelectedPrompt(prompt);
-    setEditForm({ ...prompt, fileInfoList: getFileList(prompt) });
-    setEditPromptHtml(prompt.prompt || '');
-    setEditResponseHtml(prompt.response || '');
+    const nextPrompt = ensureReadablePromptHtml(prompt.prompt || '');
+    const nextResponse = ensureReadablePromptHtml(prompt.response || '');
+    setEditForm({ ...prompt, fileInfoList: getFileList(prompt), prompt: nextPrompt, response: nextResponse });
+    setEditPromptHtml(nextPrompt);
+    setEditResponseHtml(nextResponse);
   };
 
   const handleDelete = async (id: string) => {
@@ -2253,8 +2259,12 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectPrompt(p)} className="text-left min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {stripHtml(p.prompt)}</p>
-                      <p className="text-xs text-slate-500 truncate mt-1">{stripHtml(p.response)}</p>
+                      <p className="text-sm font-semibold text-slate-900 line-clamp-3 whitespace-pre-line break-words">
+                        {index + 1}. {p.prompt?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.prompt)}` : promptPreviewPlain(p.prompt)}
+                      </p>
+                      <p className="text-xs text-slate-500 line-clamp-3 whitespace-pre-line break-words mt-1">
+                        {p.response?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.response)}` : promptPreviewPlain(p.response)}
+                      </p>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {p.tags.slice(0, 2).map((t, i) => (
                           <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">{t}</span>
@@ -2326,8 +2336,12 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                        {index + 1}
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
-                       <div className="text-sm text-slate-900 truncate font-medium">{stripHtml(p.prompt) || (p.prompt?.includes('<img') ? '[이미지]' : '')}</div>
-                       <div className="text-xs text-slate-500 truncate mt-1">{stripHtml(p.response) || (p.response?.includes('<img') ? '[이미지]' : '')}</div>
+                       <div className="text-sm text-slate-900 line-clamp-4 whitespace-pre-line break-words font-medium">
+                         {p.prompt?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.prompt)}` : promptPreviewPlain(p.prompt)}
+                       </div>
+                       <div className="text-xs text-slate-500 line-clamp-4 whitespace-pre-line break-words mt-1">
+                         {p.response?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.response)}` : promptPreviewPlain(p.response)}
+                       </div>
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        <div className="flex flex-wrap gap-1">
