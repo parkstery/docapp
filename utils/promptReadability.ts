@@ -101,6 +101,9 @@ export function ensureReadablePromptHtml(raw: string): string {
   return plainTextToParagraphHtml(formatted);
 }
 
+/** 프롬프트 외 리치 필드(보고서 요약, 참고/메모 본문, 이슈 설명 등)에 동일 적용 */
+export const ensureReadableRichHtml = ensureReadablePromptHtml;
+
 /** 목록 미리보기용 짧은 평문 (HTML 입력 허용) */
 export function promptPreviewPlain(htmlOrText: string, maxLen = 600): string {
   const plain = /<\/?[a-z]/i.test(htmlOrText) ? htmlToPlainTextWithBreaks(htmlOrText) : htmlOrText;

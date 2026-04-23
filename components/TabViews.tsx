@@ -28,7 +28,12 @@ import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useDragListReorder } from '../hooks/useDragListReorder';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
-import { ensureReadablePromptHtml, htmlToPlainTextWithBreaks, promptPreviewPlain } from '../utils/promptReadability';
+import {
+  ensureReadablePromptHtml,
+  ensureReadableRichHtml,
+  htmlToPlainTextWithBreaks,
+  promptPreviewPlain,
+} from '../utils/promptReadability';
 import { devLog, devWarn } from '../utils/devLog';
 import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 
@@ -106,26 +111,6 @@ const isBodyEffectivelyEmpty = (html: string): boolean => {
   if (!html.trim()) return true;
   if (/<img\s/i.test(html)) return false;
   return stripHtml(html).length === 0;
-};
-
-const escapeHtmlText = (text: string): string =>
-  text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-const normalizeLegacyTextToHtml = (raw: string): string => {
-  const text = raw ?? '';
-  if (!text) return '';
-  // 이미 HTML로 저장된 데이터는 그대로 사용한다.
-  if (/<\/?[a-z][\s\S]*>/i.test(text)) return text;
-
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
-  return lines
-    .map((line) => (line.trim() === '' ? '<p><br></p>' : `<p>${escapeHtmlText(line)}</p>`))
-    .join('');
 };
 
 interface RichHtmlEditorProps {
@@ -1181,8 +1166,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleSelectReport = (report: Report) => {
     setSelectedReportId(report.id);
-    setEditForm({ ...report, fileInfoList: getFileList(report) });
-    setEditSummaryHtml(report.summary || '');
+    const nextSummary = ensureReadableRichHtml(report.summary || '');
+    setEditForm({ ...report, fileInfoList: getFileList(report), summary: nextSummary });
+    setEditSummaryHtml(nextSummary);
   };
 
   const processFile = async (file: File, target: 'form' | 'editForm') => {
@@ -1272,7 +1258,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
         appId,
         title: form.title.trim(),
         type: form.type || 'Other',
-        summary: form.summary || '',
+        summary: ensureReadableRichHtml(form.summary || ''),
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
@@ -2515,8 +2501,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleSelectMemo = (memo: Memo) => {
     setSelectedMemoId(memo.id);
-    setEditForm({ ...memo, fileInfoList: getFileList(memo) });
-    setBodyHtml(normalizeLegacyTextToHtml(memo.content || ''));
+    const nextContent = ensureReadableRichHtml(memo.content || '');
+    setEditForm({ ...memo, fileInfoList: getFileList(memo), content: nextContent });
+    setBodyHtml(nextContent);
   };
 
   const processFile = async (file: File) => {
@@ -3063,8 +3050,9 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 
   const openEdit = (note: Note) => {
     setSelectedNoteId(note.id);
-    setEditForm({ ...note });
-    setEditContentHtml(note.content || '');
+    const nextContent = ensureReadableRichHtml(note.content || '');
+    setEditForm({ ...note, content: nextContent });
+    setEditContentHtml(nextContent);
   };
 
   const closeModal = () => {
@@ -3123,7 +3111,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
       id: form.id || crypto.randomUUID(),
       appId,
       title: form.title.trim(),
-      content: (form.content ?? '').trim(),
+      content: ensureReadableRichHtml((form.content ?? '').trim()),
       createdAt: form.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
@@ -3434,9 +3422,11 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
 
   const handleSelectIssue = (issue: Issue) => {
     setSelectedIssueId(issue.id);
-    setEditForm({ ...issue, fileInfoList: getFileList(issue) });
-    setEditDescriptionHtml(issue.description || '');
-    setEditSolutionHtml(issue.solution || '');
+    const nextDesc = ensureReadableRichHtml(issue.description || '');
+    const nextSol = ensureReadableRichHtml(issue.solution || '');
+    setEditForm({ ...issue, fileInfoList: getFileList(issue), description: nextDesc, solution: nextSol });
+    setEditDescriptionHtml(nextDesc);
+    setEditSolutionHtml(nextSol);
   };
 
   const processFile = async (file: File, target: 'form' | 'editForm') => {
@@ -3555,8 +3545,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       id: form.id || crypto.randomUUID(),
       appId,
       title: form.title,
-      description: form.description || '',
-      solution: form.solution || '',
+      description: ensureReadableRichHtml(form.description || ''),
+      solution: ensureReadableRichHtml(form.solution || ''),
       status: form.status || 'Open',
       severity: form.severity || 'Medium',
       createdAt: form.createdAt || Date.now(),
