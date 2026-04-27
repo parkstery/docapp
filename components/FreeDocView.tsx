@@ -348,7 +348,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const resize = useResizableColumns(5, [44, 52, 200, 268, 112]);
+  const resize = useResizableColumns(5, [53, 62, 200, 268, 112]);
   const {
     ordered: orderedDocs,
     savingOrder: freeReorderBusy,

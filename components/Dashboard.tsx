@@ -84,7 +84,7 @@ const Dashboard: React.FC = () => {
     app.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     app.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const resize = useResizableColumns(7, [34, 56, 200, 56, 356, 70, 56]);
+  const resize = useResizableColumns(7, [41, 67, 200, 56, 356, 70, 56]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
