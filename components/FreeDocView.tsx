@@ -758,7 +758,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    No.<resize.ResizeHandle columnIndex={1} />
+                    No<resize.ResizeHandle columnIndex={1} />
                   </th>
                   <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Title<resize.ResizeHandle columnIndex={2} />

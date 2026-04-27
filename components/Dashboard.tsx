@@ -148,7 +148,7 @@ const Dashboard: React.FC = () => {
               <thead className="bg-slate-50">
                 <tr>
                   <th scope="col" style={resize.getThStyle(0)} className="report-col-tight report-col-center text-xs font-medium text-slate-700 uppercase tracking-wider">
-                    No.<resize.ResizeHandle columnIndex={0} />
+                    No<resize.ResizeHandle columnIndex={0} />
                   </th>
                   <th scope="col" style={resize.getThStyle(1)} className="report-col-tight text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Platform<resize.ResizeHandle columnIndex={1} />
