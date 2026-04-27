@@ -191,31 +191,31 @@ const Dashboard: React.FC = () => {
                 )}
               </div>
 
-              <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0]" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <colgroup>
                   {resize.widths.map((_, i) => <col key={i} style={resize.getColStyle(i)} />)}
                 </colgroup>
                 <thead className="bg-slate-50">
                   <tr>
-                    <th scope="col" style={resize.getThStyle(0)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      No.<resize.ResizeHandle columnIndex={0} />
+                    <th scope="col" style={resize.getThStyle(0)} className="report-col-tight report-col-center text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      No<resize.ResizeHandle columnIndex={0} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(1)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" style={resize.getThStyle(1)} className="report-col-tight text-xs font-medium text-slate-700 uppercase tracking-wider">
                       Platform<resize.ResizeHandle columnIndex={1} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(2)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" style={resize.getThStyle(2)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                       Project Name<resize.ResizeHandle columnIndex={2} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(3)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" style={resize.getThStyle(3)} className="text-xs font-medium text-slate-700 uppercase tracking-wider">
                       Version<resize.ResizeHandle columnIndex={3} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(4)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" style={resize.getThStyle(4)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                       Description<resize.ResizeHandle columnIndex={4} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(5)} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      DATE<resize.ResizeHandle columnIndex={5} />
+                    <th scope="col" style={resize.getThStyle(5)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      Created At<resize.ResizeHandle columnIndex={5} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(6)} className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" style={resize.getThStyle(6)} className="report-col-actions text-xs font-medium text-slate-700 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -227,10 +227,10 @@ const Dashboard: React.FC = () => {
                       onClick={() => navigate(`/app/${app.id}`)}
                       className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500">
                         {index + 1}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="report-col-tight whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
                           ${app.platform === 'iOS' ? 'bg-slate-100 text-slate-800 border-slate-200' :
                             app.platform === 'Android' ? 'bg-green-100 text-green-800 border-green-200' :
@@ -238,24 +238,24 @@ const Dashboard: React.FC = () => {
                           {app.platform}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center min-w-0">
-                          <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3">
+                      <td className="whitespace-nowrap min-w-0 text-left">
+                        <div className="flex items-center justify-start gap-2">
+                          <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center">
                             <Smartphone size={16} />
                           </div>
-                          <div className="text-sm font-semibold text-slate-900 truncate">{app.name}</div>
+                          <div className="text-sm font-semibold text-slate-900 truncate min-w-0" title={app.name}>{app.name}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="whitespace-nowrap">
                         <span className="text-sm text-slate-600 font-mono">v{app.version}</span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-slate-500 truncate max-w-xs">{app.description || '-'}</div>
+                      <td className="min-w-0">
+                        <div className="text-sm text-slate-500 truncate max-w-xs text-left">{app.description || '-'}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <td className="whitespace-nowrap text-sm text-slate-500">
                         {new Date(app.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="report-col-actions whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={(e) => { e.stopPropagation(); openModal(app); }}
