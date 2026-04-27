@@ -119,11 +119,13 @@ const App: React.FC = () => {
         table.report-table-separators .report-col-center {
           text-align: center !important;
         }
-        table.report-table-separators > thead > tr > th:not(.report-col-center):not(.report-col-actions),
+        table.report-table-separators > thead > tr > th {
+          text-align: center !important;
+        }
         table.report-table-separators > tbody > tr > td:not(.report-col-center):not(.report-col-actions) {
           text-align: left !important;
         }
-        table.report-table-separators .report-col-actions {
+        table.report-table-separators > tbody > tr > td.report-col-actions {
           text-align: right !important;
         }
         table.report-table-separators > tbody > tr > td[colspan] {
