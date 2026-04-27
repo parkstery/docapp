@@ -227,7 +227,7 @@ const Dashboard: React.FC = () => {
                       onClick={() => navigate(`/app/${app.id}`)}
                       className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
                     >
-                      <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500">
+                      <td className="report-col-tight report-col-no-num whitespace-nowrap text-sm text-slate-500">
                         {index + 1}
                       </td>
                       <td className="report-col-tight whitespace-nowrap">

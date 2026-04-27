@@ -1009,7 +1009,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
                     </td>
-                    <td className="px-6 py-4 report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
+                    <td className="px-6 py-4 report-col-tight report-col-no-num whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
                       {index + 1}
                     </td>
                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectDoc(doc)}>
@@ -1606,7 +1606,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-primary focus:ring-primary"
                       />
                     </td>
-                    <td className="px-6 py-4 report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
+                    <td className="px-6 py-4 report-col-tight report-col-no-num whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handleSelectReport(r)}>
@@ -2310,7 +2310,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                     <td className="px-6 py-4 report-col-tight report-col-no-num whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
                        {index + 1}
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
@@ -2928,7 +2928,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
+                     <td className="px-6 py-4 report-col-tight report-col-no-num whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectMemo(m)}>
                        {index + 1}
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectMemo(m)}>
@@ -3873,7 +3873,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                          className="rounded border-slate-300 text-primary focus:ring-primary"
                        />
                      </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
+                     <td className="px-6 py-4 report-col-tight report-col-no-num whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectIssue(issue)}>
                        {index + 1}
                      </td>
                       <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => handleSelectIssue(issue)}>

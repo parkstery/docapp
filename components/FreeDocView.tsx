@@ -820,7 +820,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                         className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                       />
                     </td>
-                    <td className="report-col-tight report-col-center whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
+                    <td className="report-col-tight report-col-no-num whitespace-nowrap text-sm text-slate-500 cursor-pointer" onClick={() => handleSelect(d)}>
                       {index + 1}
                     </td>
                     <td className="cursor-pointer min-w-0 text-left" onClick={() => handleSelect(d)}>

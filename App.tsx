@@ -119,12 +119,15 @@ const App: React.FC = () => {
         table.report-table-separators .report-col-center {
           text-align: center !important;
         }
+        table.report-table-separators > tbody > tr > td.report-col-no-num {
+          text-align: right !important;
+        }
         table.report-table-separators > thead {
-          background-color: #808080 !important;
+          background-color: #c0c0c0 !important;
         }
         table.report-table-separators > thead > tr > th {
           text-align: center !important;
-          background-color: #808080 !important;
+          background-color: #c0c0c0 !important;
         }
         table.report-table-separators > tbody > tr > td:not(.report-col-center):not(.report-col-actions) {
           text-align: left !important;
