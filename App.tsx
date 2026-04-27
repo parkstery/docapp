@@ -129,20 +129,6 @@ const App: React.FC = () => {
           text-align: center !important;
           background-color: #c0c0c0 !important;
         }
-        table.report-table-separators > thead > tr > th.text-left,
-        table.report-table-separators > thead > tr > th.text-right {
-          text-align: center !important;
-        }
-        table.report-table-separators > thead > tr > th .report-table-th-inner {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          width: 100% !important;
-          min-width: 0 !important;
-          box-sizing: border-box !important;
-          padding-right: 4px !important;
-          text-align: center !important;
-        }
         table.report-table-separators > tbody > tr > td:not(.report-col-center):not(.report-col-actions):not(.report-col-no-num) {
           text-align: left !important;
         }

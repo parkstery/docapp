@@ -777,32 +777,26 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th style={resize.getThStyle(0)} className="report-col-tight report-col-center">
-                    <div className="report-table-th-inner">
-                      <input
-                        type="checkbox"
-                        checked={orderedDocs.length > 0 && selectedIds.size === orderedDocs.length}
-                        onChange={handleSelectAll}
-                        onClick={(e) => e.stopPropagation()}
-                        className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                      />
-                    </div>
+                    <input
+                      type="checkbox"
+                      checked={orderedDocs.length > 0 && selectedIds.size === orderedDocs.length}
+                      onChange={handleSelectAll}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                    />
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <span className="report-table-th-inner">No</span>
-                    <resize.ResizeHandle columnIndex={1} />
+                    No<resize.ResizeHandle columnIndex={1} />
                   </th>
-                  <th style={resize.getThStyle(2)} className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <span className="report-table-th-inner">Title</span>
-                    <resize.ResizeHandle columnIndex={2} />
+                  <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Title<resize.ResizeHandle columnIndex={2} />
                   </th>
-                  <th style={resize.getThStyle(3)} className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <span className="report-table-th-inner">Preview</span>
-                    <resize.ResizeHandle columnIndex={3} />
+                  <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Preview<resize.ResizeHandle columnIndex={3} />
                   </th>
-                  <th style={resize.getThStyle(4)} className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <span className="report-table-th-inner">Date</span>
-                    <resize.ResizeHandle columnIndex={4} />
+                  <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Date<resize.ResizeHandle columnIndex={4} />
                   </th>
                 </tr>
               </thead>

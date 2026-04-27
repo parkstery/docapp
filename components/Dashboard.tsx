@@ -198,31 +198,25 @@ const Dashboard: React.FC = () => {
                 <thead className="bg-slate-50">
                   <tr>
                     <th scope="col" style={resize.getThStyle(0)} className="report-col-tight report-col-center text-xs font-medium text-slate-700 uppercase tracking-wider">
-                      <span className="report-table-th-inner">No</span>
-                      <resize.ResizeHandle columnIndex={0} />
+                      No<resize.ResizeHandle columnIndex={0} />
                     </th>
                     <th scope="col" style={resize.getThStyle(1)} className="report-col-tight text-xs font-medium text-slate-700 uppercase tracking-wider">
-                      <span className="report-table-th-inner">Platform</span>
-                      <resize.ResizeHandle columnIndex={1} />
+                      Platform<resize.ResizeHandle columnIndex={1} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(2)} className="text-xs font-medium text-slate-700 uppercase tracking-wider">
-                      <span className="report-table-th-inner">Project Name</span>
-                      <resize.ResizeHandle columnIndex={2} />
+                    <th scope="col" style={resize.getThStyle(2)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      Project Name<resize.ResizeHandle columnIndex={2} />
                     </th>
                     <th scope="col" style={resize.getThStyle(3)} className="text-xs font-medium text-slate-700 uppercase tracking-wider">
-                      <span className="report-table-th-inner">Version</span>
-                      <resize.ResizeHandle columnIndex={3} />
+                      Version<resize.ResizeHandle columnIndex={3} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(4)} className="text-xs font-medium text-slate-700 uppercase tracking-wider">
-                      <span className="report-table-th-inner">Description</span>
-                      <resize.ResizeHandle columnIndex={4} />
+                    <th scope="col" style={resize.getThStyle(4)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      Description<resize.ResizeHandle columnIndex={4} />
                     </th>
-                    <th scope="col" style={resize.getThStyle(5)} className="text-xs font-medium text-slate-700 uppercase tracking-wider">
-                      <span className="report-table-th-inner">Created At</span>
-                      <resize.ResizeHandle columnIndex={5} />
+                    <th scope="col" style={resize.getThStyle(5)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      Created At<resize.ResizeHandle columnIndex={5} />
                     </th>
                     <th scope="col" style={resize.getThStyle(6)} className="report-col-actions text-xs font-medium text-slate-700 uppercase tracking-wider">
-                      <span className="report-table-th-inner">Actions</span>
+                      Actions
                     </th>
                   </tr>
                 </thead>
