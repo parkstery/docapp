@@ -548,6 +548,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [planningModalDraftId, setPlanningModalDraftId] = useState('');
+  const [planningModalBodyHtml, setPlanningModalBodyHtml] = useState('');
   const detailFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [22, 26, 172, 252, 84, 100]);
   const {
@@ -625,6 +627,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
 
   const openModal = () => {
     setForm({ title: '' });
+    setPlanningModalDraftId(crypto.randomUUID());
+    setPlanningModalBodyHtml('');
     setIsModalOpen(true);
   };
 
@@ -633,11 +637,12 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       alert('제목을 입력하세요');
       return;
     }
+    const bodyMd = htmlToPlainTextWithBreaks(planningModalBodyHtml).trim() || '여기에 내용을 작성하세요.';
     const newDoc: PlanningDoc = {
       id: crypto.randomUUID(),
       appId,
       title: form.title.trim(),
-      content: '# ' + form.title.trim() + '\n\n여기에 내용을 작성하세요.',
+      content: '# ' + form.title.trim() + '\n\n' + bodyMd,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -646,6 +651,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
     loadDocs();
     setIsModalOpen(false);
     setForm({ title: '' });
+    setPlanningModalBodyHtml('');
     handleSelectDoc(toSave);
   };
 
@@ -1051,16 +1057,16 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       {/* 새 기획서 작성 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="p-4 border-b flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center shrink-0">
               <h3 className="font-bold text-lg">새 기획서 작성</h3>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium">저장</button>
-                <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+                <button type="button" onClick={() => { setIsModalOpen(false); setPlanningModalBodyHtml(''); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                <button type="button" onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium">저장</button>
+                <button type="button" onClick={() => { setIsModalOpen(false); setPlanningModalBodyHtml(''); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
                 <input
@@ -1069,6 +1075,20 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   value={form.title || ''}
                   onChange={e => setForm({...form, title: e.target.value})}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">본문 (WYSIWYG · 저장 시 Markdown 텍스트로 변환)</label>
+                {planningModalDraftId && (
+                  <RichHtmlEditor
+                    key={`planning-new-${planningModalDraftId}`}
+                    appId={appId}
+                    docId={planningModalDraftId}
+                    uploadSection="planning"
+                    initialHtml=""
+                    onHtmlChange={setPlanningModalBodyHtml}
+                    setUploading={setUploading}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -1093,6 +1113,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [editSummaryHtml, setEditSummaryHtml] = useState('');
+  const [modalReportSummaryHtml, setModalReportSummaryHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(7, [22, 26, 80, 152, 212, 84, 100]);
@@ -1254,7 +1275,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
         appId,
         title: form.title.trim(),
         type: form.type || 'Other',
-        summary: ensureReadableRichHtml(form.summary || ''),
+        summary: ensureReadableRichHtml(modalReportSummaryHtml),
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
@@ -1264,6 +1285,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       await storage.reports.save(toSave);
       setIsModalOpen(false);
       setForm({});
+      setModalReportSummaryHtml('');
       loadReports();
     } catch (error: any) {
       console.error('[ReportView] 보고서 저장 실패:', error);
@@ -1346,7 +1368,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const openModal = () => {
-    setForm({ type: 'Other' });
+    setForm({ type: 'Other', id: crypto.randomUUID() });
+    setModalReportSummaryHtml('');
     setIsModalOpen(true);
   };
 
@@ -1656,9 +1679,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 보고서 작성</h3>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
-                <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+                <button type="button" onClick={() => { setIsModalOpen(false); setModalReportSummaryHtml(''); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
+                <button type="button" onClick={() => { setIsModalOpen(false); setModalReportSummaryHtml(''); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
             </div>
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
@@ -1679,8 +1702,18 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">요약 내용</label>
-                <textarea className="w-full border rounded-lg p-3 h-64 sm:h-[32rem] resize-none focus:ring-2 ring-primary outline-none" value={form.summary || ''} onChange={e => setForm({...form, summary: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
+                {form.id && (
+                  <RichHtmlEditor
+                    key={`report-new-${form.id}`}
+                    appId={appId}
+                    docId={form.id}
+                    uploadSection="reports"
+                    initialHtml=""
+                    onHtmlChange={setModalReportSummaryHtml}
+                    setUploading={setUploading}
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
@@ -1770,7 +1803,10 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [prompts, setPrompts] = useState<PromptLog[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptLog | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [input, setInput] = useState<{ prompt: string; response: string; tags: string; fileInfoList?: FileInfo[] }>({ prompt: '', response: '', tags: '', fileInfoList: [] });
+  const [input, setInput] = useState<{ tags: string; fileInfoList?: FileInfo[] }>({ tags: '', fileInfoList: [] });
+  const [addPromptDraftId, setAddPromptDraftId] = useState('');
+  const [addPromptHtml, setAddPromptHtml] = useState('');
+  const [addResponseHtml, setAddResponseHtml] = useState('');
   const [editForm, setEditForm] = useState<Partial<PromptLog>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1810,7 +1846,11 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     }
     setUploading(true);
     try {
-      const fileInfo = await uploadFile(appId, `prompts/${editForm.id || selectedPrompt?.id || 'new'}`, file);
+      const fileInfo = await uploadFile(
+        appId,
+        `prompts/${editForm.id || selectedPrompt?.id || addPromptDraftId || 'new'}`,
+        file
+      );
       if (editForm.id) {
         setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       } else if (isAdding) {
@@ -1878,10 +1918,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSave = async () => {
-    if (!input.prompt) return;
-    const promptHtml = ensureReadablePromptHtml(input.prompt);
-    const responseHtml = ensureReadablePromptHtml(input.response || '');
-    const titlePlain = (htmlToPlainTextWithBreaks(promptHtml) || input.prompt).replace(/\s+/g, ' ').trim();
+    if (isBodyEffectivelyEmpty(addPromptHtml)) {
+      alert('프롬프트를 입력하세요');
+      return;
+    }
+    const promptHtml = ensureReadablePromptHtml(addPromptHtml);
+    const responseHtml = ensureReadablePromptHtml(addResponseHtml || '');
+    const titlePlain = (htmlToPlainTextWithBreaks(promptHtml) || '').replace(/\s+/g, ' ').trim();
     const item: any = {
       id: crypto.randomUUID(),
       appId,
@@ -1899,7 +1942,10 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
     await storage.prompts.save(toSave);
     loadPrompts();
     setIsAdding(false);
-    setInput({ prompt: '', response: '', tags: '', fileInfoList: [] });
+    setInput({ tags: '', fileInfoList: [] });
+    setAddPromptHtml('');
+    setAddResponseHtml('');
+    setAddPromptDraftId('');
   };
 
   const exitPromptDetail = useCallback(() => {
@@ -2199,7 +2245,16 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">프롬프트 로그</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setIsAdding(true)} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
+          <button
+            type="button"
+            onClick={() => {
+              setAddPromptDraftId(crypto.randomUUID());
+              setAddPromptHtml('');
+              setAddResponseHtml('');
+              setIsAdding(true);
+            }}
+            className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+          >
             <Plus size={16} /> 로그 추가
           </button>
           {selectedIds.size > 0 && (
@@ -2358,21 +2413,63 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 프롬프트 로그</h3>
               <div className="flex items-center gap-2">
-                <button onClick={() => { setIsAdding(false); setInput({ prompt: '', response: '', tags: '', fileInfoList: [] }); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
-                <button type="button" onClick={() => { setIsAdding(false); setInput({ prompt: '', response: '', tags: '', fileInfoList: [] }); }} className="p-1 text-slate-400 hover:text-slate-600 rounded">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAdding(false);
+                    setInput({ tags: '', fileInfoList: [] });
+                    setAddPromptHtml('');
+                    setAddResponseHtml('');
+                    setAddPromptDraftId('');
+                  }}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm"
+                >
+                  취소
+                </button>
+                <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAdding(false);
+                    setInput({ tags: '', fileInfoList: [] });
+                    setAddPromptHtml('');
+                    setAddResponseHtml('');
+                    setAddPromptDraftId('');
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                >
                   <X size={20} />
                 </button>
               </div>
             </div>
             <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">User Prompt</label>
-                <textarea className="w-full border rounded-lg p-3 h-28 sm:h-24 focus:ring-2 ring-primary outline-none text-sm" placeholder="입력 내용..." value={input.prompt} onChange={e => setInput({...input, prompt: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
+                {addPromptDraftId && (
+                  <RichHtmlEditor
+                    key={`prompt-add-p-${addPromptDraftId}`}
+                    appId={appId}
+                    docId={`${addPromptDraftId}-p`}
+                    uploadSection="prompts"
+                    initialHtml=""
+                    onHtmlChange={setAddPromptHtml}
+                    setUploading={setUploading}
+                  />
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">AI Response</label>
-                <textarea className="w-full border rounded-lg p-3 h-36 sm:h-32 bg-slate-50 focus:bg-white focus:ring-2 ring-primary outline-none text-sm" placeholder="응답 내용..." value={input.response} onChange={e => setInput({...input, response: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-700 mb-2">AI Response</label>
+                {addPromptDraftId && (
+                  <RichHtmlEditor
+                    key={`prompt-add-r-${addPromptDraftId}`}
+                    appId={appId}
+                    docId={`${addPromptDraftId}-r`}
+                    uploadSection="prompts"
+                    initialHtml=""
+                    onHtmlChange={setAddResponseHtml}
+                    setUploading={setUploading}
+                  />
+                )}
               </div>
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">태그</label>
@@ -2486,7 +2583,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const openModal = () => {
-    setForm({ title: '', content: '' });
+    setForm({ title: '', content: '', id: crypto.randomUUID() });
     setModalBodyHtml('');
     setIsModalOpen(true);
   };
@@ -2638,7 +2735,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
         id: form.id || crypto.randomUUID(),
         appId,
         title: form.title.trim(),
-        content: modalBodyHtml,
+        content: ensureReadableRichHtml(modalBodyHtml),
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now()
       };
@@ -2984,11 +3081,11 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
                 <RichHtmlEditor
-                  key={isModalOpen ? 'memo-create' : 'memo-create-closed'}
+                  key={form.id ? `memo-create-${form.id}` : 'memo-create'}
                   appId={appId}
                   docId={form.id || 'new'}
                   uploadSection="memos"
-                  initialHtml={modalBodyHtml}
+                  initialHtml=""
                   onHtmlChange={setModalBodyHtml}
                   setUploading={setUploading}
                 />
@@ -3008,6 +3105,9 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<Note>>({ title: '', content: '' });
+  const [noteModalDraftId, setNoteModalDraftId] = useState('');
+  const [noteModalContentHtml, setNoteModalContentHtml] = useState('');
+  const [noteModalUploading, setNoteModalUploading] = useState(false);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Note>>({});
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
@@ -3035,6 +3135,8 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 
   const openCreate = () => {
     setForm({ title: '', content: '' });
+    setNoteModalDraftId(crypto.randomUUID());
+    setNoteModalContentHtml('');
     setIsModalOpen(true);
   };
 
@@ -3048,6 +3150,8 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
   const closeModal = () => {
     setIsModalOpen(false);
     setForm({ title: '', content: '' });
+    setNoteModalContentHtml('');
+    setNoteModalDraftId('');
   };
 
   const exitNoteDetail = useCallback(() => {
@@ -3097,11 +3201,15 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
       alert('제목을 입력하세요');
       return;
     }
+    if (isBodyEffectivelyEmpty(noteModalContentHtml)) {
+      alert('내용을 입력하세요');
+      return;
+    }
     const item: Note = {
       id: form.id || crypto.randomUUID(),
       appId,
       title: form.title.trim(),
-      content: ensureReadableRichHtml((form.content ?? '').trim()),
+      content: ensureReadableRichHtml(noteModalContentHtml),
       createdAt: form.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
@@ -3303,13 +3411,21 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
-                <textarea
-                  className="w-full border border-slate-300 rounded-lg p-2.5 h-32 resize-none focus:ring-2 ring-primary outline-none"
-                  value={form.content ?? ''}
-                  onChange={(e) => setForm({ ...form, content: e.target.value })}
-                  placeholder="내용"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
+                {noteModalDraftId && (
+                  <RichHtmlEditor
+                    key={`note-create-${noteModalDraftId}`}
+                    appId={appId}
+                    docId={noteModalDraftId}
+                    uploadSection="notes"
+                    initialHtml=""
+                    onHtmlChange={setNoteModalContentHtml}
+                    setUploading={setNoteModalUploading}
+                  />
+                )}
+                {noteModalUploading && (
+                  <p className="text-xs text-slate-500 mt-1">이미지 업로드 중…</p>
+                )}
               </div>
             </div>
           </div>
@@ -3332,6 +3448,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [issueModalDraftId, setIssueModalDraftId] = useState('');
+  const [issueModalDescHtml, setIssueModalDescHtml] = useState('');
+  const [issueModalSolHtml, setIssueModalSolHtml] = useState('');
   const [editDescriptionHtml, setEditDescriptionHtml] = useState('');
   const [editSolutionHtml, setEditSolutionHtml] = useState('');
   const [editorUploading, setEditorUploading] = useState(false);
@@ -3530,13 +3649,16 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const handleSave = async () => {
-    if (!form.title) return;
+    if (!form.title?.trim()) {
+      alert('제목을 입력하세요');
+      return;
+    }
     const item: Issue = {
       id: form.id || crypto.randomUUID(),
       appId,
-      title: form.title,
-      description: ensureReadableRichHtml(form.description || ''),
-      solution: ensureReadableRichHtml(form.solution || ''),
+      title: form.title.trim(),
+      description: ensureReadableRichHtml(issueModalDescHtml),
+      solution: ensureReadableRichHtml(issueModalSolHtml),
       status: form.status || 'Open',
       severity: form.severity || 'Medium',
       createdAt: form.createdAt || Date.now(),
@@ -3549,6 +3671,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
     loadIssues();
     setIsModalOpen(false);
     setForm({});
+    setIssueModalDescHtml('');
+    setIssueModalSolHtml('');
+    setIssueModalDraftId('');
   };
 
   const handleEditSave = async () => {
@@ -3603,8 +3728,19 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
   };
 
   const openModal = () => {
-    setForm({ status: 'Open', severity: 'Medium' });
+    setForm({ status: 'Open', severity: 'Medium', id: crypto.randomUUID() });
+    setIssueModalDraftId(crypto.randomUUID());
+    setIssueModalDescHtml('');
+    setIssueModalSolHtml('');
     setIsModalOpen(true);
+  };
+
+  const closeIssueCreateModal = () => {
+    setIsModalOpen(false);
+    setForm({});
+    setIssueModalDescHtml('');
+    setIssueModalSolHtml('');
+    setIssueModalDraftId('');
   };
 
   // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
@@ -3909,11 +4045,12 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
+               <div className="p-4 border-b flex justify-between items-center">
                <h3 className="font-bold text-lg">새 이슈 등록</h3>
                <div className="flex items-center gap-2">
-                 <button onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
-                 <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+                 <button type="button" onClick={closeIssueCreateModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                 <button type="button" onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
+                 <button type="button" onClick={closeIssueCreateModal}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
                </div>
             </div>
             <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
@@ -3942,12 +4079,32 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   </div>
                </div>
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">문제 설명</label>
-                  <textarea className="w-full border rounded-lg p-3 h-28 sm:h-24 resize-none outline-none" value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} placeholder="발생한 문제에 대한 상세 설명" />
+                  <label className="block text-sm font-medium text-slate-700 mb-2">문제 설명</label>
+                  {issueModalDraftId && form.id && (
+                    <RichHtmlEditor
+                      key={`issue-create-d-${issueModalDraftId}`}
+                      appId={appId}
+                      docId={`${form.id}-d`}
+                      uploadSection="issues"
+                      initialHtml=""
+                      onHtmlChange={setIssueModalDescHtml}
+                      setUploading={setUploading}
+                    />
+                  )}
                </div>
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">해결 방법 (Solution)</label>
-                  <textarea className="w-full border border-green-200 bg-green-50 rounded-lg p-3 h-28 sm:h-24 resize-none outline-none focus:ring-2 ring-green-500" value={form.solution || ''} onChange={e => setForm({...form, solution: e.target.value})} placeholder="해결 방안 기록..." />
+                  <label className="block text-sm font-medium text-slate-700 mb-2">해결 방법 (Solution)</label>
+                  {issueModalDraftId && form.id && (
+                    <RichHtmlEditor
+                      key={`issue-create-s-${issueModalDraftId}`}
+                      appId={appId}
+                      docId={`${form.id}-s`}
+                      uploadSection="issues"
+                      initialHtml=""
+                      onHtmlChange={setIssueModalSolHtml}
+                      setUploading={setUploading}
+                    />
+                  )}
                </div>
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
