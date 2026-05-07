@@ -992,7 +992,6 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -1606,7 +1605,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Summary<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={5} /></th>
                   <th style={resize.getThStyle(6)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={6} /></th>
-                  <th style={resize.getThStyle(7)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -2342,7 +2340,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -3002,7 +2999,6 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Content<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -3986,7 +3982,6 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                   <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Severity<resize.ResizeHandle columnIndex={3} /></th>
                   <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Issue Title<resize.ResizeHandle columnIndex={4} /></th>
                   <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
-                  <th style={resize.getThStyle(6)} className="report-col-actions text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">순서</th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
