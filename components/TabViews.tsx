@@ -551,7 +551,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
   const [planningModalDraftId, setPlanningModalDraftId] = useState('');
   const [planningModalBodyHtml, setPlanningModalBodyHtml] = useState('');
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [22, 26, 172, 252, 84, 100]);
+  const resize = useResizableColumns(6, [22, 26, 210, 300, 84, 100]);
   const {
     ordered: orderedDocs,
     savingOrder: planningReorderBusy,
@@ -1115,7 +1115,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
   const [modalReportSummaryHtml, setModalReportSummaryHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(7, [22, 26, 80, 152, 212, 84, 100]);
+  const resize = useResizableColumns(7, [22, 26, 80, 188, 268, 84, 100]);
   const {
     ordered: orderedReports,
     savingOrder: reportReorderBusy,
@@ -1816,7 +1816,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
   const [editResponseHtml, setEditResponseHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [22, 26, 284, 60, 84, 100]);
+  const resize = useResizableColumns(6, [22, 26, 340, 80, 84, 100]);
   const {
     ordered: orderedPrompts,
     savingOrder: promptReorderBusy,
@@ -2558,7 +2558,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [modalBodyHtml, setModalBodyHtml] = useState('');
   const memoFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [22, 26, 172, 252, 84, 100]);
+  const resize = useResizableColumns(6, [22, 26, 210, 300, 84, 100]);
   const {
     ordered: orderedMemos,
     savingOrder: memoReorderBusy,
