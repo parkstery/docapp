@@ -27,6 +27,7 @@ import { storage } from '../services/storage';
 import { uploadFile, deleteFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useDragListReorder } from '../hooks/useDragListReorder';
+import { useHighlightedRow } from '../hooks/useHighlightedRow';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 import {
   ensureReadablePromptHtml,
@@ -519,7 +520,13 @@ const RichPromptField: React.FC<RichPromptFieldProps> = ({
 // --- Shared Props & Components ---
 interface ViewProps {
   appId: string;
+  /** 통합 검색 등에서 강조 표시할 항목 ID */
+  highlightId?: string | null;
+  /** 동일 ID를 다시 강조해야 할 때 증가시키는 시퀀스 값 */
+  highlightSeq?: number;
 }
+
+const HIGHLIGHT_ROW_CLASS = 'row-highlighted';
 
 const TableHeader = ({ cols }: { cols: string[] }) => (
   <thead className="bg-slate-50 border-b border-slate-200">
@@ -536,9 +543,10 @@ const TableHeader = ({ cols }: { cols: string[] }) => (
 const Loading = () => <div className="p-4 sm:p-8 text-center text-slate-400 flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={20}/> 불러오는 중...</div>;
 
 // --- 1. Planning (Markdown) ---
-export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
+export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq }) => {
   const [docs, setDocs] = useState<PlanningDoc[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [editForm, setEditForm] = useState<Partial<PlanningDoc>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<PlanningDoc>>({ title: '' });
@@ -922,7 +930,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
             <div className="lg:hidden p-3 space-y-3">
@@ -938,12 +946,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
               {orderedDocs.map((doc, index) => (
                 <div
                   key={doc.id}
+                  data-highlight-id={doc.id} tabIndex={-1}
                   draggable={!planningReorderBusy}
                   onDragStart={(e) => onPlanningDragStart(e, doc.id)}
                   onDragEnd={onPlanningDragEnd}
                   onDragOver={(e) => onPlanningDragOver(e, doc.id)}
                   onDrop={(e) => void onPlanningDrop(e, doc.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${planningDragRowClassName(doc.id)} ${!planningReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${planningDragRowClassName(doc.id)} ${!planningReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(doc.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectDoc(doc)} className="text-left min-w-0 flex-1">
@@ -998,12 +1007,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
                 {orderedDocs.map((doc, index) => (
                   <tr
                     key={doc.id}
+                    data-highlight-id={doc.id} tabIndex={-1}
                     draggable={!planningReorderBusy}
                     onDragStart={(e) => onPlanningDragStart(e, doc.id)}
                     onDragEnd={onPlanningDragEnd}
                     onDragOver={(e) => onPlanningDragOver(e, doc.id)}
                     onDrop={(e) => void onPlanningDrop(e, doc.id)}
-                    className={`hover:bg-indigo-50/50 group transition-colors ${planningDragRowClassName(doc.id)} ${!planningReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`hover:bg-indigo-50/50 group transition-colors ${planningDragRowClassName(doc.id)} ${!planningReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(doc.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                   >
                     <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -1099,8 +1109,9 @@ export const PlanningView: React.FC<ViewProps> = ({ appId }) => {
 };
 
 // --- 2. Reports ---
-export const ReportView: React.FC<ViewProps> = ({ appId }) => {
+export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq }) => {
   const [reports, setReports] = useState<Report[]>([]);
+  const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Report>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1529,7 +1540,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
             <div className="lg:hidden p-3 space-y-3">
@@ -1545,12 +1556,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
               {orderedReports.map((r, index) => (
                 <div
                   key={r.id}
+                  data-highlight-id={r.id} tabIndex={-1}
                   draggable={!reportReorderBusy}
                   onDragStart={(e) => onReportDragStart(e, r.id)}
                   onDragEnd={onReportDragEnd}
                   onDragOver={(e) => onReportDragOver(e, r.id)}
                   onDrop={(e) => void onReportDrop(e, r.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${reportDragRowClassName(r.id)} ${!reportReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${reportDragRowClassName(r.id)} ${!reportReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(r.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectReport(r)} className="text-left min-w-0 flex-1">
@@ -1611,12 +1623,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
                 {orderedReports.map((r, index) => (
                   <tr
                     key={r.id}
+                    data-highlight-id={r.id} tabIndex={-1}
                     draggable={!reportReorderBusy}
                     onDragStart={(e) => onReportDragStart(e, r.id)}
                     onDragEnd={onReportDragEnd}
                     onDragOver={(e) => onReportDragOver(e, r.id)}
                     onDrop={(e) => void onReportDrop(e, r.id)}
-                    className={`hover:bg-slate-50 group ${reportDragRowClassName(r.id)} ${!reportReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`hover:bg-slate-50 group ${reportDragRowClassName(r.id)} ${!reportReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(r.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                   >
                     <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -1797,7 +1810,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId }) => {
 };
 
 // --- 3. Prompts ---
-export const PromptView: React.FC<ViewProps> = ({ appId }) => {
+export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq }) => {
+  const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [prompts, setPrompts] = useState<PromptLog[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptLog | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -2267,7 +2281,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
             <div className="lg:hidden p-3 space-y-3">
@@ -2283,12 +2297,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
               {orderedPrompts.map((p, index) => (
                 <div
                   key={p.id}
+                  data-highlight-id={p.id} tabIndex={-1}
                   draggable={!promptReorderBusy}
                   onDragStart={(e) => onPromptDragStart(e, p.id)}
                   onDragEnd={onPromptDragEnd}
                   onDragOver={(e) => onPromptDragOver(e, p.id)}
                   onDrop={(e) => void onPromptDrop(e, p.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${promptDragRowClassName(p.id)} ${!promptReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${promptDragRowClassName(p.id)} ${!promptReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(p.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectPrompt(p)} className="text-left min-w-0 flex-1">
@@ -2346,12 +2361,13 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
                  {orderedPrompts.map((p, index) => (
                    <tr
                      key={p.id}
+                     data-highlight-id={p.id} tabIndex={-1}
                      draggable={!promptReorderBusy}
                      onDragStart={(e) => onPromptDragStart(e, p.id)}
                      onDragEnd={onPromptDragEnd}
                      onDragOver={(e) => onPromptDragOver(e, p.id)}
                      onDrop={(e) => void onPromptDrop(e, p.id)}
-                     className={`hover:bg-slate-50 group ${promptDragRowClassName(p.id)} ${!promptReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                     className={`hover:bg-slate-50 group ${promptDragRowClassName(p.id)} ${!promptReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(p.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                    >
                      <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -2544,7 +2560,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId }) => {
 };
 
 // --- 4. 참고 ---
-export const MemoView: React.FC<ViewProps> = ({ appId }) => {
+export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq }) => {
+  const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [memos, setMemos] = useState<Memo[]>([]);
   const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -2936,7 +2953,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
             <div className="lg:hidden p-3 space-y-3">
@@ -2952,12 +2969,13 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
               {orderedMemos.map((m, index) => (
                 <div
                   key={m.id}
+                  data-highlight-id={m.id} tabIndex={-1}
                   draggable={!memoReorderBusy}
                   onDragStart={(e) => onMemoDragStart(e, m.id)}
                   onDragEnd={onMemoDragEnd}
                   onDragOver={(e) => onMemoDragOver(e, m.id)}
                   onDrop={(e) => void onMemoDrop(e, m.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${memoDragRowClassName(m.id)} ${!memoReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${memoDragRowClassName(m.id)} ${!memoReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(m.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectMemo(m)} className="text-left min-w-0 flex-1">
@@ -3005,12 +3023,13 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
                  {orderedMemos.map((m, index) => (
                    <tr
                      key={m.id}
+                     data-highlight-id={m.id} tabIndex={-1}
                      draggable={!memoReorderBusy}
                      onDragStart={(e) => onMemoDragStart(e, m.id)}
                      onDragEnd={onMemoDragEnd}
                      onDragOver={(e) => onMemoDragOver(e, m.id)}
                      onDrop={(e) => void onMemoDrop(e, m.id)}
-                     className={`hover:bg-yellow-50 group transition-colors ${memoDragRowClassName(m.id)} ${!memoReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                     className={`hover:bg-yellow-50 group transition-colors ${memoDragRowClassName(m.id)} ${!memoReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(m.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                    >
                      <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -3096,8 +3115,9 @@ export const MemoView: React.FC<ViewProps> = ({ appId }) => {
 };
 
 // --- 4-2. 메모 (그리드 카드) ---
-export const NoteView: React.FC<ViewProps> = ({ appId }) => {
+export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq }) => {
   const [notes, setNotes] = useState<Note[]>([]);
+  const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<Note>>({ title: '', content: '' });
@@ -3324,7 +3344,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={highlightContainerRef} className="flex-1 overflow-y-auto">
         {orderedNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
             <FileText size={48} className="mb-4 opacity-50" />
@@ -3336,12 +3356,13 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
             {orderedNotes.map((note) => (
               <div
                 key={note.id}
+                data-highlight-id={note.id} tabIndex={-1}
                 draggable={!noteReorderBusy}
                 onDragStart={(e) => onNoteDragStart(e, note.id)}
                 onDragEnd={onNoteDragEnd}
                 onDragOver={(e) => onNoteDragOver(e, note.id)}
                 onDrop={(e) => void onNoteDrop(e, note.id)}
-                className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all ${noteDragRowClassName(note.id)} ${!noteReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all ${noteDragRowClassName(note.id)} ${!noteReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(note.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
               >
                 <div className="p-4 flex-1 flex flex-col min-h-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -3432,8 +3453,9 @@ export const NoteView: React.FC<ViewProps> = ({ appId }) => {
 };
 
 // --- 5. Troubleshooting ---
-export const IssueView: React.FC<ViewProps> = ({ appId }) => {
+export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq }) => {
   const [issues, setIssues] = useState<Issue[]>([]);
+  const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Issue>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -3909,7 +3931,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
             <div className="lg:hidden p-3 space-y-3">
@@ -3925,12 +3947,13 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
               {orderedIssues.map((issue, index) => (
                 <div
                   key={issue.id}
+                  data-highlight-id={issue.id} tabIndex={-1}
                   draggable={!issueReorderBusy}
                   onDragStart={(e) => onIssueDragStart(e, issue.id)}
                   onDragEnd={onIssueDragEnd}
                   onDragOver={(e) => onIssueDragOver(e, issue.id)}
                   onDrop={(e) => void onIssueDrop(e, issue.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${issueDragRowClassName(issue.id)} ${!issueReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  className={`border border-slate-200 rounded-lg p-3 bg-white ${issueDragRowClassName(issue.id)} ${!issueReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(issue.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectIssue(issue)} className="text-left min-w-0 flex-1">
@@ -3988,12 +4011,13 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
                  {orderedIssues.map((issue, index) => (
                    <tr
                      key={issue.id}
+                     data-highlight-id={issue.id} tabIndex={-1}
                      draggable={!issueReorderBusy}
                      onDragStart={(e) => onIssueDragStart(e, issue.id)}
                      onDragEnd={onIssueDragEnd}
                      onDragOver={(e) => onIssueDragOver(e, issue.id)}
                      onDrop={(e) => void onIssueDrop(e, issue.id)}
-                     className={`hover:bg-slate-50 group ${issueDragRowClassName(issue.id)} ${!issueReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                     className={`hover:bg-slate-50 group ${issueDragRowClassName(issue.id)} ${!issueReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(issue.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                    >
                      <td className="px-6 py-4 report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                        <input
@@ -4149,8 +4173,9 @@ export const IssueView: React.FC<ViewProps> = ({ appId }) => {
 };
 
 // --- 6. Screenshots ---
-export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
+export const ScreenshotView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq }) => {
   const [images, setImages] = useState<Screenshot[]>([]);
+  const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -4356,7 +4381,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
         </div>
       </div>
       
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 p-3 sm:p-4 overflow-y-auto">
+      <div ref={highlightContainerRef} className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 p-3 sm:p-4 overflow-y-auto">
         {loading ? <Loading /> : (
           <>
             {images.length === 0 && (
@@ -4407,12 +4432,13 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId }) => {
                   {orderedImages.map((img, index) => (
                     <div
                       key={img.id}
+                      data-highlight-id={img.id} tabIndex={-1}
                       draggable={!screenshotReorderBusy}
                       onDragStart={(e) => onScreenshotDragStart(e, img.id)}
                       onDragEnd={onScreenshotDragEnd}
                       onDragOver={(e) => onScreenshotDragOver(e, img.id)}
                       onDrop={(e) => void onScreenshotDrop(e, img.id)}
-                      className={`group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all ${screenshotDragRowClassName(img.id)} ${!screenshotReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                      className={`group relative rounded-lg overflow-hidden border shadow-sm aspect-video bg-slate-100 hover:shadow-md transition-all ${screenshotDragRowClassName(img.id)} ${!screenshotReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(img.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                     >
                       <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
                         <input

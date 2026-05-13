@@ -16,6 +16,8 @@ const AppDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('planning');
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [highlightItemId, setHighlightItemId] = useState<string | null>(null);
+  const [highlightSeq, setHighlightSeq] = useState(0);
 
   useEffect(() => {
     const fetchApp = async () => {
@@ -82,7 +84,11 @@ const AppDetail: React.FC = () => {
         appId={app.id}
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
-        onSelectResult={(tabId) => setActiveTab(tabId as Tab)}
+        onSelectResult={(tabId, docId) => {
+          setActiveTab(tabId as Tab);
+          setHighlightItemId(docId);
+          setHighlightSeq((n) => n + 1);
+        }}
       />
       {/* Mobile Tab Bar */}
       <nav className="lg:hidden bg-white border-b px-2 py-2 overflow-x-auto">
@@ -147,14 +153,30 @@ const AppDetail: React.FC = () => {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-slate-50">
           <div className="max-w-6xl mx-auto h-full">
-            {activeTab === 'planning' && <PlanningView appId={app.id} />}
-            {activeTab === 'reports' && <ReportView appId={app.id} />}
-            {activeTab === 'prompts' && <PromptView appId={app.id} />}
-            {activeTab === 'memos' && <MemoView appId={app.id} />}
-            {activeTab === 'free' && <FreeDocView appId={app.id} />}
-            {activeTab === 'notes' && <NoteView appId={app.id} />}
-            {activeTab === 'issues' && <IssueView appId={app.id} />}
-            {activeTab === 'screenshots' && <ScreenshotView appId={app.id} />}
+            {activeTab === 'planning' && (
+              <PlanningView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+            )}
+            {activeTab === 'reports' && (
+              <ReportView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+            )}
+            {activeTab === 'prompts' && (
+              <PromptView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+            )}
+            {activeTab === 'memos' && (
+              <MemoView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+            )}
+            {activeTab === 'free' && (
+              <FreeDocView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+            )}
+            {activeTab === 'notes' && (
+              <NoteView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+            )}
+            {activeTab === 'issues' && (
+              <IssueView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+            )}
+            {activeTab === 'screenshots' && (
+              <ScreenshotView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+            )}
           </div>
         </main>
       </div>
