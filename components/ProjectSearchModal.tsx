@@ -23,7 +23,7 @@ interface ProjectSearchModalProps {
   appId: string;
   open: boolean;
   onClose: () => void;
-  onSelectResult: (tabId: string) => void;
+  onSelectResult: (tabId: string, docId: string) => void;
 }
 
 const ProjectSearchModal: React.FC<ProjectSearchModalProps> = ({
@@ -122,7 +122,7 @@ const ProjectSearchModal: React.FC<ProjectSearchModalProps> = ({
                 key={`${d.kind}-${d.id}`}
                 type="button"
                 onClick={() => {
-                  onSelectResult(kindToTab(d.kind));
+                  onSelectResult(kindToTab(d.kind), d.id);
                   onClose();
                 }}
                 className="w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-indigo-50/50 transition-colors"

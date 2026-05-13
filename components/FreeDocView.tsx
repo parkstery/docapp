@@ -27,6 +27,7 @@ import { storage } from '../services/storage';
 import { deleteFile, uploadFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useDragListReorder } from '../hooks/useDragListReorder';
+import { useHighlightedRow } from '../hooks/useHighlightedRow';
 import { useUnsavedEditGuard } from '../hooks/useUnsavedEditGuard';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { freeDocEditSnapshot } from '../utils/editSnapshots';
@@ -49,7 +50,14 @@ function isBodyEffectivelyEmpty(html: string): boolean {
 
 interface ViewProps {
   appId: string;
+  /** 통합 검색 등에서 강조 표시할 항목 ID */
+  highlightId?: string | null;
+  /** 동일 ID를 다시 강조해야 할 때 증가시키는 시퀀스 값 */
+  highlightSeq?: number;
 }
+
+const HIGHLIGHT_ROW_CLASS =
+  'bg-amber-100 ring-2 ring-amber-400 ring-offset-1 ring-offset-white transition-colors duration-300';
 
 interface RichFreeEditorProps {
   appId: string;
@@ -335,8 +343,9 @@ const RichFreeEditor: React.FC<RichFreeEditorProps> = ({
   );
 };
 
-export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
+export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq }) => {
   const [docs, setDocs] = useState<FreeDoc[]>([]);
+  const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<Partial<FreeDoc>>({});
@@ -762,7 +771,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? (
             <div className="flex justify-center py-16 text-slate-400 gap-2">
               <Loader2 className="animate-spin" /> 로딩 중…
@@ -804,12 +813,13 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId }) => {
                 {orderedDocs.map((d, index) => (
                   <tr
                     key={d.id}
+                    data-highlight-id={d.id}
                     draggable={!freeReorderBusy}
                     onDragStart={(e) => onFreeDragStart(e, d.id)}
                     onDragEnd={onFreeDragEnd}
                     onDragOver={(e) => onFreeDragOver(e, d.id)}
                     onDrop={(e) => void onFreeDrop(e, d.id)}
-                    className={`hover:bg-violet-50/60 group transition-colors ${freeDragRowClassName(d.id)} ${!freeReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`hover:bg-violet-50/60 group transition-colors ${freeDragRowClassName(d.id)} ${!freeReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(d.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                   >
                     <td className="report-col-tight report-col-center" onClick={(e) => e.stopPropagation()}>
                       <input
