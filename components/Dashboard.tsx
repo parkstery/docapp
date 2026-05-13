@@ -213,7 +213,7 @@ const Dashboard: React.FC = () => {
                       Description<resize.ResizeHandle columnIndex={4} />
                     </th>
                     <th scope="col" style={resize.getThStyle(5)} className="text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                      Created At<resize.ResizeHandle columnIndex={5} />
+                      Created<resize.ResizeHandle columnIndex={5} />
                     </th>
                     <th scope="col" style={resize.getThStyle(6)} className="report-col-actions text-xs font-medium text-slate-700 uppercase tracking-wider">
                       Actions
