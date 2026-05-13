@@ -56,8 +56,7 @@ interface ViewProps {
   highlightSeq?: number;
 }
 
-const HIGHLIGHT_ROW_CLASS =
-  'bg-amber-100 ring-2 ring-amber-400 ring-offset-1 ring-offset-white transition-colors duration-300';
+const HIGHLIGHT_ROW_CLASS = 'row-highlighted';
 
 interface RichFreeEditorProps {
   appId: string;
@@ -813,7 +812,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
                 {orderedDocs.map((d, index) => (
                   <tr
                     key={d.id}
-                    data-highlight-id={d.id}
+                    data-highlight-id={d.id} tabIndex={-1}
                     draggable={!freeReorderBusy}
                     onDragStart={(e) => onFreeDragStart(e, d.id)}
                     onDragEnd={onFreeDragEnd}

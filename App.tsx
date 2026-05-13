@@ -135,6 +135,29 @@ const App: React.FC = () => {
         table.report-table-separators > tbody > tr > td[colspan] {
           text-align: center !important;
         }
+
+        /* 통합 검색에서 선택된 행 강조 */
+        @keyframes rowHighlightPulse {
+          0%   { background-color: #fcd34d; }
+          50%  { background-color: #fde68a; }
+          100% { background-color: #fef3c7; }
+        }
+        .row-highlighted,
+        .row-highlighted > td,
+        table.report-table-separators > tbody > tr.row-highlighted > td {
+          background-color: #fef3c7 !important;
+        }
+        .row-highlighted {
+          box-shadow: inset 4px 0 0 0 #d97706, inset 0 -2px 0 0 #f59e0b, inset 0 2px 0 0 #f59e0b !important;
+          animation: rowHighlightPulse 0.55s ease-out 2;
+          outline: none !important;
+          scroll-margin-top: 96px;
+          scroll-margin-bottom: 24px;
+        }
+        .row-highlighted:focus,
+        .row-highlighted:focus-visible {
+          outline: none !important;
+        }
       `}</style>
       <HashRouter>
         <AppRoutes />

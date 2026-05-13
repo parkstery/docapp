@@ -526,8 +526,7 @@ interface ViewProps {
   highlightSeq?: number;
 }
 
-const HIGHLIGHT_ROW_CLASS =
-  'bg-amber-100 ring-2 ring-amber-400 ring-offset-1 ring-offset-white transition-colors duration-300';
+const HIGHLIGHT_ROW_CLASS = 'row-highlighted';
 
 const TableHeader = ({ cols }: { cols: string[] }) => (
   <thead className="bg-slate-50 border-b border-slate-200">
@@ -941,7 +940,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
               {orderedDocs.map((doc, index) => (
                 <div
                   key={doc.id}
-                  data-highlight-id={doc.id}
+                  data-highlight-id={doc.id} tabIndex={-1}
                   draggable={!planningReorderBusy}
                   onDragStart={(e) => onPlanningDragStart(e, doc.id)}
                   onDragEnd={onPlanningDragEnd}
@@ -1003,7 +1002,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                 {orderedDocs.map((doc, index) => (
                   <tr
                     key={doc.id}
-                    data-highlight-id={doc.id}
+                    data-highlight-id={doc.id} tabIndex={-1}
                     draggable={!planningReorderBusy}
                     onDragStart={(e) => onPlanningDragStart(e, doc.id)}
                     onDragEnd={onPlanningDragEnd}
@@ -1535,7 +1534,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
               {orderedReports.map((r, index) => (
                 <div
                   key={r.id}
-                  data-highlight-id={r.id}
+                  data-highlight-id={r.id} tabIndex={-1}
                   draggable={!reportReorderBusy}
                   onDragStart={(e) => onReportDragStart(e, r.id)}
                   onDragEnd={onReportDragEnd}
@@ -1603,7 +1602,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                 {orderedReports.map((r, index) => (
                   <tr
                     key={r.id}
-                    data-highlight-id={r.id}
+                    data-highlight-id={r.id} tabIndex={-1}
                     draggable={!reportReorderBusy}
                     onDragStart={(e) => onReportDragStart(e, r.id)}
                     onDragEnd={onReportDragEnd}
@@ -2245,7 +2244,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
               {orderedPrompts.map((p, index) => (
                 <div
                   key={p.id}
-                  data-highlight-id={p.id}
+                  data-highlight-id={p.id} tabIndex={-1}
                   draggable={!promptReorderBusy}
                   onDragStart={(e) => onPromptDragStart(e, p.id)}
                   onDragEnd={onPromptDragEnd}
@@ -2310,7 +2309,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                  {orderedPrompts.map((p, index) => (
                    <tr
                      key={p.id}
-                     data-highlight-id={p.id}
+                     data-highlight-id={p.id} tabIndex={-1}
                      draggable={!promptReorderBusy}
                      onDragStart={(e) => onPromptDragStart(e, p.id)}
                      onDragEnd={onPromptDragEnd}
@@ -2876,7 +2875,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
               {orderedMemos.map((m, index) => (
                 <div
                   key={m.id}
-                  data-highlight-id={m.id}
+                  data-highlight-id={m.id} tabIndex={-1}
                   draggable={!memoReorderBusy}
                   onDragStart={(e) => onMemoDragStart(e, m.id)}
                   onDragEnd={onMemoDragEnd}
@@ -2931,7 +2930,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
                  {orderedMemos.map((m, index) => (
                    <tr
                      key={m.id}
-                     data-highlight-id={m.id}
+                     data-highlight-id={m.id} tabIndex={-1}
                      draggable={!memoReorderBusy}
                      onDragStart={(e) => onMemoDragStart(e, m.id)}
                      onDragEnd={onMemoDragEnd}
@@ -3253,7 +3252,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             {orderedNotes.map((note) => (
               <div
                 key={note.id}
-                data-highlight-id={note.id}
+                data-highlight-id={note.id} tabIndex={-1}
                 draggable={!noteReorderBusy}
                 onDragStart={(e) => onNoteDragStart(e, note.id)}
                 onDragEnd={onNoteDragEnd}
@@ -3816,7 +3815,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
               {orderedIssues.map((issue, index) => (
                 <div
                   key={issue.id}
-                  data-highlight-id={issue.id}
+                  data-highlight-id={issue.id} tabIndex={-1}
                   draggable={!issueReorderBusy}
                   onDragStart={(e) => onIssueDragStart(e, issue.id)}
                   onDragEnd={onIssueDragEnd}
@@ -3881,7 +3880,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
                  {orderedIssues.map((issue, index) => (
                    <tr
                      key={issue.id}
-                     data-highlight-id={issue.id}
+                     data-highlight-id={issue.id} tabIndex={-1}
                      draggable={!issueReorderBusy}
                      onDragStart={(e) => onIssueDragStart(e, issue.id)}
                      onDragEnd={onIssueDragEnd}
@@ -4281,7 +4280,7 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId, highlightId, highli
                   {orderedImages.map((img, index) => (
                     <div
                       key={img.id}
-                      data-highlight-id={img.id}
+                      data-highlight-id={img.id} tabIndex={-1}
                       draggable={!screenshotReorderBusy}
                       onDragStart={(e) => onScreenshotDragStart(e, img.id)}
                       onDragEnd={onScreenshotDragEnd}
