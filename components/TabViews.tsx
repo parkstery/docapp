@@ -123,6 +123,8 @@ interface RichHtmlEditorProps {
   placeholder?: string;
   disabled?: boolean;
   setUploading: (v: boolean) => void;
+  /** 에디터 본문 영역 최소 높이(px). 미지정 시 420px */
+  minHeightPx?: number;
 }
 
 const RichHtmlEditor: React.FC<RichHtmlEditorProps> = ({
@@ -134,6 +136,7 @@ const RichHtmlEditor: React.FC<RichHtmlEditorProps> = ({
   placeholder = '내용을 입력하세요. 이미지는 붙여넣기 또는 드래그 앤 드롭으로 넣을 수 있습니다.',
   disabled,
   setUploading,
+  minHeightPx = 420,
 }) => {
   const editorRef = useRef<Editor | null>(null);
   const uploadImagesRef = useRef<(files: File[]) => Promise<void>>(async () => {});
@@ -199,7 +202,8 @@ const RichHtmlEditor: React.FC<RichHtmlEditorProps> = ({
     () => ({
       attributes: {
         class:
-          'tiptap focus:outline-none min-h-[420px] px-4 py-3 text-sm text-slate-800 prose prose-sm max-w-none [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3',
+          'tiptap focus:outline-none px-4 py-3 text-sm text-slate-800 prose prose-sm max-w-none [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3',
+        style: `min-height: ${minHeightPx}px`,
       },
       handleDrop(_view: unknown, event: DragEvent, _slice: unknown, moved: boolean) {
         if (moved) return false;
@@ -221,7 +225,7 @@ const RichHtmlEditor: React.FC<RichHtmlEditorProps> = ({
         return true;
       },
     }),
-    []
+    [minHeightPx]
   );
 
   const editor = useEditor(
@@ -254,7 +258,10 @@ const RichHtmlEditor: React.FC<RichHtmlEditorProps> = ({
 
   if (!editor) {
     return (
-      <div className="flex items-center justify-center min-h-[420px] border rounded-lg bg-slate-50 text-slate-500 text-sm gap-2">
+      <div
+        className="flex items-center justify-center border rounded-lg bg-slate-50 text-slate-500 text-sm gap-2"
+        style={{ minHeight: `${minHeightPx}px` }}
+      >
         <Loader2 className="animate-spin" size={18} /> 에디터 로딩…
       </div>
     );
@@ -2165,6 +2172,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   initialHtml={editForm.prompt ?? ''}
                   onHtmlChange={setEditPromptHtml}
                   setUploading={setUploading}
+                  minHeightPx={336}
                 />
               </div>
               <div>
@@ -2177,6 +2185,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   initialHtml={editForm.response ?? ''}
                   onHtmlChange={setEditResponseHtml}
                   setUploading={setUploading}
+                  minHeightPx={336}
                 />
               </div>
               <div>
@@ -2467,6 +2476,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                     initialHtml=""
                     onHtmlChange={setAddPromptHtml}
                     setUploading={setUploading}
+                    minHeightPx={336}
                   />
                 )}
               </div>
@@ -2481,6 +2491,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                     initialHtml=""
                     onHtmlChange={setAddResponseHtml}
                     setUploading={setUploading}
+                    minHeightPx={336}
                   />
                 )}
               </div>
