@@ -92,7 +92,7 @@ const Dashboard: React.FC = () => {
         {/* Header Section */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">프로젝트 대시보드</h1>
+            <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
             <p className="text-slate-500 text-sm mt-1">등록된 모든 애플리케이션 프로젝트 현황입니다.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center w-full lg:w-auto">
