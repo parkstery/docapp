@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
  *  - 강조 표시는 `isHighlighted(id)` 가 true인 동안 행에 추가 클래스를 적용
  *
  * highlightId 가 바뀌면:
- *  1) 해당 data-highlight-id 요소를 컨테이너에서 찾아 scrollIntoView
+ *  1) 모든 부모 스크롤 컨테이너를 찾아 해당 요소가 가운데 오도록 스크롤
  *  2) 해당 요소에 keyboard focus 부여 (가능한 경우)
  *  3) 일정 시간(기본 5초) 동안 강조 표시 활성화
  */
@@ -37,11 +37,7 @@ export function useHighlightedRow(
         `[data-highlight-id="${CSS.escape(highlightId)}"]`
       );
       if (!target) return false;
-      try {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } catch {
-        target.scrollIntoView();
-      }
+      scrollAllAncestorsIntoView(target);
       try {
         const focusable = target as HTMLElement & { focus?: (opts?: FocusOptions) => void };
         focusable.focus?.({ preventScroll: true });
@@ -54,10 +50,22 @@ export function useHighlightedRow(
     setActiveId(highlightId);
 
     const tryFocus = () => {
-      if (focusRow()) return;
-      if (retryCount >= 8) return;
+      if (focusRow()) {
+        // 첫 번째 스크롤 후, 레이아웃 변동(이미지 로딩 등)에 대비해 한 번 더 정렬
+        setTimeout(() => {
+          if (cancelled) return;
+          const container = containerRef.current;
+          if (!container) return;
+          const target = container.querySelector<HTMLElement>(
+            `[data-highlight-id="${CSS.escape(highlightId)}"]`
+          );
+          if (target) scrollAllAncestorsIntoView(target);
+        }, 300);
+        return;
+      }
+      if (retryCount >= 12) return;
       retryCount += 1;
-      retryTimer = setTimeout(tryFocus, 120);
+      retryTimer = setTimeout(tryFocus, 100);
     };
 
     tryFocus();
@@ -76,4 +84,56 @@ export function useHighlightedRow(
   const isHighlighted = (id: string) => activeId === id;
 
   return { containerRef, isHighlighted };
+}
+
+/** 요소의 모든 스크롤 가능한 조상 컨테이너를 찾아 반환 */
+function getScrollableAncestors(el: HTMLElement): HTMLElement[] {
+  const result: HTMLElement[] = [];
+  let parent: HTMLElement | null = el.parentElement;
+  while (parent && parent !== document.body && parent !== document.documentElement) {
+    const style = window.getComputedStyle(parent);
+    const overflowY = style.overflowY;
+    const overflowX = style.overflowX;
+    const canScrollY =
+      (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') &&
+      parent.scrollHeight > parent.clientHeight + 1;
+    const canScrollX =
+      (overflowX === 'auto' || overflowX === 'scroll' || overflowX === 'overlay') &&
+      parent.scrollWidth > parent.clientWidth + 1;
+    if (canScrollY || canScrollX) {
+      result.push(parent);
+    }
+    parent = parent.parentElement;
+  }
+  return result;
+}
+
+/**
+ * 대상 요소가 모든 스크롤 가능한 조상 컨테이너의 가운데에 오도록 스크롤한다.
+ * `Element.scrollIntoView`가 중첩 스크롤 컨테이너에서 신뢰성 있게 동작하지 않는
+ * 케이스를 보완한다.
+ */
+function scrollAllAncestorsIntoView(el: HTMLElement): void {
+  const containers = getScrollableAncestors(el);
+  // 안쪽 컨테이너부터 바깥쪽 컨테이너 순서로 스크롤한다.
+  for (const container of containers) {
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const deltaY =
+      elRect.top - containerRect.top - container.clientHeight / 2 + el.clientHeight / 2;
+    const deltaX =
+      elRect.left - containerRect.left - container.clientWidth / 2 + el.clientWidth / 2;
+    try {
+      container.scrollBy({ top: deltaY, left: deltaX, behavior: 'smooth' });
+    } catch {
+      container.scrollTop += deltaY;
+      container.scrollLeft += deltaX;
+    }
+  }
+  // 마지막으로 window 스크롤도 보장
+  try {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  } catch {
+    el.scrollIntoView();
+  }
 }
