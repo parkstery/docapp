@@ -40,13 +40,7 @@ import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 import { openDocumentPreviewInBrowser } from '../services/markdownRender';
 import { MarkdownPreview } from './MarkdownPreview';
 import { PlanningContentEditor } from './PlanningContentEditor';
-import { DocumentMarkdownSplitEditor } from './DocumentMarkdownSplitEditor';
 import { restructureContentAsChatPaste } from '../utils/chatPasteStorage';
-import {
-  documentListPreview,
-  promptTitleFromMarkdown,
-  toEditableDocumentMarkdown,
-} from '../utils/documentContent';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -1153,7 +1147,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const [isDragging, setIsDragging] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
-  const [reportPasteHint, setReportPasteHint] = useState(false);
+  const [editSummaryHtml, setEditSummaryHtml] = useState('');
+  const [modalReportSummaryHtml, setModalReportSummaryHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(7, [22, 26, 80, 188, 268, 84, 100]);
@@ -1179,6 +1174,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const exitReportDetail = useCallback(() => {
     setSelectedReportId(null);
     setEditForm({});
+    setEditSummaryHtml('');
   }, []);
 
   const persistReportEdit = useCallback(async (): Promise<boolean> => {
@@ -1192,7 +1188,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         appId,
         title: editForm.title.trim(),
         type: editForm.type || 'Other',
-        summary: editForm.summary ?? '',
+        summary: editSummaryHtml,
         createdAt: editForm.createdAt ?? Date.now(),
         updatedAt: Date.now(),
       };
@@ -1210,20 +1206,21 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
       return false;
     }
-  }, [editForm, appId]);
+  }, [editForm, editSummaryHtml, appId]);
 
   const reportUnsaved = useUnsavedEditGuard({
     active: !!(selectedReportId && editForm.id),
     editKey: selectedReportId ?? '',
-    buildSnapshot: () => reportEditSnapshot(editForm, editForm.summary || ''),
+    buildSnapshot: () => reportEditSnapshot(editForm, editSummaryHtml || editForm.summary || ''),
     exit: exitReportDetail,
     save: persistReportEdit,
   });
 
   const handleSelectReport = (report: Report) => {
     setSelectedReportId(report.id);
-    const nextSummary = toEditableDocumentMarkdown(report.summary || '');
+    const nextSummary = ensureReadableRichHtml(report.summary || '');
     setEditForm({ ...report, fileInfoList: getFileList(report), summary: nextSummary });
+    setEditSummaryHtml(nextSummary);
   };
 
   const processFile = async (file: File, target: 'form' | 'editForm') => {
@@ -1313,7 +1310,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         appId,
         title: form.title.trim(),
         type: form.type || 'Other',
-        summary: form.summary ?? '',
+        summary: ensureReadableRichHtml(modalReportSummaryHtml),
         createdAt: form.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
@@ -1323,6 +1320,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       await storage.reports.save(toSave);
       setIsModalOpen(false);
       setForm({});
+      setModalReportSummaryHtml('');
       loadReports();
     } catch (error: any) {
       console.error('[ReportView] 보고서 저장 실패:', error);
@@ -1405,7 +1403,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   };
 
   const openModal = () => {
-    setForm({ type: 'Other', id: crypto.randomUUID(), summary: '' });
+    setForm({ type: 'Other', id: crypto.randomUUID() });
+    setModalReportSummaryHtml('');
     setIsModalOpen(true);
   };
 
@@ -1437,23 +1436,11 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <button type="button" onClick={reportUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
             <button
               type="button"
-              onClick={() => {
-                const next = restructureContentAsChatPaste(editForm.summary || '');
-                setEditForm({ ...editForm, summary: next });
-                setReportPasteHint(true);
-                setTimeout(() => setReportPasteHint(false), 2500);
-              }}
-              className="px-4 py-2 bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-lg text-sm transition-colors"
-            >
-              구조화 적용
-            </button>
-            <button
-              type="button"
               onClick={() =>
                 openDocumentPreviewInBrowser(
-                  editForm.summary || '',
+                  editSummaryHtml || editForm.summary || '',
                   editForm.title ? `보고서 - ${editForm.title}` : '보고서',
-                  { format: 'planning' }
+                  { format: 'html' }
                 )
               }
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors"
@@ -1506,27 +1493,15 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      요약 (Markdown · Cursor 채팅 붙여넣기)
-                    </label>
-                    <p className="text-xs text-slate-500 mb-2">
-                      Cursor 채팅·표가 포함된 내용을 붙여넣으면 구조화됩니다. 표·본문은{' '}
-                      <strong>오른쪽 미리보기</strong>에서 확인하세요.
-                    </p>
-                    {reportPasteHint && (
-                      <p className="text-xs text-green-700 font-medium mb-2">
-                        구조화가 적용되었습니다. 오른쪽 미리보기를 확인하세요.
-                      </p>
-                    )}
-                    <DocumentMarkdownSplitEditor
-                      value={editForm.summary || ''}
-                      onChange={(summary) => setEditForm({ ...editForm, summary })}
-                      placeholder="보고서 요약·채팅 내용을 붙여넣으세요..."
-                      paneMinHeight="min-h-[360px] xl:min-h-[420px]"
-                      onStructuredPaste={() => {
-                        setReportPasteHint(true);
-                        setTimeout(() => setReportPasteHint(false), 2500);
-                      }}
+                    <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
+                    <RichHtmlEditor
+                      key={`report-summary-${editForm.id}`}
+                      appId={appId}
+                      docId={editForm.id!}
+                      uploadSection="reports"
+                      initialHtml={editForm.summary || ''}
+                      onHtmlChange={setEditSummaryHtml}
+                      setUploading={setUploading}
                     />
                   </div>
                   <div>
@@ -1713,7 +1688,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                       <div className="truncate" title={r.title}>{r.title}</div>
                     </td>
                     <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
-                      <div className="truncate" title={documentListPreview(r.summary, 200)}>{documentListPreview(r.summary) || (r.summary?.includes('<img') ? '[이미지]' : '')}</div>
+                      <div className="truncate" title={stripHtml(r.summary)}>{stripHtml(r.summary) || (r.summary?.includes('<img') ? '[이미지]' : '')}</div>
                     </td>
                     <td className="px-6 py-4 min-w-0 overflow-hidden text-sm text-slate-500 cursor-pointer" onClick={() => handleSelectReport(r)}>
                       {getFileList(r).length > 0 && (
@@ -1746,9 +1721,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 보고서 작성</h3>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { setIsModalOpen(false); setForm({}); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
+                <button type="button" onClick={() => { setIsModalOpen(false); setModalReportSummaryHtml(''); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
                 <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
-                <button type="button" onClick={() => { setIsModalOpen(false); setForm({}); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
+                <button type="button" onClick={() => { setIsModalOpen(false); setModalReportSummaryHtml(''); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
             </div>
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
@@ -1769,13 +1744,18 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">요약 (Markdown · 채팅 붙여넣기)</label>
-                <DocumentMarkdownSplitEditor
-                  value={form.summary || ''}
-                  onChange={(summary) => setForm({ ...form, summary })}
-                  placeholder="보고서 요약을 붙여넣으세요..."
-                  paneMinHeight="min-h-[280px] xl:min-h-[320px]"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-2">요약 내용</label>
+                {form.id && (
+                  <RichHtmlEditor
+                    key={`report-new-${form.id}`}
+                    appId={appId}
+                    docId={form.id}
+                    uploadSection="reports"
+                    initialHtml=""
+                    onHtmlChange={setModalReportSummaryHtml}
+                    setUploading={setUploading}
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
@@ -1867,8 +1847,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const [selectedPrompt, setSelectedPrompt] = useState<PromptLog | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [input, setInput] = useState<{ tags: string; fileInfoList?: FileInfo[] }>({ tags: '', fileInfoList: [] });
-  const [addPromptMd, setAddPromptMd] = useState('');
-  const [addResponseMd, setAddResponseMd] = useState('');
+  const [addPromptDraftId, setAddPromptDraftId] = useState('');
+  const [addPromptHtml, setAddPromptHtml] = useState('');
+  const [addResponseHtml, setAddResponseHtml] = useState('');
   const [editForm, setEditForm] = useState<Partial<PromptLog>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1876,7 +1857,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
-  const [promptPasteHint, setPromptPasteHint] = useState(false);
+  const [editPromptHtml, setEditPromptHtml] = useState('');
+  const [editResponseHtml, setEditResponseHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [22, 26, 340, 80, 84, 100]);
@@ -1909,7 +1891,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     try {
       const fileInfo = await uploadFile(
         appId,
-        `prompts/${editForm.id || selectedPrompt?.id || 'new'}`,
+        `prompts/${editForm.id || selectedPrompt?.id || addPromptDraftId || 'new'}`,
         file
       );
       if (editForm.id) {
@@ -1979,16 +1961,19 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   };
 
   const handleSave = async () => {
-    if (isBodyEffectivelyEmpty(addPromptMd)) {
+    if (isBodyEffectivelyEmpty(addPromptHtml)) {
       alert('프롬프트를 입력하세요');
       return;
     }
+    const promptHtml = ensureReadablePromptHtml(addPromptHtml);
+    const responseHtml = ensureReadablePromptHtml(addResponseHtml || '');
+    const titlePlain = (htmlToPlainTextWithBreaks(promptHtml) || '').replace(/\s+/g, ' ').trim();
     const item: any = {
       id: crypto.randomUUID(),
       appId,
-      title: promptTitleFromMarkdown(addPromptMd),
-      prompt: addPromptMd,
-      response: addResponseMd || '',
+      title: titlePlain.substring(0, 30) + (titlePlain.length > 30 ? '...' : ''),
+      prompt: promptHtml,
+      response: responseHtml,
       tags: input.tags.split(',').map(t => t.trim()).filter(Boolean),
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -2001,17 +1986,20 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     loadPrompts();
     setIsAdding(false);
     setInput({ tags: '', fileInfoList: [] });
-    setAddPromptMd('');
-    setAddResponseMd('');
+    setAddPromptHtml('');
+    setAddResponseHtml('');
+    setAddPromptDraftId('');
   };
 
   const exitPromptDetail = useCallback(() => {
     setSelectedPrompt(null);
     setEditForm({});
+    setEditPromptHtml('');
+    setEditResponseHtml('');
   }, []);
 
   const persistPromptEdit = useCallback(async (): Promise<boolean> => {
-    if (isBodyEffectivelyEmpty(editForm.prompt || '')) {
+    if (isBodyEffectivelyEmpty(editPromptHtml)) {
       alert('프롬프트를 입력하세요');
       return false;
     }
@@ -2019,9 +2007,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       const item: any = {
         id: editForm.id!,
         appId,
-        title: promptTitleFromMarkdown(editForm.prompt || ''),
-        prompt: editForm.prompt ?? '',
-        response: editForm.response ?? '',
+        title: stripHtml(editPromptHtml).substring(0, 30) + '...',
+        prompt: editPromptHtml,
+        response: editResponseHtml || '',
         tags: editForm.tags || [],
         createdAt: editForm.createdAt || Date.now(),
         updatedAt: Date.now(),
@@ -2041,13 +2029,17 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       alert(`프롬프트 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
       return false;
     }
-  }, [editForm, appId]);
+  }, [editForm, editPromptHtml, editResponseHtml, appId]);
 
   const promptUnsaved = useUnsavedEditGuard({
     active: !!(selectedPrompt && editForm.id),
     editKey: selectedPrompt?.id ?? '',
     buildSnapshot: () =>
-      promptEditSnapshot(editForm, editForm.prompt || '', editForm.response || ''),
+      promptEditSnapshot(
+        editForm,
+        editPromptHtml || editForm.prompt || '',
+        editResponseHtml || editForm.response || ''
+      ),
     exit: exitPromptDetail,
     save: persistPromptEdit,
   });
@@ -2059,14 +2051,45 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
 
   const handleSelectPrompt = (prompt: PromptLog) => {
     setSelectedPrompt(prompt);
-    const nextPrompt = toEditableDocumentMarkdown(prompt.prompt || '');
-    const nextResponse = toEditableDocumentMarkdown(prompt.response || '');
-    setEditForm({
-      ...prompt,
-      fileInfoList: getFileList(prompt),
-      prompt: nextPrompt,
-      response: nextResponse,
-    });
+    const nextPrompt = ensureReadablePromptHtml(prompt.prompt || '');
+    const nextResponse = ensureReadablePromptHtml(prompt.response || '');
+    setEditForm({ ...prompt, fileInfoList: getFileList(prompt), prompt: nextPrompt, response: nextResponse });
+    setEditPromptHtml(nextPrompt);
+    setEditResponseHtml(nextResponse);
+  };
+
+  /** 클립보드 이미지를 업로드한 뒤 마크다운 이미지 문법으로 현재 커서 위치에 삽입 */
+  const handlePasteImageInField = async (e: React.ClipboardEvent, field: 'prompt' | 'response') => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image/') !== 0) continue;
+      const file = items[i].getAsFile();
+      if (!file) continue;
+      e.preventDefault();
+      const target = e.currentTarget as HTMLTextAreaElement | null;
+      if (!target) return;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      const value = field === 'prompt' ? (editForm.prompt ?? '') : (editForm.response ?? '');
+      if (file.size > 10 * 1024 * 1024) {
+        alert('이미지 크기는 10MB 이하여야 합니다.');
+        return;
+      }
+      setUploading(true);
+      try {
+        const fileInfo = await uploadFile(appId, `prompts/${editForm.id || 'new'}`, file);
+        const inserted = `\n![이미지](${fileInfo.url})\n`;
+        const newValue = value.slice(0, start) + inserted + value.slice(end);
+        setEditForm(prev => ({ ...prev, [field]: newValue }));
+      } catch (err: any) {
+        console.error('[PromptView] 클립보드 이미지 업로드 실패:', err);
+        alert(`이미지 업로드 실패: ${err?.message || '알 수 없는 오류'}`);
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -2143,34 +2166,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <button type="button" onClick={promptUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditForm({
-                  ...editForm,
-                  prompt: restructureContentAsChatPaste(editForm.prompt || ''),
-                  response: restructureContentAsChatPaste(editForm.response || ''),
-                });
-                setPromptPasteHint(true);
-                setTimeout(() => setPromptPasteHint(false), 2500);
-              }}
-              className="px-4 py-2 bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-lg text-sm transition-colors"
-            >
-              구조화 적용
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                openDocumentPreviewInBrowser(
-                  `# User Prompt\n\n${editForm.prompt || ''}\n\n---\n\n# AI Response\n\n${editForm.response || ''}`,
-                  editForm.title ? `프롬프트 - ${editForm.title}` : '프롬프트',
-                  { format: 'planning' }
-                )
-              }
-              className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors"
-            >
-              .md 보기
-            </button>
             <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
             </button>
@@ -2190,40 +2185,31 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                 )}
               </div>
             </div>
-            {promptPasteHint && (
-              <p className="text-xs text-green-700 font-medium mb-4">
-                구조화가 적용되었습니다. 각 필드 오른쪽 미리보기를 확인하세요.
-              </p>
-            )}
-            <div className="space-y-8">
+            <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  User Prompt (Markdown · Cursor 채팅 붙여넣기)
-                </label>
-                <DocumentMarkdownSplitEditor
-                  value={editForm.prompt ?? ''}
-                  onChange={(prompt) => setEditForm({ ...editForm, prompt })}
-                  placeholder="User Prompt / 채팅 질문을 붙여넣으세요..."
-                  paneMinHeight="min-h-[280px] xl:min-h-[320px]"
-                  onStructuredPaste={() => {
-                    setPromptPasteHint(true);
-                    setTimeout(() => setPromptPasteHint(false), 2500);
-                  }}
+                <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
+                <RichHtmlEditor
+                  key={`prompt-${editForm.id}`}
+                  appId={appId}
+                  docId={editForm.id!}
+                  uploadSection="prompts"
+                  initialHtml={editForm.prompt ?? ''}
+                  onHtmlChange={setEditPromptHtml}
+                  setUploading={setUploading}
+                  minHeightPx={336}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  AI Response (Markdown · Cursor 채팅 붙여넣기)
-                </label>
-                <DocumentMarkdownSplitEditor
-                  value={editForm.response ?? ''}
-                  onChange={(response) => setEditForm({ ...editForm, response })}
-                  placeholder="AI Response / 채팅 답변을 붙여넣으세요..."
-                  paneMinHeight="min-h-[280px] xl:min-h-[320px]"
-                  onStructuredPaste={() => {
-                    setPromptPasteHint(true);
-                    setTimeout(() => setPromptPasteHint(false), 2500);
-                  }}
+                <label className="block text-sm font-medium text-slate-700 mb-2">AI Response</label>
+                <RichHtmlEditor
+                  key={`response-${editForm.id}`}
+                  appId={appId}
+                  docId={editForm.id!}
+                  uploadSection="prompts"
+                  initialHtml={editForm.response ?? ''}
+                  onHtmlChange={setEditResponseHtml}
+                  setUploading={setUploading}
+                  minHeightPx={336}
                 />
               </div>
               <div>
@@ -2307,8 +2293,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
           <button
             type="button"
             onClick={() => {
-              setAddPromptMd('');
-              setAddResponseMd('');
+              setAddPromptDraftId(crypto.randomUUID());
+              setAddPromptHtml('');
+              setAddResponseHtml('');
               setIsAdding(true);
             }}
             className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
@@ -2477,8 +2464,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   onClick={() => {
                     setIsAdding(false);
                     setInput({ tags: '', fileInfoList: [] });
-                    setAddPromptMd('');
-                    setAddResponseMd('');
+                    setAddPromptHtml('');
+                    setAddResponseHtml('');
+                    setAddPromptDraftId('');
                   }}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm"
                 >
@@ -2490,8 +2478,9 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   onClick={() => {
                     setIsAdding(false);
                     setInput({ tags: '', fileInfoList: [] });
-                    setAddPromptMd('');
-                    setAddResponseMd('');
+                    setAddPromptHtml('');
+                    setAddResponseHtml('');
+                    setAddPromptDraftId('');
                   }}
                   className="p-1 text-slate-400 hover:text-slate-600 rounded"
                 >
@@ -2499,24 +2488,36 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                 </button>
               </div>
             </div>
-            <div className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1">
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt (Markdown)</label>
-                <DocumentMarkdownSplitEditor
-                  value={addPromptMd}
-                  onChange={setAddPromptMd}
-                  placeholder="User Prompt를 붙여넣으세요..."
-                  paneMinHeight="min-h-[240px] xl:min-h-[280px]"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
+                {addPromptDraftId && (
+                  <RichHtmlEditor
+                    key={`prompt-add-p-${addPromptDraftId}`}
+                    appId={appId}
+                    docId={`${addPromptDraftId}-p`}
+                    uploadSection="prompts"
+                    initialHtml=""
+                    onHtmlChange={setAddPromptHtml}
+                    setUploading={setUploading}
+                    minHeightPx={336}
+                  />
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">AI Response (Markdown)</label>
-                <DocumentMarkdownSplitEditor
-                  value={addResponseMd}
-                  onChange={setAddResponseMd}
-                  placeholder="AI Response를 붙여넣으세요..."
-                  paneMinHeight="min-h-[240px] xl:min-h-[280px]"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-2">AI Response</label>
+                {addPromptDraftId && (
+                  <RichHtmlEditor
+                    key={`prompt-add-r-${addPromptDraftId}`}
+                    appId={appId}
+                    docId={`${addPromptDraftId}-r`}
+                    uploadSection="prompts"
+                    initialHtml=""
+                    onHtmlChange={setAddResponseHtml}
+                    setUploading={setUploading}
+                    minHeightPx={336}
+                  />
+                )}
               </div>
               <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">태그</label>
