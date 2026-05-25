@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import githubMarkdownCss from 'github-markdown-css/github-markdown.css?raw';
 import markdownDocappCss from '../styles/markdown-docapp.css?raw';
+import { normalizeMarkdownTables } from '../utils/markdownTableNormalize';
 
 /** 미리보기·새 탭 보기 공통 루트 클래스 */
 export const MARKDOWN_PREVIEW_CLASS = 'markdown-body markdown-docapp';
@@ -11,7 +12,8 @@ export type DocumentPreviewFormat = 'markdown' | 'html' | 'auto';
 
 marked.setOptions({
   gfm: true,
-  breaks: true,
+  // breaks: true 는 표 행 파싱을 깨뜨리는 경우가 많아 비활성화
+  breaks: false,
 });
 
 const MARKDOWN_ALLOWED_TAGS = [
@@ -50,11 +52,97 @@ function sanitizeRichDocumentHtml(dirty: string): string {
   });
 }
 
+function wrapTablesInHtml(html: string): string {
+  return html
+    .replace(/<table(\s[^>]*)?>/gi, '<div class="md-table-wrap"><table$1>')
+    .replace(/<\/table>/gi, '</table></div>');
+}
+
+/** marked가 <p>| a | b |</p> 로 끊은 표 행을 HTML table로 복구 */
+function repairPipeParagraphTables(html: string): string {
+  if (typeof document === 'undefined' || !html.includes('|')) return html;
+  const root = document.createElement('div');
+  root.innerHTML = html;
+  let i = 0;
+
+  const parsePipeRow = (text: string): string[] | null => {
+    const t = text.trim();
+    if (!t.startsWith('|') || !t.includes('|', 1)) return null;
+    return t.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  };
+
+  const isSeparatorCells = (cells: string[]) =>
+    cells.every((c) => /^:?-{3,}:?$/.test(c.replace(/\s/g, '')));
+
+  while (i < root.children.length) {
+    const first = root.children[i];
+    const row0 = parsePipeRow(first?.textContent || '');
+    if (first?.tagName !== 'P' || !row0) {
+      i += 1;
+      continue;
+    }
+
+    const rows: string[][] = [row0];
+    let j = i + 1;
+    while (j < root.children.length) {
+      const row = parsePipeRow(root.children[j]?.textContent || '');
+      if (root.children[j]?.tagName !== 'P' || !row) break;
+      rows.push(row);
+      j += 1;
+    }
+
+    if (rows.length < 2) {
+      i += 1;
+      continue;
+    }
+
+    let header = rows[0];
+    let body = rows.slice(1);
+    if (body.length > 0 && isSeparatorCells(body[0])) {
+      body = body.slice(1);
+    }
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const trH = document.createElement('tr');
+    for (const cell of header) {
+      const th = document.createElement('th');
+      th.textContent = cell;
+      trH.appendChild(th);
+    }
+    thead.appendChild(trH);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const row of body) {
+      const tr = document.createElement('tr');
+      for (const cell of row) {
+        const td = document.createElement('td');
+        td.textContent = cell;
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'md-table-wrap';
+    wrap.appendChild(table);
+    root.insertBefore(wrap, first);
+    for (let k = j - 1; k >= i; k--) root.children[k].remove();
+    i += 1;
+  }
+
+  return root.innerHTML;
+}
+
 /** GFM 마크다운 → 정화된 HTML (코드 하이라이트 전) */
 export function renderMarkdownToSafeHtml(source: string): string {
   if (!source?.trim()) return '';
-  const raw = marked.parse(source, { async: false }) as string;
-  return sanitizeMarkdownHtml(raw);
+  const normalized = normalizeMarkdownTables(source);
+  const raw = marked.parse(normalized, { async: false }) as string;
+  const safe = sanitizeMarkdownHtml(raw);
+  return wrapTablesInHtml(repairPipeParagraphTables(safe));
 }
 
 /** 코드 하이라이트 적용 (브라우저 환경) */
