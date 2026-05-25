@@ -44,9 +44,13 @@ function summarizeBlocks(blocks: DocumentBlock[]): string {
   return `<!-- docapp: Cursor 채팅 붙여넣기 (${label}) — 미리보기에서 확인 -->\n`;
 }
 
-/** 렌더용: fence JSON 또는 평문 재파싱 */
-export function resolveBlocksFromMarkdownSegment(md: string): DocumentBlock[] | null {
-  const t = md.trim();
-  if (!t) return null;
-  return parseChatPaste(t);
+/** 편집 중인 평문/기존 붙여넣기를 :::docapp-chat 블록으로 변환 */
+export function restructureContentAsChatPaste(source: string): string {
+  const stripped = source
+    .replace(/:::docapp-chat\n[\s\S]*?\n:::/g, '')
+    .replace(/:::docapp-html\n[\s\S]*?\n:::/g, '')
+    .replace(/<!--\s*docapp:[\s\S]*?-->\s*/gi, '')
+    .trim();
+  if (!stripped) return source;
+  return buildChatPasteInsert(stripped);
 }

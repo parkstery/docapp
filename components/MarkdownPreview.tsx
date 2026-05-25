@@ -6,21 +6,29 @@ import '../styles/markdown-docapp.css';
 import {
   MARKDOWN_PREVIEW_CLASS,
   renderDocumentForDisplay,
+  renderPlanningContentForDisplay,
 } from '../services/markdownRender';
 
 export interface MarkdownPreviewProps {
   content: string;
   className?: string;
+  /** 기획서: Cursor 채팅 붙여넣기 블록 파서 항상 적용 */
+  mode?: 'default' | 'planning';
 }
 
 /** 마크다운 문자열을 GFM + GitHub 스타일 HTML로 렌더링 (XSS 방지, 코드 하이라이트) */
-export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className = '' }) => {
+export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
+  content,
+  className = '',
+  mode = 'default',
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const html = useMemo(() => {
     if (!content?.trim()) return '';
+    if (mode === 'planning') return renderPlanningContentForDisplay(content);
     return renderDocumentForDisplay(content, 'auto');
-  }, [content]);
+  }, [content, mode]);
 
   useEffect(() => {
     if (!containerRef.current || !html) return;

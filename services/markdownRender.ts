@@ -18,7 +18,7 @@ import {
 /** 미리보기·새 탭 보기 공통 루트 클래스 */
 export const MARKDOWN_PREVIEW_CLASS = 'markdown-body markdown-docapp';
 
-export type DocumentPreviewFormat = 'markdown' | 'html' | 'auto';
+export type DocumentPreviewFormat = 'markdown' | 'html' | 'auto' | 'planning';
 
 marked.setOptions({
   gfm: true,
@@ -161,6 +161,24 @@ export function renderMarkdownForDisplay(source: string): string {
   return applyCodeHighlightToHtml(safe);
 }
 
+/** 기획서 미리보기: 항상 블록 파서 우선 (Cursor 채팅·GFM 표) */
+export function renderPlanningContentForDisplay(source: string): string {
+  const trimmed = source?.trim() ?? '';
+  if (!trimmed) return '';
+
+  if (hasStructuredPasteBlocks(trimmed)) {
+    return renderMixedDocumentForDisplay(trimmed);
+  }
+
+  const stripped = trimmed.replace(/<!--\s*docapp:[\s\S]*?-->\s*/gi, '').trim();
+  const blocks = parseChatPaste(stripped);
+  if (blocks.length > 0) {
+    return applyCodeHighlightToHtml(renderDocumentBlocksToHtml(blocks));
+  }
+
+  return renderMarkdownForDisplay(stripped);
+}
+
 function renderMarkdownSegment(md: string): string {
   const trimmed = md.replace(/<!--\s*docapp:[\s\S]*?-->\s*/gi, '').trim();
   if (!trimmed) return '';
@@ -269,6 +287,10 @@ export function renderDocumentForDisplay(
 ): string {
   const trimmed = content?.trim() ?? '';
   if (!trimmed) return '';
+
+  if (format === 'planning') {
+    return renderPlanningContentForDisplay(trimmed);
+  }
 
   if (hasStructuredPasteBlocks(trimmed)) {
     return renderMixedDocumentForDisplay(trimmed);

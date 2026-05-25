@@ -40,6 +40,7 @@ import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 import { openDocumentPreviewInBrowser } from '../services/markdownRender';
 import { MarkdownPreview } from './MarkdownPreview';
 import { PlanningContentEditor } from './PlanningContentEditor';
+import { restructureContentAsChatPaste } from '../utils/chatPasteStorage';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -533,6 +534,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
   const [isDragging, setIsDragging] = useState(false);
   const [planningModalDraftId, setPlanningModalDraftId] = useState('');
   const [planningModalBodyHtml, setPlanningModalBodyHtml] = useState('');
+  const [planningPasteHint, setPlanningPasteHint] = useState(false);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [22, 26, 210, 300, 84, 100]);
   const {
@@ -777,11 +779,23 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
             </button>
             <button
               type="button"
+              onClick={() => {
+                const next = restructureContentAsChatPaste(editForm.content || '');
+                setEditForm({ ...editForm, content: next });
+                setPlanningPasteHint(true);
+                setTimeout(() => setPlanningPasteHint(false), 2500);
+              }}
+              className="px-4 py-2 bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-lg text-sm transition-colors w-full sm:w-auto"
+            >
+              구조화 적용
+            </button>
+            <button
+              type="button"
               onClick={() =>
                 openDocumentPreviewInBrowser(
                   editForm.content || '',
                   editForm.title ? `기획서 - ${editForm.title}` : '기획서',
-                  { format: 'auto' }
+                  { format: 'planning' }
                 )
               }
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors w-full sm:w-auto"
@@ -827,19 +841,31 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                   서식은 <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-html</code>로 저장됩니다.
                   표·본문은 <strong>오른쪽 미리보기</strong>에서 확인하세요.
                 </p>
+                {planningPasteHint && (
+                  <p className="text-xs text-green-700 font-medium mb-2">
+                    채팅 붙여넣기 구조화가 적용되었습니다. 오른쪽 미리보기를 확인하세요.
+                  </p>
+                )}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   <PlanningContentEditor
                     className="w-full min-h-[400px] xl:min-h-[480px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
-                    placeholder="Markdown 작성..."
+                    placeholder="Cursor 채팅 내용을 붙여넣으세요..."
                     value={editForm.content || ''}
                     onChange={(content) => setEditForm({ ...editForm, content })}
+                    onStructuredPaste={() => {
+                      setPlanningPasteHint(true);
+                      setTimeout(() => setPlanningPasteHint(false), 2500);
+                    }}
                   />
                   <div className="flex flex-col min-h-[400px] xl:min-h-[480px] border rounded-xl bg-white overflow-hidden">
-                    <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0">
-                      미리보기 (채팅 붙여넣기 · GFM)
+                    <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0 flex items-center justify-between gap-2">
+                      <span>미리보기 · Paste Normalizer</span>
+                      <span className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wide">
+                        v2
+                      </span>
                     </div>
                     <div className="flex-1 overflow-auto p-4">
-                      <MarkdownPreview content={editForm.content || ''} />
+                      <MarkdownPreview mode="planning" content={editForm.content || ''} />
                     </div>
                   </div>
                 </div>

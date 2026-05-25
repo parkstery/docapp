@@ -5,6 +5,56 @@ const HEADING = /^(#{1,6})\s+(.+)$/;
 const BULLET = /^(\s*)([-*+•]|\d+\.)\s+(.+)$/;
 const FENCE_OPEN = /^```(\w*)?\s*$/;
 
+function isPipeTableRow(line: string): boolean {
+  const t = line.trim();
+  return Boolean(t && t.startsWith('|') && t.includes('|', 1));
+}
+
+function isPipeSeparatorRow(line: string): boolean {
+  const inner = line.trim().replace(/^\|/, '').replace(/\|$/, '').trim();
+  if (!inner) return false;
+  return inner.split('|').every((c) => /^:?-{3,}:?$/.test(c.replace(/\s/g, '')));
+}
+
+function parsePipeCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((c) => c.trim());
+}
+
+/** GFM | col | col | 표 */
+function tryParsePipeMarkdownTable(
+  lines: string[],
+  start: number
+): { end: number; block: DocumentBlock } | null {
+  if (!isPipeTableRow(lines[start])) return null;
+
+  const blockLines: string[] = [];
+  let pos = start;
+  while (pos < lines.length) {
+    const t = lines[pos].trim();
+    if (!t) break;
+    if (!isPipeTableRow(lines[pos]) && !isPipeSeparatorRow(lines[pos])) break;
+    blockLines.push(lines[pos]);
+    pos += 1;
+  }
+
+  const dataRows = blockLines.filter((l) => !isPipeSeparatorRow(l));
+  if (dataRows.length < 2) return null;
+
+  const headers = parsePipeCells(dataRows[0]);
+  const rows = dataRows.slice(1).map(parsePipeCells);
+  if (headers.length < 2) return null;
+
+  return {
+    end: pos,
+    block: { type: 'table', headers, rows },
+  };
+}
+
 function splitColumns(line: string): string[] {
   if (line.includes('\t')) {
     return line.split('\t').map((c) => c.trim().replace(/\s*←.*$/, ''));
@@ -200,6 +250,7 @@ function collectParagraph(lines: string[], start: number): { end: number; text: 
     const t = lines[i].trim();
     if (!t) break;
     if (HEADING.test(t) || BULLET.test(t) || FENCE_OPEN.test(t)) break;
+    if (isPipeTableRow(t)) break;
     if (tabCount(lines[i]) >= 1) break;
     if (LETTER_ROW.test(t)) break;
     const cols = splitColumns(t);
@@ -251,6 +302,13 @@ export function parseChatPaste(source: string): DocumentBlock[] {
       continue;
     }
 
+    const pipeTable = tryParsePipeMarkdownTable(lines, i);
+    if (pipeTable) {
+      blocks.push(pipeTable.block);
+      i = pipeTable.end;
+      continue;
+    }
+
     const stacked = tryParseStackedLetterTable(lines, i);
     if (stacked) {
       blocks.push(stacked.block);
@@ -282,11 +340,26 @@ export function parseChatPaste(source: string): DocumentBlock[] {
   return blocks;
 }
 
+function plainHasTableSignals(text: string): boolean {
+  const lines = text.split('\n');
+  let tabRows = 0;
+  let pipeRows = 0;
+  for (const line of lines) {
+    if (tabCount(line) >= 1) tabRows += 1;
+    if (isPipeTableRow(line)) pipeRows += 1;
+    if (LETTER_ROW.test(line.trim())) return true;
+  }
+  return tabRows >= 2 || pipeRows >= 2;
+}
+
 /** 붙여넣기/렌더 시 채팅 평문 정규화가 의미 있는지 */
 export function shouldNormalizeChatPaste(text: string): boolean {
   const t = text.trim();
-  if (t.length < 24) return false;
+  if (t.length < 12) return false;
   if (/^:::docapp-(html|chat)\b/m.test(t)) return false;
+
+  const nonEmptyLines = t.split('\n').filter((l) => l.trim()).length;
+  if (nonEmptyLines >= 2 && plainHasTableSignals(t)) return true;
 
   const blocks = parseChatPaste(t);
   if (!blocks.length) return false;
@@ -299,9 +372,20 @@ export function shouldNormalizeChatPaste(text: string): boolean {
 
   if (hasTable) return true;
   if (hasStructure && paraCount >= 1) return true;
-  if (paraCount >= 3) return true;
+  if (nonEmptyLines >= 2 && hasStructure) return true;
+  if (paraCount >= 2) return true;
 
   return false;
+}
+
+/** Cursor 채팅 HTML보다 평문 블록 파서를 우선할지 */
+export function shouldPreferChatPasteOverClipboardHtml(plain: string, html: string): boolean {
+  if (!plain.trim()) return false;
+  if (!html.trim()) return shouldNormalizeChatPaste(plain);
+  const lines = plain.split('\n').filter((l) => l.trim()).length;
+  if (lines < 2) return false;
+  if (plainHasTableSignals(plain)) return true;
+  return shouldNormalizeChatPaste(plain);
 }
 
 export function chatPasteHasRecoverableStructure(text: string): boolean {

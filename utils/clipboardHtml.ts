@@ -31,10 +31,23 @@ export function cleanClipboardHtmlMarkup(html: string): string {
   return inner;
 }
 
+/** Cursor/채팅 복사: <p>만 여러 개인 약한 HTML (표 없음) → chat normalizer 사용 */
+export function isWeakChatClipboardHtml(html: string): boolean {
+  const cleaned = cleanClipboardHtmlMarkup(html).toLowerCase();
+  if (!cleaned.trim()) return true;
+  if (/<table[\s>]/i.test(cleaned)) return false;
+  if (/<(ul|ol)[\s>]/i.test(cleaned)) return false;
+  if (/<h[1-6][\s>]/i.test(cleaned)) return false;
+  if ((cleaned.match(/<t[dh][\s>]/gi) || []).length >= 2) return false;
+  if (/data-block-id|notion-|docs-internal-guid/i.test(cleaned)) return false;
+  return true;
+}
+
 /** 표·목록·제목 등 구조가 있을 때만 HTML 경로 사용 (단순 한 줄 텍스트는 plain 유지) */
 export function shouldPreserveClipboardAsHtml(html: string): boolean {
   const t = html.toLowerCase();
   if (!t.trim()) return false;
+  if (isWeakChatClipboardHtml(html)) return false;
   if (/<table[\s>]/i.test(t)) return true;
   if (/<(ul|ol)[\s>]/i.test(t)) return true;
   if (/<h[1-6][\s>]/i.test(t)) return true;
