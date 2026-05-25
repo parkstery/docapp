@@ -12,8 +12,8 @@ export type DocumentPreviewFormat = 'markdown' | 'html' | 'auto';
 
 marked.setOptions({
   gfm: true,
-  // breaks: true 는 표 행 파싱을 깨뜨리는 경우가 많아 비활성화
-  breaks: false,
+  // 표 정규화 후 breaks — 본문 줄바꿈 유지 (Notion 붙여넣기와 유사)
+  breaks: true,
 });
 
 const MARKDOWN_ALLOWED_TAGS = [
