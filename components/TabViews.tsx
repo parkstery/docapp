@@ -779,7 +779,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
               onClick={() =>
                 openDocumentPreviewInBrowser(
                   editForm.content || '',
-                  editForm.title ? `기획서 - ${editForm.title}` : '기획서'
+                  editForm.title ? `기획서 - ${editForm.title}` : '기획서',
+                  { format: 'markdown' }
                 )
               }
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors w-full sm:w-auto"
@@ -1403,7 +1404,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
               onClick={() =>
                 openDocumentPreviewInBrowser(
                   editSummaryHtml || editForm.summary || '',
-                  editForm.title ? `보고서 - ${editForm.title}` : '보고서'
+                  editForm.title ? `보고서 - ${editForm.title}` : '보고서',
+                  { format: 'html' }
                 )
               }
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors"

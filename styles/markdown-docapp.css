@@ -1,46 +1,99 @@
-/* docapp 마크다운 읽기 전용 보강 (github-markdown-css와 함께 사용) */
+/* docapp 읽기 전용 — Notion/GitHub 중간 톤 (github-markdown-css와 함께) */
 .markdown-docapp {
   overflow-x: auto;
   max-width: 100%;
-  line-height: 1.7;
+  line-height: 1.75;
   word-wrap: break-word;
+  color: #37352f;
+  font-size: 15px;
 }
 
-.markdown-docapp table {
-  display: block;
-  overflow-x: auto;
-  width: max-content;
-  max-width: 100%;
-  border-collapse: collapse;
-  margin: 16px 0;
-  font-size: 14px;
-}
-
-.markdown-docapp th,
-.markdown-docapp td {
-  border: 1px solid #d0d7de;
-  padding: 8px 12px;
-  text-align: left;
-  vertical-align: top;
-}
-
-.markdown-docapp th {
-  background: #f6f8fa;
+.markdown-docapp h1,
+.markdown-docapp h2,
+.markdown-docapp h3,
+.markdown-docapp h4 {
   font-weight: 600;
+  line-height: 1.35;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+  color: #1f2937;
 }
 
-.markdown-docapp tr:nth-child(even) td {
-  background: #fafbfc;
+.markdown-docapp p {
+  margin-top: 0.6em;
+  margin-bottom: 0.6em;
+}
+
+.markdown-docapp ul,
+.markdown-docapp ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.markdown-docapp blockquote {
+  border-left: 3px solid #e5e7eb;
+  color: #6b7280;
+  padding-left: 1em;
+  margin: 1em 0;
 }
 
 .markdown-docapp pre {
   overflow-x: auto;
   max-width: 100%;
+  border-radius: 8px;
+  background: #f6f8fa !important;
+  border: 1px solid #e5e7eb;
+}
+
+.markdown-docapp code {
+  font-size: 0.9em;
+}
+
+.markdown-docapp :not(pre) > code {
+  background: #f3f4f6;
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+}
+
+.markdown-docapp table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25em 0;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.markdown-docapp thead {
+  background: #f9fafb;
+}
+
+.markdown-docapp th,
+.markdown-docapp td {
+  border: 1px solid #e5e7eb;
+  padding: 10px 14px;
+  text-align: left;
+  vertical-align: top;
+  min-width: 80px;
+}
+
+.markdown-docapp th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.markdown-docapp tbody tr:hover td {
+  background: #fafbfc;
 }
 
 .markdown-docapp img {
   max-width: 100%;
   height: auto;
+  border-radius: 6px;
 }
 
 .markdown-docapp .task-list-item {
@@ -54,4 +107,10 @@
 
 .markdown-docapp ul.contains-task-list {
   padding-left: 1.5em;
+}
+
+.markdown-docapp hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5em 0;
 }

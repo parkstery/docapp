@@ -5,8 +5,7 @@ import 'highlight.js/styles/github.min.css';
 import '../styles/markdown-docapp.css';
 import {
   MARKDOWN_PREVIEW_CLASS,
-  renderMarkdownToSafeHtml,
-  applyCodeHighlightToHtml,
+  renderDocumentForDisplay,
 } from '../services/markdownRender';
 
 export interface MarkdownPreviewProps {
@@ -20,8 +19,7 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, class
 
   const html = useMemo(() => {
     if (!content?.trim()) return '';
-    const safe = renderMarkdownToSafeHtml(content);
-    return applyCodeHighlightToHtml(safe);
+    return renderDocumentForDisplay(content, 'markdown');
   }, [content]);
 
   useEffect(() => {
