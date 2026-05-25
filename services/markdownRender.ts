@@ -12,7 +12,6 @@ export type DocumentPreviewFormat = 'markdown' | 'html' | 'auto';
 
 marked.setOptions({
   gfm: true,
-  // 표 정규화 후 breaks — 본문 줄바꿈 유지 (Notion 붙여넣기와 유사)
   breaks: true,
 });
 
