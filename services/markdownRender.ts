@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import githubMarkdownCss from 'github-markdown-css/github-markdown.css?raw';
 import markdownDocappCss from '../styles/markdown-docapp.css?raw';
-import { normalizeMarkdownTables } from '../utils/markdownTableNormalize';
+import { prepareMarkdownForRender } from '../utils/markdownTableNormalize';
 
 /** 미리보기·새 탭 보기 공통 루트 클래스 */
 export const MARKDOWN_PREVIEW_CLASS = 'markdown-body markdown-docapp';
@@ -139,7 +139,7 @@ function repairPipeParagraphTables(html: string): string {
 /** GFM 마크다운 → 정화된 HTML (코드 하이라이트 전) */
 export function renderMarkdownToSafeHtml(source: string): string {
   if (!source?.trim()) return '';
-  const normalized = normalizeMarkdownTables(source);
+  const normalized = prepareMarkdownForRender(source);
   const raw = marked.parse(normalized, { async: false }) as string;
   const safe = sanitizeMarkdownHtml(raw);
   return wrapTablesInHtml(repairPipeParagraphTables(safe));
