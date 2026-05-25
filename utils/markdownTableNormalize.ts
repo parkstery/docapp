@@ -47,34 +47,97 @@ function tabCount(line: string): number {
   return (line.match(/\t/g) || []).length;
 }
 
-/** Cursor/Notion 붙여넣기: 탭 헤더 + A./B./C. 각 행이 N줄(열 수)인 표 */
+/** Cursor/Notion: A. ~ G. 로 시작하는 표 데이터 행 */
 const LETTER_ROW_START = /^[A-Z]\.\s/;
 
+const PG_COMPARE_HEADER =
+  /^방안\s+국내\s*법인\s+사업자\s+BOXCYCLE\s*적합\s+비고\s*$/i;
+
 function splitHeaderCells(headerLine: string): string[] | null {
+  const t = headerLine.trim();
+  if (tabCount(t) >= 1) {
+    const parts = t.split('\t').map((c) => c.trim());
+    if (parts.length >= 2) return parts;
+  }
+  const bySpaces = t.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean);
+  if (bySpaces.length >= 2) return bySpaces;
+  if (PG_COMPARE_HEADER.test(t)) {
+    return ['방안', '국내 법인', '사업자', 'BOXCYCLE 적합', '비고'];
+  }
+  return null;
+}
+
+function lineFollowedByLetterRow(lines: string[], idx: number): boolean {
+  let j = idx + 1;
+  while (j < lines.length && lines[j].trim() === '') j += 1;
+  return j < lines.length && LETTER_ROW_START.test(lines[j].trim());
+}
+
+function firstLetterRowIndex(lines: string[], from: number): number {
+  let j = from;
+  while (j < lines.length && lines[j].trim() === '') j += 1;
+  if (j < lines.length && LETTER_ROW_START.test(lines[j].trim())) return j;
+  return -1;
+}
+
+/** 연속 A./B./C. 행 사이 간격 = 열 수 */
+function inferColCountFromLetterRows(lines: string[], startIdx: number): number | null {
+  const idxs: number[] = [];
+  for (let i = startIdx; i < lines.length; i++) {
+    if (LETTER_ROW_START.test(lines[i].trim())) idxs.push(i);
+    if (idxs.length >= 3) break;
+  }
+  if (idxs.length < 2) return null;
+  const gap = idxs[1] - idxs[0];
+  if (gap < 2) return null;
+  for (let k = 2; k < idxs.length; k++) {
+    if (idxs[k] - idxs[k - 1] !== gap) return null;
+  }
+  return gap;
+}
+
+function resolveHeaderCells(headerLine: string, colCount: number): string[] {
+  const split = splitHeaderCells(headerLine);
+  if (split && split.length === colCount) return split;
   if (tabCount(headerLine) >= 1) {
-    return headerLine.split('\t').map((c) => c.trim());
+    const parts = headerLine.split('\t').map((c) => c.trim());
+    if (parts.length === colCount) return parts;
   }
   const bySpaces = headerLine.trim().split(/\s{2,}/).map((c) => c.trim()).filter(Boolean);
-  if (bySpaces.length >= 2) return bySpaces;
-  return null;
+  if (bySpaces.length === colCount) return bySpaces;
+  if (colCount === 5 && PG_COMPARE_HEADER.test(headerLine.trim())) {
+    return ['방안', '국내 법인', '사업자', 'BOXCYCLE 적합', '비고'];
+  }
+  return Array.from({ length: colCount }, (_, i) =>
+    i === 0 ? headerLine.trim() || '항목' : `열 ${i + 1}`
+  );
 }
 
 function tryBuildLetteredMultilineTable(
   lines: string[],
   headerIdx: number
 ): { tableLines: string[]; endIdx: number } | null {
-  const headerCells = splitHeaderCells(lines[headerIdx]);
-  if (!headerCells) return null;
+  if (LETTER_ROW_START.test(lines[headerIdx]?.trim() ?? '')) return null;
 
-  const colCount = headerCells.length;
+  const letterStart = firstLetterRowIndex(lines, headerIdx + 1);
+  if (letterStart < 0) return null;
+
+  const inferredCols = inferColCountFromLetterRows(lines, letterStart);
+  const headerCells = splitHeaderCells(lines[headerIdx]);
+  let colCount = headerCells?.length ?? 0;
+
+  if (inferredCols && (colCount < 2 || colCount !== inferredCols)) {
+    colCount = inferredCols;
+  }
+  if (colCount < 2 && inferredCols) colCount = inferredCols;
   if (colCount < 2) return null;
 
+  const headers = resolveHeaderCells(lines[headerIdx], colCount);
   const rows: string[][] = [];
-  let i = headerIdx + 1;
+  let i = letterStart;
 
   while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
+    const trimmed = lines[i].trim();
 
     if (trimmed === '') {
       if (rows.length > 0) {
@@ -106,7 +169,7 @@ function tryBuildLetteredMultilineTable(
 
   if (rows.length < 1) return null;
 
-  const pipeHeader = normalizePipeRow(headerCells.join(' | '));
+  const pipeHeader = normalizePipeRow(headers.join(' | '));
   const sep = buildSeparatorRow(colCount);
   const pipeRows = rows.map((r) => normalizePipeRow(r.join(' | ')));
 
@@ -116,17 +179,14 @@ function tryBuildLetteredMultilineTable(
   };
 }
 
-/** 문서 전체에서 탭 헤더 + A./B./C. 다줄 표 블록을 GFM pipe 표로 치환 */
+/** 탭/공백 헤더 + A./B./… 다줄 표 → GFM pipe 표 */
 function convertLetteredMultilineTables(source: string): string {
   const lines = source.split(/\r?\n/);
   const out: string[] = [];
   let i = 0;
 
   while (i < lines.length) {
-    const nextIsLetter =
-      i + 1 < lines.length && LETTER_ROW_START.test(lines[i + 1].trim());
-
-    if (splitHeaderCells(lines[i]) && nextIsLetter) {
+    if (lineFollowedByLetterRow(lines, i)) {
       const built = tryBuildLetteredMultilineTable(lines, i);
       if (built) {
         out.push(...built.tableLines);
@@ -134,6 +194,20 @@ function convertLetteredMultilineTables(source: string): string {
         continue;
       }
     }
+
+    if (LETTER_ROW_START.test(lines[i].trim())) {
+      let h = i - 1;
+      while (h >= 0 && lines[h].trim() === '') h -= 1;
+      if (h >= 0) {
+        const built = tryBuildLetteredMultilineTable(lines, h);
+        if (built && built.endIdx > i) {
+          out.push(...built.tableLines);
+          i = built.endIdx;
+          continue;
+        }
+      }
+    }
+
     out.push(lines[i]);
     i += 1;
   }
@@ -155,7 +229,6 @@ function convertTsvBlocksToPipeTables(source: string): string {
       continue;
     }
 
-    const colCount = tc + 1;
     const block: string[] = [];
 
     while (i < lines.length) {
@@ -210,9 +283,7 @@ function ensureBlankLineBeforeTables(source: string): string {
   return out.join('\n');
 }
 
-/**
- * 표 블록 안의 빈 줄 제거 + 구분선 보강 + pipe 행 정규화
- */
+/** 표 블록 안의 빈 줄 제거 + 구분선 보강 */
 function normalizePipeTableBlocks(source: string): string {
   const lines = source.split(/\r?\n/);
   const out: string[] = [];
@@ -250,7 +321,9 @@ function normalizePipeTableBlocks(source: string): string {
  * marked 파싱 전 마크다운 표 정규화 (붙여넣기 형식 통합)
  */
 export function prepareMarkdownForRender(source: string): string {
-  let text = source.replace(/\r\n/g, '\n');
+  let text = source
+    .replace(/\u00a0/g, ' ')
+    .replace(/\r\n/g, '\n');
   text = convertLetteredMultilineTables(text);
   text = convertTsvBlocksToPipeTables(text);
   text = ensureBlankLineBeforeTables(text);
