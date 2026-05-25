@@ -1,0 +1,57 @@
+/* docapp 마크다운 읽기 전용 보강 (github-markdown-css와 함께 사용) */
+.markdown-docapp {
+  overflow-x: auto;
+  max-width: 100%;
+  line-height: 1.7;
+  word-wrap: break-word;
+}
+
+.markdown-docapp table {
+  display: block;
+  overflow-x: auto;
+  width: max-content;
+  max-width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+.markdown-docapp th,
+.markdown-docapp td {
+  border: 1px solid #d0d7de;
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown-docapp th {
+  background: #f6f8fa;
+  font-weight: 600;
+}
+
+.markdown-docapp tr:nth-child(even) td {
+  background: #fafbfc;
+}
+
+.markdown-docapp pre {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.markdown-docapp img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-docapp .task-list-item {
+  list-style-type: none;
+}
+
+.markdown-docapp .task-list-item input[type='checkbox'] {
+  margin: 0 0.4em 0.2em 0;
+  vertical-align: middle;
+}
+
+.markdown-docapp ul.contains-task-list {
+  padding-left: 1.5em;
+}

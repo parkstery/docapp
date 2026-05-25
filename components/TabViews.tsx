@@ -37,41 +37,8 @@ import {
 } from '../utils/promptReadability';
 import { devLog, devWarn } from '../utils/devLog';
 import { sanitizePreviewHtml } from '../services/sanitizeHtml';
-
-function openMarkdownInBrowser(markdownText: string, title: string) {
-  const safeTitle = title || 'Markdown';
-  const md = markdownText ?? '';
-  const html = `<!doctype html>
-<html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${safeTitle.replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown.min.css" />
-    <style>
-      body { margin: 0; background: #fff; }
-      .markdown-body { box-sizing: border-box; min-width: 200px; max-width: 980px; margin: 0 auto; padding: 24px 16px 40px; }
-      @media (min-width: 768px) { .markdown-body { padding: 32px 24px 48px; } }
-    </style>
-  </head>
-  <body>
-    <article id="md" class="markdown-body"></article>
-    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
-    <script>
-      const raw = ${JSON.stringify(md)};
-      const el = document.getElementById('md');
-      try {
-        el.innerHTML = marked.parse(raw, { gfm: true, breaks: true });
-      } catch (e) {
-        el.textContent = raw;
-      }
-    </script>
-  </body>
-</html>`;
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-  window.open(url, '_blank', 'noopener,noreferrer');
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
+import { openDocumentPreviewInBrowser } from '../services/markdownRender';
+import { MarkdownPreview } from './MarkdownPreview';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -809,7 +776,12 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
             </button>
             <button
               type="button"
-              onClick={() => openMarkdownInBrowser(editForm.content || '', editForm.title ? `기획서 - ${editForm.title}` : '기획서')}
+              onClick={() =>
+                openDocumentPreviewInBrowser(
+                  editForm.content || '',
+                  editForm.title ? `기획서 - ${editForm.title}` : '기획서'
+                )
+              }
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors w-full sm:w-auto"
             >
               .md 보기
@@ -845,12 +817,22 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">내용 (Markdown)</label>
-                <textarea
-                  className="w-full min-h-[400px] p-4 resize-none outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
-                  placeholder="Markdown 작성..."
-                  value={editForm.content || ''}
-                  onChange={e => setEditForm({...editForm, content: e.target.value})}
-                />
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <textarea
+                    className="w-full min-h-[400px] xl:min-h-[480px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
+                    placeholder="Markdown 작성..."
+                    value={editForm.content || ''}
+                    onChange={e => setEditForm({...editForm, content: e.target.value})}
+                  />
+                  <div className="flex flex-col min-h-[400px] xl:min-h-[480px] border rounded-xl bg-white overflow-hidden">
+                    <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0">
+                      미리보기 (GFM · 표 포함)
+                    </div>
+                    <div className="flex-1 overflow-auto p-4">
+                      <MarkdownPreview content={editForm.content || ''} />
+                    </div>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
@@ -1418,7 +1400,12 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <button type="button" onClick={reportUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
             <button
               type="button"
-              onClick={() => openMarkdownInBrowser(editForm.summary || '', editForm.title ? `보고서 - ${editForm.title}` : '보고서')}
+              onClick={() =>
+                openDocumentPreviewInBrowser(
+                  editSummaryHtml || editForm.summary || '',
+                  editForm.title ? `보고서 - ${editForm.title}` : '보고서'
+                )
+              }
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors"
             >
               .md 보기
