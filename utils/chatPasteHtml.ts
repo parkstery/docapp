@@ -1,4 +1,4 @@
-import { marked } from 'marked';
+import { parseInline } from 'marked';
 import type { DocumentBlock } from '../types/documentBlocks';
 import { sanitizeRichHtml } from './richHtmlSanitize';
 
@@ -14,10 +14,12 @@ function inlineMarkdownToHtml(text: string): string {
   const t = text.trim();
   if (!t) return '';
   try {
-    return marked.parseInline(t, { async: false }) as string;
+    const out = parseInline(t, { async: false });
+    if (typeof out === 'string' && out.trim()) return out;
   } catch {
-    return escapeText(t);
+    /* fall through */
   }
+  return escapeText(t);
 }
 
 function renderTable(headers: string[], rows: string[][]): string {
@@ -68,5 +70,9 @@ export function renderDocumentBlocksToHtml(blocks: DocumentBlock[]): string {
     }
   }
 
-  return sanitizeRichHtml(parts.join('\n'));
+  const raw = parts.join('\n');
+  if (!raw.trim()) return '';
+
+  const safe = sanitizeRichHtml(raw);
+  return safe.trim() ? safe : raw;
 }

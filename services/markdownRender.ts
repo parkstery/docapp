@@ -8,6 +8,7 @@ import {
   hasStructuredPasteBlocks,
   splitMixedDocument,
 } from '../utils/mixedDocument';
+import { extractChatPasteBlocksFromContent } from '../utils/chatPasteStorage';
 import { sanitizeRichHtml } from '../utils/richHtmlSanitize';
 import { renderDocumentBlocksToHtml } from '../utils/chatPasteHtml';
 import {
@@ -166,8 +167,14 @@ export function renderPlanningContentForDisplay(source: string): string {
   const trimmed = source?.trim() ?? '';
   if (!trimmed) return '';
 
-  if (hasStructuredPasteBlocks(trimmed)) {
+  const fencedBlocks = extractChatPasteBlocksFromContent(trimmed);
+  if (fencedBlocks.length > 0) {
     return renderMixedDocumentForDisplay(trimmed);
+  }
+
+  if (hasStructuredPasteBlocks(trimmed)) {
+    const mixed = renderMixedDocumentForDisplay(trimmed);
+    if (mixed.trim()) return mixed;
   }
 
   const stripped = trimmed.replace(/<!--\s*docapp:[\s\S]*?-->\s*/gi, '').trim();
@@ -191,7 +198,6 @@ function renderMarkdownSegment(md: string): string {
 /** :::docapp-html / :::docapp-chat 블록 + Markdown 혼합 본문 */
 export function renderMixedDocumentForDisplay(source: string): string {
   const segments = splitMixedDocument(source);
-  if (!segments.length) return '';
 
   const parts = segments.map((seg) => {
     if (seg.type === 'html') {
@@ -203,7 +209,17 @@ export function renderMixedDocumentForDisplay(source: string): string {
     return renderMarkdownSegment(seg.body);
   });
 
-  return applyCodeHighlightToHtml(parts.filter(Boolean).join('\n'));
+  const html = parts.filter((p) => p?.trim()).join('\n');
+  if (html.trim()) return applyCodeHighlightToHtml(html);
+
+  const fallbackBlocks = extractChatPasteBlocksFromContent(source);
+  if (fallbackBlocks.length > 0) {
+    return applyCodeHighlightToHtml(renderDocumentBlocksToHtml(fallbackBlocks));
+  }
+
+  return renderMarkdownForDisplay(
+    source.replace(/<!--\s*docapp:[\s\S]*?-->\s*/gi, '').trim()
+  );
 }
 
 /** 본문이 마크다운 문법을 쓰는지 (HTML 예시 문자열이 섞여 있어도 MD 우선) */

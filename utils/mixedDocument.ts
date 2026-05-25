@@ -1,4 +1,9 @@
-import { CHAT_PASTE_FENCE, tryParseChatPasteFence } from './chatPasteStorage';
+import {
+  CHAT_PASTE_FENCE,
+  extractChatPasteBlocksFromContent,
+  stripChatPasteFences,
+  tryParseChatPasteFence,
+} from './chatPasteStorage';
 import { CLIPBOARD_HTML_FENCE } from './clipboardHtml';
 import type { DocumentBlock } from '../types/documentBlocks';
 
@@ -9,21 +14,29 @@ export type MixedDocumentSegment =
 
 type FenceKind = 'html' | 'chat';
 
-const FENCE_RE = /:::(docapp-html|docapp-chat)\n([\s\S]*?)\n:::/g;
+const FENCE_RE = /:::(docapp-html|docapp-chat)\r?\n([\s\S]*?)\r?\n:::/g;
 
 export function hasStructuredPasteBlocks(content: string): boolean {
   return (
-    content.includes(`${CLIPBOARD_HTML_FENCE}\n`) ||
-    content.includes(`${CHAT_PASTE_FENCE}\n`)
+    /:::docapp-html\r?\n/.test(content) || /:::docapp-chat\r?\n/.test(content)
   );
 }
 
 export function hasClipboardHtmlBlocks(content: string): boolean {
-  return content.includes(`${CLIPBOARD_HTML_FENCE}\n`);
+  return /:::docapp-html\r?\n/.test(content);
 }
 
 export function splitMixedDocument(content: string): MixedDocumentSegment[] {
   const text = content ?? '';
+
+  const chatBlocks = extractChatPasteBlocksFromContent(text);
+  if (chatBlocks.length > 0) {
+    const outside = stripChatPasteFences(text);
+    const segments: MixedDocumentSegment[] = [{ type: 'chat', blocks: chatBlocks }];
+    if (outside.trim()) segments.push({ type: 'markdown', body: outside });
+    return segments;
+  }
+
   if (!hasStructuredPasteBlocks(text)) {
     const trimmed = text.trim();
     return trimmed ? [{ type: 'markdown', body: trimmed }] : [];

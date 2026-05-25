@@ -356,7 +356,7 @@ function plainHasTableSignals(text: string): boolean {
 export function shouldNormalizeChatPaste(text: string): boolean {
   const t = text.trim();
   if (t.length < 12) return false;
-  if (/^:::docapp-(html|chat)\b/m.test(t)) return false;
+  if (/:::docapp-(html|chat)/m.test(t)) return false;
 
   const nonEmptyLines = t.split('\n').filter((l) => l.trim()).length;
   if (nonEmptyLines >= 2 && plainHasTableSignals(t)) return true;
