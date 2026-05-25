@@ -4,8 +4,16 @@ import hljs from 'highlight.js';
 import githubMarkdownCss from 'github-markdown-css/github-markdown.css?raw';
 import markdownDocappCss from '../styles/markdown-docapp.css?raw';
 import { prepareMarkdownForRender } from '../utils/markdownTableNormalize';
-import { hasClipboardHtmlBlocks, splitMixedDocument } from '../utils/mixedDocument';
+import {
+  hasStructuredPasteBlocks,
+  splitMixedDocument,
+} from '../utils/mixedDocument';
 import { sanitizeRichHtml } from '../utils/richHtmlSanitize';
+import { renderDocumentBlocksToHtml } from '../utils/chatPasteHtml';
+import {
+  chatPasteHasRecoverableStructure,
+  parseChatPaste,
+} from '../utils/chatPasteParser';
 
 /** 미리보기·새 탭 보기 공통 루트 클래스 */
 export const MARKDOWN_PREVIEW_CLASS = 'markdown-body markdown-docapp';
@@ -153,7 +161,16 @@ export function renderMarkdownForDisplay(source: string): string {
   return applyCodeHighlightToHtml(safe);
 }
 
-/** :::docapp-html 블록 + Markdown 혼합 본문 (클립보드 HTML 우선) */
+function renderMarkdownSegment(md: string): string {
+  const trimmed = md.replace(/<!--\s*docapp:[\s\S]*?-->\s*/gi, '').trim();
+  if (!trimmed) return '';
+  if (chatPasteHasRecoverableStructure(trimmed)) {
+    return renderDocumentBlocksToHtml(parseChatPaste(trimmed));
+  }
+  return renderMarkdownToSafeHtml(trimmed);
+}
+
+/** :::docapp-html / :::docapp-chat 블록 + Markdown 혼합 본문 */
 export function renderMixedDocumentForDisplay(source: string): string {
   const segments = splitMixedDocument(source);
   if (!segments.length) return '';
@@ -162,8 +179,10 @@ export function renderMixedDocumentForDisplay(source: string): string {
     if (seg.type === 'html') {
       return wrapTablesInHtml(sanitizeRichDocumentHtml(seg.body));
     }
-    const md = seg.body.trim();
-    return md ? renderMarkdownToSafeHtml(md) : '';
+    if (seg.type === 'chat') {
+      return renderDocumentBlocksToHtml(seg.blocks);
+    }
+    return renderMarkdownSegment(seg.body);
   });
 
   return applyCodeHighlightToHtml(parts.filter(Boolean).join('\n'));
@@ -251,8 +270,12 @@ export function renderDocumentForDisplay(
   const trimmed = content?.trim() ?? '';
   if (!trimmed) return '';
 
-  if (hasClipboardHtmlBlocks(trimmed)) {
+  if (hasStructuredPasteBlocks(trimmed)) {
     return renderMixedDocumentForDisplay(trimmed);
+  }
+
+  if (chatPasteHasRecoverableStructure(trimmed)) {
+    return applyCodeHighlightToHtml(renderDocumentBlocksToHtml(parseChatPaste(trimmed)));
   }
 
   const resolved = resolvePreviewFormat(trimmed, format);

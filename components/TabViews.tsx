@@ -819,12 +819,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  내용 (Markdown · 표/서식은 붙여넣기)
+                  내용 (Markdown · Cursor 채팅 붙여넣기)
                 </label>
                 <p className="text-xs text-slate-500 mb-2">
-                  Cursor·Notion·채팅에서 복사할 때는 화면 드래그보다 원문 선택 후 붙여넣기하세요. 표가 있는 경우
-                  클립보드 HTML이 <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-html</code> 블록으로
-                  저장되어 미리보기에 그대로 표시됩니다.
+                  Cursor 채팅창에서 드래그·복사 후 여기에 붙여넣으면 docapp이 표·목록·제목을 자동으로 구조화합니다(
+                  <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-chat</code>). Notion에서 복사한
+                  서식은 <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-html</code>로 저장됩니다.
+                  표·본문은 <strong>오른쪽 미리보기</strong>에서 확인하세요.
                 </p>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   <PlanningContentEditor
@@ -835,7 +836,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                   />
                   <div className="flex flex-col min-h-[400px] xl:min-h-[480px] border rounded-xl bg-white overflow-hidden">
                     <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0">
-                      미리보기 (GFM · 클립보드 HTML 표)
+                      미리보기 (채팅 붙여넣기 · GFM)
                     </div>
                     <div className="flex-1 overflow-auto p-4">
                       <MarkdownPreview content={editForm.content || ''} />
