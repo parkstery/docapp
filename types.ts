@@ -18,7 +18,8 @@ export interface BaseItem {
 }
 
 export interface PlanningDoc extends BaseItem {
-  content: string; // Markdown content
+  /** Markdown + 선택적 :::docapp-html 클립보드 HTML 블록(표·서식 붙여넣기) */
+  content: string;
   fileName?: string;
   fileInfo?: FileInfo;
   fileInfoList?: FileInfo[];

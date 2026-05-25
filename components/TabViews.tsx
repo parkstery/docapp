@@ -39,6 +39,7 @@ import { devLog, devWarn } from '../utils/devLog';
 import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 import { openDocumentPreviewInBrowser } from '../services/markdownRender';
 import { MarkdownPreview } from './MarkdownPreview';
+import { PlanningContentEditor } from './PlanningContentEditor';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -780,7 +781,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                 openDocumentPreviewInBrowser(
                   editForm.content || '',
                   editForm.title ? `기획서 - ${editForm.title}` : '기획서',
-                  { format: 'markdown' }
+                  { format: 'auto' }
                 )
               }
               className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors w-full sm:w-auto"
@@ -817,17 +818,24 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">내용 (Markdown)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  내용 (Markdown · 표/서식은 붙여넣기)
+                </label>
+                <p className="text-xs text-slate-500 mb-2">
+                  Cursor·Notion·채팅에서 복사할 때는 화면 드래그보다 원문 선택 후 붙여넣기하세요. 표가 있는 경우
+                  클립보드 HTML이 <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-html</code> 블록으로
+                  저장되어 미리보기에 그대로 표시됩니다.
+                </p>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <textarea
+                  <PlanningContentEditor
                     className="w-full min-h-[400px] xl:min-h-[480px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
                     placeholder="Markdown 작성..."
                     value={editForm.content || ''}
-                    onChange={e => setEditForm({...editForm, content: e.target.value})}
+                    onChange={(content) => setEditForm({ ...editForm, content })}
                   />
                   <div className="flex flex-col min-h-[400px] xl:min-h-[480px] border rounded-xl bg-white overflow-hidden">
                     <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0">
-                      미리보기 (GFM · 표 포함)
+                      미리보기 (GFM · 클립보드 HTML 표)
                     </div>
                     <div className="flex-1 overflow-auto p-4">
                       <MarkdownPreview content={editForm.content || ''} />

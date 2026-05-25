@@ -4,6 +4,8 @@ import hljs from 'highlight.js';
 import githubMarkdownCss from 'github-markdown-css/github-markdown.css?raw';
 import markdownDocappCss from '../styles/markdown-docapp.css?raw';
 import { prepareMarkdownForRender } from '../utils/markdownTableNormalize';
+import { hasClipboardHtmlBlocks, splitMixedDocument } from '../utils/mixedDocument';
+import { sanitizeRichHtml } from '../utils/richHtmlSanitize';
 
 /** 미리보기·새 탭 보기 공통 루트 클래스 */
 export const MARKDOWN_PREVIEW_CLASS = 'markdown-body markdown-docapp';
@@ -28,11 +30,6 @@ const MARKDOWN_ALLOWED_ATTR = [
   'type', 'disabled', 'checked', 'colspan', 'rowspan', 'align',
 ] as const;
 
-const RICH_HTML_ALLOWED_TAGS = [
-  ...MARKDOWN_ALLOWED_TAGS,
-  'figure', 'figcaption', 'sup', 'sub',
-] as const;
-
 function sanitizeMarkdownHtml(dirty: string): string {
   if (typeof window === 'undefined') return dirty;
   return DOMPurify.sanitize(dirty, {
@@ -43,12 +40,7 @@ function sanitizeMarkdownHtml(dirty: string): string {
 }
 
 function sanitizeRichDocumentHtml(dirty: string): string {
-  if (typeof window === 'undefined') return dirty;
-  return DOMPurify.sanitize(dirty, {
-    ADD_ATTR: ['target', 'rel'],
-    ALLOWED_TAGS: [...RICH_HTML_ALLOWED_TAGS],
-    ALLOWED_ATTR: [...MARKDOWN_ALLOWED_ATTR],
-  });
+  return sanitizeRichHtml(dirty);
 }
 
 function wrapTablesInHtml(html: string): string {
@@ -161,6 +153,22 @@ export function renderMarkdownForDisplay(source: string): string {
   return applyCodeHighlightToHtml(safe);
 }
 
+/** :::docapp-html 블록 + Markdown 혼합 본문 (클립보드 HTML 우선) */
+export function renderMixedDocumentForDisplay(source: string): string {
+  const segments = splitMixedDocument(source);
+  if (!segments.length) return '';
+
+  const parts = segments.map((seg) => {
+    if (seg.type === 'html') {
+      return wrapTablesInHtml(sanitizeRichDocumentHtml(seg.body));
+    }
+    const md = seg.body.trim();
+    return md ? renderMarkdownToSafeHtml(md) : '';
+  });
+
+  return applyCodeHighlightToHtml(parts.filter(Boolean).join('\n'));
+}
+
 /** 본문이 마크다운 문법을 쓰는지 (HTML 예시 문자열이 섞여 있어도 MD 우선) */
 function looksLikeMarkdown(content: string): boolean {
   const t = content.trim();
@@ -242,9 +250,14 @@ export function renderDocumentForDisplay(
 ): string {
   const trimmed = content?.trim() ?? '';
   if (!trimmed) return '';
+
+  if (hasClipboardHtmlBlocks(trimmed)) {
+    return renderMixedDocumentForDisplay(trimmed);
+  }
+
   const resolved = resolvePreviewFormat(trimmed, format);
   if (resolved === 'html') {
-    return sanitizeRichDocumentHtml(trimmed);
+    return wrapTablesInHtml(sanitizeRichDocumentHtml(trimmed));
   }
   return renderMarkdownForDisplay(trimmed);
 }

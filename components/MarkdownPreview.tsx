@@ -19,7 +19,7 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, class
 
   const html = useMemo(() => {
     if (!content?.trim()) return '';
-    return renderDocumentForDisplay(content, 'markdown');
+    return renderDocumentForDisplay(content, 'auto');
   }, [content]);
 
   useEffect(() => {
