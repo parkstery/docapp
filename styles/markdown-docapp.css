@@ -153,3 +153,73 @@
 .markdown-docapp .task-list-item input[type='checkbox'] {
   margin-right: 0.35em;
 }
+
+/* 다크 배경 대비 보정
+   OS/브라우저가 다크 모드면 github-markdown-css가 어두운 팔레트(#0d1117)로 전환되는데,
+   위쪽 Notion 톤 규칙은 어두운 회색 글자를 쓰므로 대비가 무너진다.
+   다크에서는 본문 계열 글자를 흰색으로 올린다. */
+@media (prefers-color-scheme: dark) {
+  .markdown-docapp {
+    color: #ffffff;
+    --fgColor-default: #ffffff;
+    --fgColor-muted: #ffffff;
+    --fgColor-neutral: #ffffff;
+  }
+
+  .markdown-docapp h1,
+  .markdown-docapp h2,
+  .markdown-docapp h3,
+  .markdown-docapp h4,
+  .markdown-docapp h5,
+  .markdown-docapp h6,
+  .markdown-docapp p,
+  .markdown-docapp li,
+  .markdown-docapp strong,
+  .markdown-docapp em,
+  .markdown-docapp dt,
+  .markdown-docapp dd,
+  .markdown-docapp summary,
+  .markdown-docapp figcaption,
+  .markdown-docapp td {
+    color: #ffffff;
+  }
+
+  .markdown-docapp blockquote {
+    color: #ffffff;
+    border-left-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .markdown-docapp a {
+    color: #79c0ff;
+  }
+
+  .markdown-docapp table,
+  .markdown-docapp th,
+  .markdown-docapp td {
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .markdown-docapp th {
+    background: rgba(255, 255, 255, 0.09);
+    color: #ffffff;
+  }
+
+  .markdown-docapp tbody tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .markdown-docapp hr {
+    border-top-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .markdown-docapp :not(pre) > code {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ff9492;
+  }
+
+  /* 코드 블록은 밝은 배경 + highlight.js(github 라이트 테마)를 유지하므로 글자는 어두운 톤 고정 */
+  .markdown-docapp pre,
+  .markdown-docapp pre code {
+    color: rgb(36, 41, 47);
+  }
+}
