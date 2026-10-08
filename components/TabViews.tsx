@@ -766,7 +766,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button type="button" onClick={planningUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
@@ -803,7 +803,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
             >
               .md 보기
             </button>
-            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
+            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
               <Save size={14}/> 저장
             </button>
             <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
@@ -1092,12 +1092,12 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
       {/* 새 기획서 작성 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col" data-edit-scope="">
             <div className="p-4 border-b flex justify-between items-center shrink-0">
               <h3 className="font-bold text-lg">새 기획서 작성</h3>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => { setIsModalOpen(false); setPlanningModalBodyHtml(''); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button type="button" onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium">저장</button>
+                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium">저장</button>
                 <button type="button" onClick={() => { setIsModalOpen(false); setPlanningModalBodyHtml(''); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
             </div>
@@ -1420,7 +1420,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button type="button" onClick={reportUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
@@ -1455,7 +1455,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             >
               .md 보기
             </button>
-            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
             </button>
             <button onClick={() => deleteReport(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -1749,12 +1749,12 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" data-edit-scope="">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 보고서 작성</h3>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => { setIsModalOpen(false); setForm({}); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
+                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
                 <button type="button" onClick={() => { setIsModalOpen(false); setForm({}); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
             </div>
@@ -2189,7 +2189,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button type="button" onClick={promptUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
@@ -2201,7 +2201,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <button type="button" onClick={promptUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
             </button>
             <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2490,7 +2490,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       {/* Add Modal */}
       {isAdding && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" data-edit-scope="">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 프롬프트 로그</h3>
               <div className="flex items-center gap-2">
@@ -2507,7 +2507,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                 >
                   취소
                 </button>
-                <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
+                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
                 <button
                   type="button"
                   onClick={() => {
@@ -2891,7 +2891,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button type="button" onClick={memoUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
@@ -2903,7 +2903,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             <button type="button" onClick={memoUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
             </button>
             <button onClick={() => deleteMemo(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -3144,12 +3144,12 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
       {/* Create Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" data-edit-scope="">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 참고 작성</h3>
               <div className="flex items-center gap-2">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button onClick={handleSave} className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 rounded-lg text-sm font-medium">저장</button>
+                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 rounded-lg text-sm font-medium">저장</button>
                 <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
               </div>
             </div>
@@ -3341,7 +3341,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             저장되었습니다
           </div>
         )}
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col" data-edit-scope="">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
             <div className="flex items-center gap-3">
               <button type="button" onClick={noteUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
@@ -3353,7 +3353,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
               <button type="button" onClick={noteUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
                 목록으로
               </button>
-              <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
                 <Save size={14}/> 저장
               </button>
               <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -3471,14 +3471,14 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg" data-edit-scope="">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-800">메모 추가</h3>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={closeModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
                   취소
                 </button>
-                <button type="button" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-1">
+                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-1">
                   <Save size={14} /> 저장
                 </button>
                 <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
@@ -3847,7 +3847,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
             <button type="button" onClick={issueUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
@@ -3859,7 +3859,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
             <button type="button" onClick={issueUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
             </button>
             <button onClick={() => deleteIssue(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -4133,12 +4133,12 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" data-edit-scope="">
                <div className="p-4 border-b flex justify-between items-center">
                <h3 className="font-bold text-lg">새 이슈 등록</h3>
                <div className="flex items-center gap-2">
                  <button type="button" onClick={closeIssueCreateModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                 <button type="button" onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
+                 <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
                  <button type="button" onClick={closeIssueCreateModal}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
                </div>
             </div>

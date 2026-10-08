@@ -629,7 +629,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
             저장되었습니다
           </div>
         )}
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col" data-edit-scope="">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-3">
               <button
@@ -656,6 +656,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
               </button>
               <button
                 type="button"
+                data-edit-save=""
                 onClick={handleEditSave}
                 disabled={uploading}
                 className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50"
@@ -858,7 +859,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
 
       {isModalOpen && form.id && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col" data-edit-scope="">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">새 프리 작성</h3>
               <button type="button" onClick={() => setIsModalOpen(false)} aria-label="닫기">
@@ -934,6 +935,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
               </button>
               <button
                 type="button"
+                data-edit-save=""
                 onClick={handleSave}
                 disabled={uploading}
                 className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"

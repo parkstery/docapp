@@ -8,6 +8,7 @@ import HelpPage from './components/HelpPage';
 import PrivacyPage from './components/PrivacyPage';
 import { Loader2 } from 'lucide-react';
 import { devLog } from './utils/devLog';
+import { EditTabToSave } from './components/EditTabToSave';
 
 // 인증이 필요한 라우트 보호 컴포넌트
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -161,7 +162,13 @@ const App: React.FC = () => {
         .row-highlighted:focus-visible {
           outline: none !important;
         }
+
+        button[data-edit-save]:focus {
+          outline: 2px solid #0f172a;
+          outline-offset: 2px;
+        }
       `}</style>
+      <EditTabToSave />
       <HashRouter>
         <AppRoutes />
       </HashRouter>
