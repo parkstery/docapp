@@ -5,6 +5,14 @@
  * 3) 기존 | pipe | GFM 표 정리
  */
 
+import {
+  alignRowToColumns,
+  escapePipeCell,
+  isPipeSeparatorCells,
+  isPipeSeparatorRow,
+  splitPipeRow,
+} from './markdownPipeSplit';
+
 const LETTER_ROW = /^[A-Z]\.\s/;
 
 function tabCount(line: string): number {
@@ -30,17 +38,20 @@ function buildSeparatorRow(n: number): string {
 }
 
 function isSeparatorRow(line: string): boolean {
-  const inner = normalizePipeRow(line).replace(/^\|/, '').replace(/\|$/, '').trim();
-  return inner.split('|').every((c) => /^:?-{3,}:?$/.test(c.replace(/\s/g, '')));
+  return isPipeSeparatorRow(normalizePipeRow(line));
+}
+
+function cellsToPipeRow(cells: string[]): string {
+  return normalizePipeRow(cells.map((c) => escapePipeCell(c)).join(' | '));
 }
 
 function pipeRowsFromTsvBlock(block: string[]): string[] {
-  const pipeRows = block.map((row) =>
-    normalizePipeRow(row.split('\t').map((c) => c.trim().replace(/\s*←.*$/, '')).join(' | '))
+  const rows = block.map((row) =>
+    row.split('\t').map((c) => c.trim().replace(/\s*←.*$/, ''))
   );
+  const pipeRows = rows.map((cells) => cellsToPipeRow(cells));
   if (pipeRows.length >= 2 && !isSeparatorRow(pipeRows[1])) {
-    const cols = pipeRows[0].replace(/^\|/, '').replace(/\|$/, '').split('|').length;
-    return ['', pipeRows[0], buildSeparatorRow(cols), ...pipeRows.slice(1), ''];
+    return ['', pipeRows[0], buildSeparatorRow(rows[0].length), ...pipeRows.slice(1), ''];
   }
   return ['', ...pipeRows, ''];
 }
@@ -159,12 +170,12 @@ function convertTabLetteredPasteTables(source: string): string {
     const minRows = isPgHeader ? 2 : 3;
 
     if (rows.length >= minRows && !blockHasAnnotation(lines, blockStart, pos)) {
-      const pipeHeader = normalizePipeRow(headerCells.join(' | '));
+      const pipeHeader = cellsToPipeRow(headerCells);
       out.push(
         '',
         pipeHeader,
         buildSeparatorRow(colCount),
-        ...rows.map((r) => normalizePipeRow(r.join(' | '))),
+        ...rows.map((r) => cellsToPipeRow(r)),
         ''
       );
       i = pos;
@@ -204,9 +215,12 @@ function normalizeExistingPipeTables(source: string): string {
       break;
     }
 
-    if (block.length >= 2 && !isSeparatorRow(block[1])) {
-      const cols = block[0].replace(/^\|/, '').replace(/\|$/, '').split('|').length;
-      out.push('', block[0], buildSeparatorRow(cols), ...block.slice(1), '');
+    const parsed = block.map((line) => splitPipeRow(line));
+    const cols = parsed[0]?.length ?? 0;
+    if (parsed.length >= 2 && cols >= 2) {
+      const data = parsed.filter((cells, idx) => idx === 0 || !isPipeSeparatorCells(cells));
+      const aligned = data.map((cells) => cellsToPipeRow(alignRowToColumns(cells, cols)));
+      out.push('', aligned[0], buildSeparatorRow(cols), ...aligned.slice(1), '');
     } else {
       out.push('', ...block, '');
     }

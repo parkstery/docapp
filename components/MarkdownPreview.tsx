@@ -37,7 +37,7 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     });
   }, [html]);
 
-  const rootClass = `${MARKDOWN_PREVIEW_CLASS} ${className}`.trim();
+  const rootClass = `${MARKDOWN_PREVIEW_CLASS} min-w-0 max-w-full ${className}`.trim();
 
   if (!content?.trim()) {
     return (

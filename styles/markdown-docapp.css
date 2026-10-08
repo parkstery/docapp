@@ -1,7 +1,7 @@
 /* Notion에 가까운 읽기 전용 스타일 (github-markdown-css 위에 적용) */
 .markdown-docapp {
-  overflow-x: auto;
   max-width: 100%;
+  min-width: 0;
   line-height: 1.7;
   word-wrap: break-word;
   color: rgb(55, 53, 47);
@@ -84,21 +84,22 @@
 .markdown-docapp .md-table-wrap {
   overflow-x: auto;
   width: 100%;
+  max-width: 100%;
   margin: 1em 0 1.25em;
   -webkit-overflow-scrolling: touch;
 }
 
 .markdown-docapp table {
   display: table !important;
-  width: 100%;
-  max-width: 100%;
+  width: max-content;
+  min-width: 100%;
+  max-width: none !important;
   table-layout: auto;
   border-collapse: collapse !important;
   margin: 0;
   font-size: 14px;
   border: 1px solid rgba(55, 53, 47, 0.09);
-  border-radius: 6px;
-  overflow: hidden;
+  overflow: visible !important;
 }
 
 .markdown-docapp thead {
@@ -120,9 +121,11 @@
   padding: 8px 10px;
   text-align: left;
   vertical-align: top;
-  min-width: 80px;
   line-height: 1.5;
-  overflow-wrap: break-word;
+  /* 긴 URL·경로는 칸 안에서 줄바꿈. 열이 많으면 표가 래퍼보다 넓어져 가로 스크롤된다. */
+  max-width: 36rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .markdown-docapp th {

@@ -11,10 +11,14 @@ import {
 import { extractChatPasteBlocksFromContent } from '../utils/chatPasteStorage';
 import { sanitizeRichHtml } from '../utils/richHtmlSanitize';
 import { renderDocumentBlocksToHtml } from '../utils/chatPasteHtml';
+import { parseChatPaste } from '../utils/chatPasteParser';
 import {
-  chatPasteHasRecoverableStructure,
-  parseChatPaste,
-} from '../utils/chatPasteParser';
+  alignRowToColumns,
+  hasGfmPipeTable,
+  hasPasteOnlyTable,
+  isPipeSeparatorCells,
+  splitPipeRow,
+} from '../utils/markdownPipeSplit';
 
 /** 미리보기·새 탭 보기 공통 루트 클래스 */
 export const MARKDOWN_PREVIEW_CLASS = 'markdown-body markdown-docapp';
@@ -58,82 +62,131 @@ function wrapTablesInHtml(html: string): string {
     .replace(/<\/table>/gi, '</table></div>');
 }
 
-/** marked가 <p>| a | b |</p> 로 끊은 표 행을 HTML table로 복구 */
+function paragraphPipeLines(el: HTMLElement): string[] {
+  const lines: string[] = [];
+  let buf = '';
+  const flush = () => {
+    const t = buf.replace(/\u00a0/g, ' ').trim();
+    buf = '';
+    if (t) lines.push(t);
+  };
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const parts = (node.textContent || '').split('\n');
+      parts.forEach((part, idx) => {
+        if (idx > 0) flush();
+        buf += part;
+      });
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const element = node as HTMLElement;
+    if (element.tagName === 'BR') {
+      flush();
+      return;
+    }
+    element.childNodes.forEach(walk);
+  };
+  el.childNodes.forEach(walk);
+  flush();
+  return lines;
+}
+
+function isPipeLine(line: string): boolean {
+  const t = line.trim();
+  return t.startsWith('|') && splitPipeRow(t).length >= 2;
+}
+
+function tableFromPipeRows(rows: string[][]): HTMLTableElement {
+  let header = rows[0];
+  let body = rows.slice(1);
+  if (body.length > 0 && isPipeSeparatorCells(body[0])) body = body.slice(1);
+  const colCount = header.length;
+  header = alignRowToColumns(header, colCount);
+  body = body.map((row) => alignRowToColumns(row, colCount));
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const trH = document.createElement('tr');
+  for (const cell of header) {
+    const th = document.createElement('th');
+    th.textContent = cell;
+    trH.appendChild(th);
+  }
+  thead.appendChild(trH);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  for (const row of body) {
+    const tr = document.createElement('tr');
+    for (const cell of row) {
+      const td = document.createElement('td');
+      td.textContent = cell;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  return table;
+}
+
+/** marked가 문단으로 남긴 파이프 행(여러 p, 또는 br로 이어진 한 p)을 HTML table로 복구 */
 function repairPipeParagraphTables(html: string): string {
   if (typeof document === 'undefined' || !html.includes('|')) return html;
   const root = document.createElement('div');
   root.innerHTML = html;
   let i = 0;
 
-  const parsePipeRow = (text: string): string[] | null => {
-    const t = text.trim();
-    if (!t.startsWith('|') || !t.includes('|', 1)) return null;
-    return t.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
-  };
-
-  const isSeparatorCells = (cells: string[]) =>
-    cells.every((c) => /^:?-{3,}:?$/.test(c.replace(/\s/g, '')));
-
   while (i < root.children.length) {
-    const first = root.children[i];
-    const row0 = parsePipeRow(first?.textContent || '');
-    if (first?.tagName !== 'P' || !row0) {
+    const first = root.children[i] as HTMLElement | undefined;
+    if (!first || first.tagName !== 'P') {
       i += 1;
       continue;
     }
 
-    const rows: string[][] = [row0];
+    const ownLines = paragraphPipeLines(first);
+    if (ownLines.length >= 2 && ownLines.every(isPipeLine)) {
+      const table = tableFromPipeRows(ownLines.map((line) => splitPipeRow(line)));
+      root.insertBefore(table, first);
+      first.remove();
+      i += 1;
+      continue;
+    }
+
+    if (ownLines.length !== 1 || !isPipeLine(ownLines[0])) {
+      i += 1;
+      continue;
+    }
+
+    const rowLines = [ownLines[0]];
     let j = i + 1;
     while (j < root.children.length) {
-      const row = parsePipeRow(root.children[j]?.textContent || '');
-      if (root.children[j]?.tagName !== 'P' || !row) break;
-      rows.push(row);
+      const next = root.children[j] as HTMLElement;
+      if (next.tagName !== 'P') break;
+      const nextLines = paragraphPipeLines(next);
+      if (nextLines.length === 0 || !nextLines.every(isPipeLine)) break;
+      rowLines.push(...nextLines);
       j += 1;
     }
 
-    if (rows.length < 2) {
+    if (rowLines.length < 2) {
       i += 1;
       continue;
     }
 
-    let header = rows[0];
-    let body = rows.slice(1);
-    if (body.length > 0 && isSeparatorCells(body[0])) {
-      body = body.slice(1);
-    }
-
-    const table = document.createElement('table');
-    const thead = document.createElement('thead');
-    const trH = document.createElement('tr');
-    for (const cell of header) {
-      const th = document.createElement('th');
-      th.textContent = cell;
-      trH.appendChild(th);
-    }
-    thead.appendChild(trH);
-    table.appendChild(thead);
-
-    const tbody = document.createElement('tbody');
-    for (const row of body) {
-      const tr = document.createElement('tr');
-      for (const cell of row) {
-        const td = document.createElement('td');
-        td.textContent = cell;
-        tr.appendChild(td);
-      }
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-
-    const wrap = document.createElement('div');
-    wrap.className = 'md-table-wrap';
-    wrap.appendChild(table);
-    root.insertBefore(wrap, first);
-    for (let k = j - 1; k >= i; k--) root.children[k].remove();
+    const table = tableFromPipeRows(rowLines.map((line) => splitPipeRow(line)));
+    root.insertBefore(table, first);
+    for (let k = j; k >= i + 1; k--) root.children[k].remove();
     i += 1;
   }
 
   return root.innerHTML;
+}
+
+/** 구분선이 있는 GFM 표는 marked로, 탭·여러 줄 표만 채팅 파서로 */
+function shouldRenderWithPasteParser(source: string): boolean {
+  if (hasGfmPipeTable(source)) return false;
+  return hasPasteOnlyTable(source);
 }
 
 /** GFM 마크다운 → 정화된 HTML (코드 하이라이트 전) */
@@ -162,7 +215,7 @@ export function renderMarkdownForDisplay(source: string): string {
   return applyCodeHighlightToHtml(safe);
 }
 
-/** 기획서 미리보기: 항상 블록 파서 우선 (Cursor 채팅·GFM 표) */
+/** 기획서 미리보기: GFM 표는 marked, 탭·여러 줄 표만 블록 파서 */
 export function renderPlanningContentForDisplay(source: string): string {
   const trimmed = source?.trim() ?? '';
   if (!trimmed) return '';
@@ -178,9 +231,11 @@ export function renderPlanningContentForDisplay(source: string): string {
   }
 
   const stripped = trimmed.replace(/<!--\s*docapp:[\s\S]*?-->\s*/gi, '').trim();
-  const blocks = parseChatPaste(stripped);
-  if (blocks.length > 0) {
-    return applyCodeHighlightToHtml(renderDocumentBlocksToHtml(blocks));
+  if (shouldRenderWithPasteParser(stripped)) {
+    const blocks = parseChatPaste(stripped);
+    if (blocks.some((b) => b.type === 'table')) {
+      return applyCodeHighlightToHtml(renderDocumentBlocksToHtml(blocks));
+    }
   }
 
   return renderMarkdownForDisplay(stripped);
@@ -189,8 +244,11 @@ export function renderPlanningContentForDisplay(source: string): string {
 function renderMarkdownSegment(md: string): string {
   const trimmed = md.replace(/<!--\s*docapp:[\s\S]*?-->\s*/gi, '').trim();
   if (!trimmed) return '';
-  if (chatPasteHasRecoverableStructure(trimmed)) {
-    return renderDocumentBlocksToHtml(parseChatPaste(trimmed));
+  if (shouldRenderWithPasteParser(trimmed)) {
+    const blocks = parseChatPaste(trimmed);
+    if (blocks.some((b) => b.type === 'table')) {
+      return renderDocumentBlocksToHtml(blocks);
+    }
   }
   return renderMarkdownToSafeHtml(trimmed);
 }
@@ -281,7 +339,7 @@ function buildStandalonePreviewPage(title: string, bodyHtml: string): string {
       .markdown-body {
         box-sizing: border-box;
         min-width: 200px;
-        max-width: 900px;
+        max-width: min(100%, 1200px);
         margin: 0 auto;
         padding: 32px 24px 48px;
         font-size: 15px;
@@ -312,8 +370,11 @@ export function renderDocumentForDisplay(
     return renderMixedDocumentForDisplay(trimmed);
   }
 
-  if (chatPasteHasRecoverableStructure(trimmed)) {
-    return applyCodeHighlightToHtml(renderDocumentBlocksToHtml(parseChatPaste(trimmed)));
+  if (shouldRenderWithPasteParser(trimmed)) {
+    const blocks = parseChatPaste(trimmed);
+    if (blocks.some((b) => b.type === 'table')) {
+      return applyCodeHighlightToHtml(renderDocumentBlocksToHtml(blocks));
+    }
   }
 
   const resolved = resolvePreviewFormat(trimmed, format);

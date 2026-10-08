@@ -1,4 +1,5 @@
 import type { DocumentBlock } from '../types/documentBlocks';
+import { alignRowToColumns, isPipeSeparatorRow, splitPipeRow } from './markdownPipeSplit';
 
 const LETTER_ROW = /^[A-Z]\.\s/;
 const HEADING = /^(#{1,6})\s+(.+)$/;
@@ -10,19 +11,8 @@ function isPipeTableRow(line: string): boolean {
   return Boolean(t && t.startsWith('|') && t.includes('|', 1));
 }
 
-function isPipeSeparatorRow(line: string): boolean {
-  const inner = line.trim().replace(/^\|/, '').replace(/\|$/, '').trim();
-  if (!inner) return false;
-  return inner.split('|').every((c) => /^:?-{3,}:?$/.test(c.replace(/\s/g, '')));
-}
-
 function parsePipeCells(line: string): string[] {
-  return line
-    .trim()
-    .replace(/^\|/, '')
-    .replace(/\|$/, '')
-    .split('|')
-    .map((c) => c.trim());
+  return splitPipeRow(line);
 }
 
 /** GFM | col | col | 표 */
@@ -46,8 +36,8 @@ function tryParsePipeMarkdownTable(
   if (dataRows.length < 2) return null;
 
   const headers = parsePipeCells(dataRows[0]);
-  const rows = dataRows.slice(1).map(parsePipeCells);
   if (headers.length < 2) return null;
+  const rows = dataRows.slice(1).map((line) => alignRowToColumns(parsePipeCells(line), headers.length));
 
   return {
     end: pos,
@@ -95,8 +85,8 @@ function tryParseTsvTable(lines: string[], start: number): { end: number; block:
     row.split('\t').map((c) => c.trim().replace(/\s*←.*$/, ''))
   );
   const headers = rows[0];
-  const body = rows.slice(1);
   if (headers.length < 2) return null;
+  const body = rows.slice(1).map((row) => alignRowToColumns(row, headers.length));
 
   return {
     end: pos,

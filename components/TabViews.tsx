@@ -849,7 +849,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                 )}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   <PlanningContentEditor
-                    className="w-full min-h-[400px] xl:min-h-[480px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
+                    className="w-full min-w-0 min-h-[400px] xl:min-h-[480px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
                     placeholder="Cursor 채팅 내용을 붙여넣으세요..."
                     value={editForm.content || ''}
                     onChange={(content) => setEditForm({ ...editForm, content })}
@@ -858,14 +858,14 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                       setTimeout(() => setPlanningPasteHint(false), 2500);
                     }}
                   />
-                  <div className="flex flex-col min-h-[400px] xl:min-h-[480px] border rounded-xl bg-white overflow-hidden">
+                  <div className="flex flex-col min-w-0 min-h-[400px] xl:min-h-[480px] border rounded-xl bg-white overflow-hidden">
                     <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0 flex items-center justify-between gap-2">
                       <span>미리보기 · Paste Normalizer</span>
                       <span className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wide">
                         v2
                       </span>
                     </div>
-                    <div className="flex-1 overflow-auto p-4">
+                    <div className="flex-1 overflow-auto p-4 min-w-0">
                       <MarkdownPreview mode="planning" content={editForm.content || ''} />
                     </div>
                   </div>
@@ -1516,7 +1516,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                     )}
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                       <PlanningContentEditor
-                        className="w-full min-h-[360px] xl:min-h-[420px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
+                        className="w-full min-w-0 min-h-[360px] xl:min-h-[420px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
                         placeholder="보고서 요약·채팅 내용을 붙여넣으세요..."
                         value={editForm.summary || ''}
                         onChange={(summary) => setEditForm({ ...editForm, summary })}
@@ -1525,12 +1525,12 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                           setTimeout(() => setReportPasteHint(false), 2500);
                         }}
                       />
-                      <div className="flex flex-col min-h-[360px] xl:min-h-[420px] border rounded-xl bg-white overflow-hidden">
+                      <div className="flex flex-col min-w-0 min-h-[360px] xl:min-h-[420px] border rounded-xl bg-white overflow-hidden">
                         <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0 flex items-center justify-between gap-2">
                           <span>미리보기 · Paste Normalizer</span>
                           <span className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wide">v2</span>
                         </div>
-                        <div className="flex-1 overflow-auto p-4">
+                        <div className="flex-1 overflow-auto p-4 min-w-0">
                           <MarkdownPreview mode="planning" content={editForm.summary || ''} />
                         </div>
                       </div>
@@ -1779,14 +1779,14 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                 <label className="block text-sm font-medium text-slate-700 mb-2">요약 (Markdown · 채팅 붙여넣기)</label>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                   <PlanningContentEditor
-                    className="w-full min-h-[240px] p-3 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
+                    className="w-full min-w-0 min-h-[240px] p-3 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
                     placeholder="보고서 요약을 붙여넣으세요..."
                     value={form.summary || ''}
                     onChange={(summary) => setForm({ ...form, summary })}
                   />
-                  <div className="flex flex-col min-h-[240px] border rounded-xl bg-white overflow-hidden">
+                  <div className="flex flex-col min-w-0 min-h-[240px] border rounded-xl bg-white overflow-hidden">
                     <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0">미리보기</div>
-                    <div className="flex-1 overflow-auto p-3">
+                    <div className="flex-1 overflow-auto p-3 min-w-0">
                       <MarkdownPreview mode="planning" content={form.summary || ''} />
                     </div>
                   </div>
