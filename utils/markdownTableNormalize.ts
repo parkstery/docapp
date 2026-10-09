@@ -10,6 +10,7 @@ import {
   escapePipeCell,
   isPipeSeparatorCells,
   isPipeSeparatorRow,
+  peelPipeRow,
   splitPipeRow,
 } from './markdownPipeSplit';
 
@@ -42,7 +43,8 @@ function isSeparatorRow(line: string): boolean {
 }
 
 function cellsToPipeRow(cells: string[]): string {
-  return normalizePipeRow(cells.map((c) => escapePipeCell(c)).join(' | '));
+  // trim 하면 끝의 빈 칸이 사라져 열 수가 줄고, 메모가 앞 칸에 `|`와 함께 붙는다.
+  return `| ${cells.map((c) => escapePipeCell(c)).join(' | ')} |`;
 }
 
 function pipeRowsFromTsvBlock(block: string[]): string[] {
@@ -81,6 +83,7 @@ function convertSingleLineTsvTables(source: string): string {
     const block: string[] = [];
     let pos = i;
     while (pos < lines.length && tabCount(lines[pos]) === tc && !/←/.test(lines[pos])) {
+      if (peelPipeRow(lines[pos])) break;
       if (pos > i && LETTER_ROW.test(lines[pos].trim())) break;
       block.push(lines[pos]);
       pos += 1;
@@ -208,17 +211,13 @@ function normalizeExistingPipeTables(source: string): string {
         i += 1;
         continue;
       }
-      if (lines[i].trim() === '' && i + 1 < lines.length && isPipeTableRow(lines[i + 1])) {
-        i += 1;
-        continue;
-      }
       break;
     }
 
     const parsed = block.map((line) => splitPipeRow(line));
-    const cols = parsed[0]?.length ?? 0;
-    if (parsed.length >= 2 && cols >= 2) {
-      const data = parsed.filter((cells, idx) => idx === 0 || !isPipeSeparatorCells(cells));
+    const data = parsed.filter((cells, idx) => idx === 0 || !isPipeSeparatorCells(cells));
+    const cols = data.reduce((max, cells) => Math.max(max, cells.length), 0);
+    if (data.length >= 2 && cols >= 2) {
       const aligned = data.map((cells) => cellsToPipeRow(alignRowToColumns(cells, cols)));
       out.push('', aligned[0], buildSeparatorRow(cols), ...aligned.slice(1), '');
     } else {
@@ -265,8 +264,57 @@ function ensureBlockSpacing(source: string): string {
   return out.join('\n');
 }
 
+/** `| 행 |\t메모` 를 파이프 표의 마지막 칸으로 옮긴다. 탭 표가 이 행을 삼키지 않게 한다. */
+function detachTabNotesOnPipeLines(source: string): string {
+  const lines = source.split('\n');
+  const out: string[] = [];
+  let i = 0;
+  let inFence = false;
+
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('```')) {
+      inFence = !inFence;
+      out.push(lines[i]);
+      i += 1;
+      continue;
+    }
+    if (inFence || !peelPipeRow(lines[i])) {
+      out.push(lines[i]);
+      i += 1;
+      continue;
+    }
+
+    const block: { pipe: string; note: string; sep: boolean }[] = [];
+    while (i < lines.length && !lines[i].trim().startsWith('```')) {
+      const peeled = peelPipeRow(lines[i]);
+      if (!peeled) break;
+      block.push({
+        pipe: peeled.pipe,
+        note: peeled.note,
+        sep: isPipeSeparatorRow(peeled.pipe),
+      });
+      i += 1;
+    }
+
+    const hasNote = block.some((row) => row.note);
+    for (const row of block) {
+      if (!hasNote) {
+        out.push(row.pipe);
+        continue;
+      }
+      const cells = splitPipeRow(row.pipe);
+      cells.push(row.sep ? '---' : row.note);
+      out.push(cellsToPipeRow(cells));
+    }
+  }
+
+  return out.join('\n');
+}
+
 export function prepareMarkdownForRender(source: string): string {
   let text = source.replace(/\u00a0/g, ' ').replace(/\r\n/g, '\n');
+  text = detachTabNotesOnPipeLines(text);
   text = convertSingleLineTsvTables(text);
   text = convertTabLetteredPasteTables(text);
   text = normalizeExistingPipeTables(text);

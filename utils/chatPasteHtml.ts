@@ -1,5 +1,6 @@
 import { parseInline } from 'marked';
 import type { DocumentBlock } from '../types/documentBlocks';
+import { isPipeSeparatorRow, peelPipeRow, splitPipeRow } from './markdownPipeSplit';
 import { sanitizeRichHtml } from './richHtmlSanitize';
 
 function escapeText(s: string): string {
@@ -33,11 +34,73 @@ function renderTable(headers: string[], rows: string[][]): string {
   return `<div class="md-table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
 }
 
+function padCells(cells: string[], width: number): string[] {
+  if (cells.length >= width) return cells.slice(0, width);
+  return [...cells, ...Array.from({ length: width - cells.length }, () => '')];
+}
+
+/** 탭 표에 삼켜진 `| 행 |` 칸을 다시 표로 꺼낸다. */
+function expandEmbeddedPipeTable(headers: string[], rows: string[][]): DocumentBlock[] {
+  const all = [headers, ...rows];
+  const pipeCount = all.filter((row) => peelPipeRow(row[0] || '')).length;
+  if (pipeCount < 2) return [{ type: 'table', headers, rows }];
+
+  const blocks: DocumentBlock[] = [];
+  let i = 0;
+
+  const pushPlain = (slice: string[][]) => {
+    if (slice.length === 0) return;
+    if (slice.length === 1) {
+      blocks.push({ type: 'table', headers: slice[0], rows: [] });
+      return;
+    }
+    blocks.push({ type: 'table', headers: slice[0], rows: slice.slice(1) });
+  };
+
+  while (i < all.length) {
+    if (!peelPipeRow(all[i][0] || '')) {
+      const plain: string[][] = [];
+      while (i < all.length && !peelPipeRow(all[i][0] || '')) {
+        plain.push(all[i]);
+        i += 1;
+      }
+      pushPlain(plain);
+      continue;
+    }
+
+    const pipeRows: string[][] = [];
+    while (i < all.length && peelPipeRow(all[i][0] || '')) {
+      const peeled = peelPipeRow(all[i][0] || '');
+      if (peeled && !isPipeSeparatorRow(peeled.pipe)) {
+        const cells = splitPipeRow(peeled.pipe);
+        const note = peeled.note || (all[i][1] || '').trim();
+        if (note) cells.push(note);
+        pipeRows.push(cells);
+      }
+      i += 1;
+    }
+    if (pipeRows.length >= 2) {
+      const width = Math.max(...pipeRows.map((row) => row.length));
+      const rect = pipeRows.map((row) => padCells(row, width));
+      blocks.push({ type: 'table', headers: rect[0], rows: rect.slice(1) });
+    } else if (pipeRows.length === 1) {
+      blocks.push({ type: 'paragraph', text: pipeRows[0].join(' | ') });
+    }
+  }
+
+  return blocks.length > 0 ? blocks : [{ type: 'table', headers, rows }];
+}
+
 /** 블록 AST → 읽기 전용 HTML (Notion-ish typography는 markdown-docapp.css) */
 export function renderDocumentBlocksToHtml(blocks: DocumentBlock[]): string {
   const parts: string[] = [];
-
+  const flat: DocumentBlock[] = [];
   for (const block of blocks) {
+    if (block.type === 'table') flat.push(...expandEmbeddedPipeTable(block.headers, block.rows));
+    else flat.push(block);
+  }
+
+  for (const block of flat) {
     switch (block.type) {
       case 'heading': {
         const lvl = Math.min(6, Math.max(1, block.level));

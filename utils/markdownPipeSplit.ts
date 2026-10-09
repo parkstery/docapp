@@ -93,6 +93,26 @@ export function escapePipeCell(cell: string): string {
   return out;
 }
 
+/**
+ * `| a | b |\t메모` 처럼 오른쪽에 탭 메모가 붙은 파이프 행을 분리한다.
+ * 탭이 없으면 note 는 빈 문자열이다.
+ */
+export function peelPipeRow(line: string): { pipe: string; note: string } | null {
+  const tab = line.indexOf('\t');
+  const pipe = (tab >= 0 ? line.slice(0, tab) : line).trim();
+  if (!pipe.startsWith('|') || !pipe.includes('|', 1)) return null;
+  const note =
+    tab >= 0
+      ? line
+          .slice(tab + 1)
+          .split('\t')
+          .map((s) => s.trim().replace(/\s*←.*$/, ''))
+          .filter(Boolean)
+          .join(' ')
+      : '';
+  return { pipe, note };
+}
+
 function fenceState(line: string, inFence: boolean): boolean {
   return line.trim().startsWith('```') ? !inFence : inFence;
 }
@@ -109,8 +129,10 @@ export function hasGfmPipeTable(source: string): boolean {
       continue;
     }
     if (inFence) continue;
-    if (!t.startsWith('|') || !t.includes('|', 1)) continue;
-    if (isPipeSeparatorRow(lines[i + 1] ?? '')) return true;
+    const header = peelPipeRow(t);
+    const separator = peelPipeRow(lines[i + 1] ?? '');
+    if (!header || isPipeSeparatorRow(header.pipe)) continue;
+    if (separator && isPipeSeparatorRow(separator.pipe)) return true;
   }
   return false;
 }

@@ -1,5 +1,5 @@
 import type { DocumentBlock } from '../types/documentBlocks';
-import { alignRowToColumns, isPipeSeparatorRow, splitPipeRow } from './markdownPipeSplit';
+import { alignRowToColumns, isPipeSeparatorRow, peelPipeRow, splitPipeRow } from './markdownPipeSplit';
 
 const LETTER_ROW = /^[A-Z]\.\s/;
 const HEADING = /^(#{1,6})\s+(.+)$/;
@@ -7,37 +7,42 @@ const BULLET = /^(\s*)([-*+•]|\d+\.)\s+(.+)$/;
 const FENCE_OPEN = /^```(\w*)?\s*$/;
 
 function isPipeTableRow(line: string): boolean {
-  const t = line.trim();
-  return Boolean(t && t.startsWith('|') && t.includes('|', 1));
+  const peeled = peelPipeRow(line);
+  return Boolean(peeled && !isPipeSeparatorRow(peeled.pipe));
 }
 
 function parsePipeCells(line: string): string[] {
-  return splitPipeRow(line);
+  const peeled = peelPipeRow(line);
+  if (!peeled) return splitPipeRow(line);
+  const cells = splitPipeRow(peeled.pipe);
+  if (peeled.note) cells.push(peeled.note);
+  return cells;
 }
 
-/** GFM | col | col | 표 */
+/** GFM | col | col | 표. 행 끝의 탭 메모는 마지막 칸으로 둔다. */
 function tryParsePipeMarkdownTable(
   lines: string[],
   start: number
 ): { end: number; block: DocumentBlock } | null {
   if (!isPipeTableRow(lines[start])) return null;
 
-  const blockLines: string[] = [];
+  const dataRows: string[][] = [];
   let pos = start;
   while (pos < lines.length) {
     const t = lines[pos].trim();
     if (!t) break;
-    if (!isPipeTableRow(lines[pos]) && !isPipeSeparatorRow(lines[pos])) break;
-    blockLines.push(lines[pos]);
+    const peeled = peelPipeRow(lines[pos]);
+    if (!peeled) break;
+    if (!isPipeSeparatorRow(peeled.pipe)) dataRows.push(parsePipeCells(lines[pos]));
     pos += 1;
   }
 
-  const dataRows = blockLines.filter((l) => !isPipeSeparatorRow(l));
   if (dataRows.length < 2) return null;
 
-  const headers = parsePipeCells(dataRows[0]);
-  if (headers.length < 2) return null;
-  const rows = dataRows.slice(1).map((line) => alignRowToColumns(parsePipeCells(line), headers.length));
+  const width = Math.max(...dataRows.map((row) => row.length));
+  if (width < 2) return null;
+  const headers = alignRowToColumns(dataRows[0], width);
+  const rows = dataRows.slice(1).map((row) => alignRowToColumns(row, width));
 
   return {
     end: pos,
@@ -65,7 +70,7 @@ function isAnnotationLine(line: string): boolean {
 /** 연속 탭 행 (Notion/Excel 한 줄 = 한 행) */
 function tryParseTsvTable(lines: string[], start: number): { end: number; block: DocumentBlock } | null {
   const tc = tabCount(lines[start]);
-  if (tc < 1 || isAnnotationLine(lines[start])) return null;
+  if (tc < 1 || isAnnotationLine(lines[start]) || peelPipeRow(lines[start])) return null;
 
   let next = start + 1;
   while (next < lines.length && !lines[next].trim()) next += 1;
@@ -74,6 +79,7 @@ function tryParseTsvTable(lines: string[], start: number): { end: number; block:
   const blockLines: string[] = [];
   let pos = start;
   while (pos < lines.length && tabCount(lines[pos]) === tc && !isAnnotationLine(lines[pos])) {
+    if (peelPipeRow(lines[pos])) break;
     if (pos > start && LETTER_ROW.test(lines[pos].trim())) break;
     blockLines.push(lines[pos]);
     pos += 1;
