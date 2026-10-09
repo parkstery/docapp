@@ -46,7 +46,7 @@ const AppDetail: React.FC = () => {
   const tabs = [
     { id: 'planning', label: '기획서', icon: BookOpen },
     { id: 'reports', label: '보고서', icon: FileText },
-    { id: 'prompts', label: '프롬프트', icon: MessageSquare },
+    { id: 'prompts', label: 'BARN', icon: MessageSquare },
     { id: 'memos', label: '참고', icon: StickyNote },
     { id: 'free', label: 'TASK', icon: ScrollText },
     { id: 'notes', label: '메모', icon: ClipboardList },

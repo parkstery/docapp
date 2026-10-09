@@ -24,9 +24,9 @@ const HelpPage: React.FC = () => {
             <ul className="list-disc list-inside space-y-2 text-slate-600 text-sm leading-6 break-words">
               <li><strong>로그인</strong>: Google 계정으로 로그인합니다.</li>
               <li><strong>앱 목록</strong>: 대시보드에서 관리 중인 앱 프로젝트를 보고, 추가·수정·삭제할 수 있습니다.</li>
-              <li><strong>앱 선택</strong>: 카드를 클릭하면 해당 앱의 상세(참고, 보고서, 프롬프트, 메모, 트러블슈팅, 스크린샷)로 이동합니다.</li>
-              <li><strong>각 탭</strong>: 참고(기획서), 보고서, 프롬프트 로그, 메모, 이슈, 스크린샷을 탭으로 구분해 관리합니다.</li>
-              <li><strong>파일 첨부</strong>: 보고서·프롬프트·메모·이슈에서는 여러 개의 파일을 업로드할 수 있습니다.</li>
+              <li><strong>앱 선택</strong>: 카드를 클릭하면 해당 앱의 상세(참고, 보고서, BARN, 메모, 트러블슈팅, 스크린샷)로 이동합니다.</li>
+              <li><strong>각 탭</strong>: 참고(기획서), 보고서, BARN, 메모, 이슈, 스크린샷을 탭으로 구분해 관리합니다.</li>
+              <li><strong>파일 첨부</strong>: 보고서·BARN·메모·이슈에서는 여러 개의 파일을 업로드할 수 있습니다.</li>
             </ul>
           </section>
 

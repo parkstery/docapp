@@ -6,7 +6,7 @@ import { fetchAllDocumentViews } from '../services/projectDocuments';
 const KIND_LABEL: Record<DocumentKind, string> = {
   planning: '기획서',
   reports: '보고서',
-  prompts: '프롬프트',
+  prompts: 'BARN',
   memos: '참고',
   freeDocs: 'TASK',
   issues: '트러블슈팅',

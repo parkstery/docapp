@@ -2195,7 +2195,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <button type="button" onClick={promptUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">프롬프트 수정</h3>
+            <h3 className="font-bold text-lg text-slate-800">BARN 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={promptUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
@@ -2323,7 +2323,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         </div>
       )}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h3 className="font-bold text-lg text-slate-800">프롬프트 로그</h3>
+        <h3 className="font-bold text-lg text-slate-800">BARN</h3>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -2492,7 +2492,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" data-edit-scope="">
             <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg">새 프롬프트 로그</h3>
+              <h3 className="font-bold text-lg">새 BARN</h3>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
