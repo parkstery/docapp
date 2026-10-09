@@ -8,7 +8,7 @@ const KIND_LABEL: Record<DocumentKind, string> = {
   reports: '보고서',
   prompts: '프롬프트',
   memos: '참고',
-  freeDocs: '프리',
+  freeDocs: 'TASK',
   issues: '트러블슈팅',
   screenshots: '스크린샷',
   notes: '메모',

@@ -639,7 +639,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
               >
                 <ArrowLeft size={20} />
               </button>
-              <h3 className="font-bold text-lg text-slate-800">프리 수정</h3>
+              <h3 className="font-bold text-lg text-slate-800">TASK 수정</h3>
               {uploading && (
                 <span className="text-xs text-slate-500 flex items-center gap-1">
                   <Loader2 className="animate-spin" size={14} /> 이미지 업로드 중…
@@ -749,7 +749,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-lg text-slate-800">프리</h3>
+        <h3 className="font-bold text-lg text-slate-800">TASK</h3>
         <div className="flex gap-2">
           <button
             type="button"
@@ -847,7 +847,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
                 {orderedDocs.length === 0 && (
                   <tr>
                     <td colSpan={5} className="text-center py-12 text-slate-400">
-                      작성된 프리 문서가 없습니다.
+                      작성된 TASK 문서가 없습니다.
                     </td>
                   </tr>
                 )}
@@ -861,7 +861,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col" data-edit-scope="">
             <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg">새 프리 작성</h3>
+              <h3 className="font-bold text-lg">새 TASK 작성</h3>
               <button type="button" onClick={() => setIsModalOpen(false)} aria-label="닫기">
                 <X size={20} className="text-slate-400 hover:text-slate-600" />
               </button>

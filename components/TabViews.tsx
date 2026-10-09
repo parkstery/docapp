@@ -19,7 +19,7 @@ import TextStyle from '@tiptap/extension-text-style';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  Search, Loader2, Edit2, ArrowLeft,
+  Search, Loader2, ArrowLeft,
   Bold, Italic, Heading2, List, ListOrdered, Undo2, Redo2, Strikethrough
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note } from '../types';
@@ -3207,6 +3207,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     onDrop: onNoteDrop,
     dragRowClassName: noteDragRowClassName,
   } = useDragListReorder(notes, setNotes, (row) => storage.notes.save(row));
+  const noteDraggedRef = useRef(false);
 
   useEffect(() => {
     loadNotes();
@@ -3422,30 +3423,35 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             <p className="text-xs mt-1">메모 추가 버튼으로 새 메모를 만드세요.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {orderedNotes.map((note) => (
               <div
                 key={note.id}
                 data-highlight-id={note.id} tabIndex={-1}
                 draggable={!noteReorderBusy}
-                onDragStart={(e) => onNoteDragStart(e, note.id)}
-                onDragEnd={onNoteDragEnd}
+                onDragStart={(e) => {
+                  noteDraggedRef.current = false;
+                  onNoteDragStart(e, note.id);
+                }}
+                onDragEnd={() => {
+                  noteDraggedRef.current = true;
+                  onNoteDragEnd();
+                  window.setTimeout(() => {
+                    noteDraggedRef.current = false;
+                  }, 0);
+                }}
                 onDragOver={(e) => onNoteDragOver(e, note.id)}
                 onDrop={(e) => void onNoteDrop(e, note.id)}
-                className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[10rem] hover:shadow-md hover:border-slate-300 transition-all ${noteDragRowClassName(note.id)} ${!noteReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(note.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
+                onClick={() => {
+                  if (noteDraggedRef.current) return;
+                  openEdit(note);
+                }}
+                className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[20rem] hover:shadow-md hover:border-slate-300 transition-all ${noteDragRowClassName(note.id)} ${!noteReorderBusy ? 'cursor-pointer' : ''} ${isHighlighted(note.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
               >
                 <div className="p-4 flex-1 flex flex-col min-h-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="font-semibold text-slate-800 truncate flex-1 min-w-0">{note.title}</h4>
                     <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(note)}
-                        className="p-1.5 text-slate-400 hover:text-primary hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="수정"
-                      >
-                        <Edit2 size={16} />
-                      </button>
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }}
@@ -3456,8 +3462,8 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
                       </button>
                     </div>
                   </div>
-                  <p className="text-sm text-slate-600 line-clamp-4 flex-1 break-words">
-                    {contentPreview(note.content, 120)}
+                  <p className="text-sm text-slate-600 line-clamp-8 flex-1 break-words">
+                    {contentPreview(note.content, 240)}
                   </p>
                   <p className="text-xs text-slate-400 mt-2">
                     {new Date(note.updatedAt).toLocaleDateString()}

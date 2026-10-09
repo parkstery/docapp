@@ -48,7 +48,7 @@ const AppDetail: React.FC = () => {
     { id: 'reports', label: '보고서', icon: FileText },
     { id: 'prompts', label: '프롬프트', icon: MessageSquare },
     { id: 'memos', label: '참고', icon: StickyNote },
-    { id: 'free', label: '프리', icon: ScrollText },
+    { id: 'free', label: 'TASK', icon: ScrollText },
     { id: 'notes', label: '메모', icon: ClipboardList },
     { id: 'issues', label: '트러블슈팅', icon: AlertTriangle },
     { id: 'screenshots', label: '스크린샷', icon: ImageIcon },
