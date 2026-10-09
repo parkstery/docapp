@@ -1,5 +1,6 @@
 import { parseInline } from 'marked';
 import type { DocumentBlock } from '../types/documentBlocks';
+import { expandBoxDrawingTable } from './boxDrawingTable';
 import { isPipeSeparatorRow, peelPipeRow, splitPipeRow } from './markdownPipeSplit';
 import { sanitizeRichHtml } from './richHtmlSanitize';
 
@@ -96,7 +97,10 @@ export function renderDocumentBlocksToHtml(blocks: DocumentBlock[]): string {
   const parts: string[] = [];
   const flat: DocumentBlock[] = [];
   for (const block of blocks) {
-    if (block.type === 'table') flat.push(...expandEmbeddedPipeTable(block.headers, block.rows));
+    if (block.type === 'table') {
+      const recovered = expandBoxDrawingTable(block.headers, block.rows);
+      flat.push(...(recovered ?? expandEmbeddedPipeTable(block.headers, block.rows)));
+    }
     else flat.push(block);
   }
 

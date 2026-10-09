@@ -1,5 +1,8 @@
 import type { DocumentBlock } from '../types/documentBlocks';
+import { parseBoxDrawingLines } from './boxDrawingTable';
 import { alignRowToColumns, isPipeSeparatorRow, peelPipeRow, splitPipeRow } from './markdownPipeSplit';
+
+const BOX_DRAWING = /[┌┐└┘├┤┬┴┼│─]/;
 
 const LETTER_ROW = /^[A-Z]\.\s/;
 const HEADING = /^(#{1,6})\s+(.+)$/;
@@ -158,6 +161,26 @@ function blockHasAnnotation(lines: string[], from: number, to: number): boolean 
   return false;
 }
 
+/** 채팅 폭에 맞춰 그려진 ┌─┬─┐ 표. 그리드 파서가 줄을 두 칸으로 묶기 전에 읽는다. */
+function tryParseBoxDrawingBlock(
+  lines: string[],
+  start: number
+): { end: number; blocks: DocumentBlock[] } | null {
+  if (!BOX_DRAWING.test(lines[start])) return null;
+
+  const chunk: string[] = [];
+  let i = start;
+  while (i < lines.length && lines[i].trim() && BOX_DRAWING.test(lines[i])) {
+    chunk.push(lines[i]);
+    i += 1;
+  }
+  if (chunk.length < 2) return null;
+
+  const blocks = parseBoxDrawingLines(chunk);
+  if (!blocks.some((block) => block.type === 'table')) return null;
+  return { end: i, blocks };
+}
+
 /** 열 개수가 반복되는 짧은 줄 그리드 (헤더 없이 드래그된 표) */
 function tryParseImplicitGridTable(
   lines: string[],
@@ -179,6 +202,7 @@ function tryParseImplicitGridTable(
       continue;
     }
     if (HEADING.test(t) || BULLET.test(t) || FENCE_OPEN.test(t)) break;
+    if (BOX_DRAWING.test(t)) break;
     if (t.length > 120) break;
     if (LETTER_ROW.test(t) && allLines.length > colCount) break;
     allLines.push(t);
@@ -247,7 +271,8 @@ function collectParagraph(lines: string[], start: number): { end: number; text: 
     if (!t) break;
     if (HEADING.test(t) || BULLET.test(t) || FENCE_OPEN.test(t)) break;
     if (isPipeTableRow(t)) break;
-    if (tabCount(lines[i]) >= 1) break;
+    if (BOX_DRAWING.test(t)) break;
+    if (tabCount(lines[i]) >= 1 && buf.length > 0) break;
     if (LETTER_ROW.test(t)) break;
     const cols = splitColumns(t);
     if (cols.length >= 2 && t.length < 100) break;
@@ -316,6 +341,13 @@ export function parseChatPaste(source: string): DocumentBlock[] {
     if (tsv) {
       blocks.push(tsv.block);
       i = tsv.end;
+      continue;
+    }
+
+    const box = tryParseBoxDrawingBlock(lines, i);
+    if (box) {
+      blocks.push(...box.blocks);
+      i = box.end;
       continue;
     }
 
