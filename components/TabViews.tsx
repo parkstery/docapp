@@ -525,16 +525,14 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [editForm, setEditForm] = useState<Partial<PlanningDoc>>({});
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<Partial<PlanningDoc>>({ title: '' });
+  const [isNewDraft, setIsNewDraft] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [planningModalDraftId, setPlanningModalDraftId] = useState('');
-  const [planningModalBodyHtml, setPlanningModalBodyHtml] = useState('');
   const [planningPasteHint, setPlanningPasteHint] = useState(false);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [22, 26, 210, 300, 84, 100]);
@@ -556,7 +554,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
     setLoading(true);
     const list = await storage.planning.list(appId);
     setDocs(sortTabListItems(list));
-    if (selectedDocId && !list.find(d => d.id === selectedDocId)) {
+    if (!isNewDraft && selectedDocId && !list.find(d => d.id === selectedDocId)) {
       setSelectedDocId(null);
       setEditForm({});
     }
@@ -566,28 +564,35 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
   const exitPlanningDetail = useCallback(() => {
     setSelectedDocId(null);
     setEditForm({});
+    setIsNewDraft(false);
   }, []);
 
   const persistPlanningEdit = useCallback(async (): Promise<boolean> => {
+    if (saving || uploading) return false;
     if (!editForm.title || editForm.title.trim() === '') {
       alert('제목을 입력하세요');
       return false;
     }
+    if (!editForm.id) return false;
+    setSaving(true);
     try {
+      const firstSave = isNewDraft;
       const item: PlanningDoc = {
-        id: editForm.id!,
+        id: editForm.id,
         appId,
         title: editForm.title.trim(),
         content: editForm.content ?? '',
-        createdAt: editForm.createdAt ?? Date.now(),
+        createdAt: firstSave ? Date.now() : (editForm.createdAt ?? Date.now()),
         updatedAt: Date.now(),
       };
       if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
-      await storage.planning.save(item);
+      const toSave = firstSave ? withListSortRankForCreate(sortTabListItems(docs), item) : item;
+      await storage.planning.save(toSave);
       await loadDocs();
-      setEditForm(item);
+      setEditForm(toSave);
+      setIsNewDraft(false);
       setSaveMessageVisible(true);
       setTimeout(() => setSaveMessageVisible(false), 2000);
       return true;
@@ -595,8 +600,10 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
       console.error('[PlanningView] 저장 실패:', e);
       alert('저장에 실패했습니다.');
       return false;
+    } finally {
+      setSaving(false);
     }
-  }, [editForm, appId]);
+  }, [editForm, appId, isNewDraft, docs, saving, uploading]);
 
   const planningUnsaved = useUnsavedEditGuard({
     active: !!(selectedDocId && editForm.id),
@@ -607,41 +614,20 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
   });
 
   const handleSelectDoc = (doc: PlanningDoc) => {
+    setIsNewDraft(false);
     setSelectedDocId(doc.id);
     setEditForm({ ...doc, fileInfoList: getFileList(doc) });
   };
 
-  const openModal = () => {
-    setForm({ title: '' });
-    setPlanningModalDraftId(crypto.randomUUID());
-    setPlanningModalBodyHtml('');
-    setIsModalOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!form.title || form.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    const bodyMd = htmlToPlainTextWithBreaks(planningModalBodyHtml).trim() || '여기에 내용을 작성하세요.';
-    const newDoc: PlanningDoc = {
-      id: crypto.randomUUID(),
-      appId,
-      title: form.title.trim(),
-      content: '# ' + form.title.trim() + '\n\n' + bodyMd,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    const toSave = withListSortRankForCreate(sortTabListItems(docs), newDoc);
-    await storage.planning.save(toSave);
-    loadDocs();
-    setIsModalOpen(false);
-    setForm({ title: '' });
-    setPlanningModalBodyHtml('');
-    handleSelectDoc(toSave);
+  const openInlineCreate = () => {
+    const id = crypto.randomUUID();
+    setSelectedDocId(id);
+    setEditForm({ id, appId, title: '', content: '', fileInfoList: [] });
+    setIsNewDraft(true);
   };
 
   const handleEditSave = async () => {
+    if (saving || uploading) return;
     const ok = await persistPlanningEdit();
     if (ok) planningUnsaved.syncBaseline();
   };
@@ -766,13 +752,13 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col" data-edit-scope="">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+      <div className="h-full flex flex-col min-h-0" data-edit-scope="">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <button type="button" onClick={planningUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">기획서 수정</h3>
+            <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 기획서 작성' : '기획서 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={planningUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors w-full sm:w-auto">
@@ -803,35 +789,43 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
             >
               .md 보기
             </button>
-            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
+            <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto disabled:opacity-50">
               <Save size={14}/> 저장
             </button>
+            {!isNewDraft && (
             <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
               <Trash2 size={14}/> 삭제
             </button>
+            )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
-            <div className="mb-2 pb-2 border-b">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
-                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                )}
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+          <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
+              {isNewDraft ? (
+                <span>저장 전</span>
+              ) : (
+                <>
+                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                  )}
+                </>
+              )}
             </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+              <input
+                className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
+                placeholder="제목을 입력하세요"
+                value={editForm.title || ''}
+                onChange={e => setEditForm({...editForm, title: e.target.value})}
+              />
+            </div>
+          </div>
+          <div data-body-scroll className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5">
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                <input
-                  className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
-                  placeholder="제목을 입력하세요"
-                  value={editForm.title || ''}
-                  onChange={e => setEditForm({...editForm, title: e.target.value})}
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   내용 (Markdown · Cursor 채팅 붙여넣기)
@@ -941,7 +935,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">기획서</h3>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          <button onClick={openModal} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+          <button onClick={openInlineCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
             <Plus size={16} /> 작성하기
           </button>
           {selectedIds.size > 0 && (
@@ -1088,47 +1082,6 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
           )}
         </div>
       </div>
-
-      {/* 새 기획서 작성 모달 */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col" data-edit-scope="">
-            <div className="p-4 border-b flex justify-between items-center shrink-0">
-              <h3 className="font-bold text-lg">새 기획서 작성</h3>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { setIsModalOpen(false); setPlanningModalBodyHtml(''); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-medium">저장</button>
-                <button type="button" onClick={() => { setIsModalOpen(false); setPlanningModalBodyHtml(''); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
-              </div>
-            </div>
-            <div className="p-6 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
-                <input
-                  className="w-full border rounded-lg p-2.5 focus:ring-2 ring-indigo-500 outline-none"
-                  placeholder="기획서 제목을 입력하세요"
-                  value={form.title || ''}
-                  onChange={e => setForm({...form, title: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">본문 (WYSIWYG · 저장 시 Markdown 텍스트로 변환)</label>
-                {planningModalDraftId && (
-                  <RichHtmlEditor
-                    key={`planning-new-${planningModalDraftId}`}
-                    appId={appId}
-                    docId={planningModalDraftId}
-                    uploadSection="planning"
-                    initialHtml=""
-                    onHtmlChange={setPlanningModalBodyHtml}
-                    setUploading={setUploading}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
     </>
   );
@@ -1140,8 +1093,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Report>>({});
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<Partial<Report>>({});
+  const [isNewDraft, setIsNewDraft] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -1149,7 +1102,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [reportPasteHint, setReportPasteHint] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(7, [22, 26, 80, 188, 268, 84, 100]);
   const {
@@ -1174,29 +1126,38 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const exitReportDetail = useCallback(() => {
     setSelectedReportId(null);
     setEditForm({});
+    setIsNewDraft(false);
   }, []);
 
   const persistReportEdit = useCallback(async (): Promise<boolean> => {
+    if (saving || uploading) return false;
     if (!editForm.title || editForm.title.trim() === '') {
       alert('제목을 입력하세요');
       return false;
     }
+    if (!editForm.id) return false;
+    setSaving(true);
     try {
+      const firstSave = isNewDraft;
       const item: any = {
-        id: editForm.id!,
+        id: editForm.id,
         appId,
         title: editForm.title.trim(),
         type: editForm.type || 'Other',
         summary: editForm.summary ?? '',
-        createdAt: editForm.createdAt ?? Date.now(),
+        createdAt: firstSave ? Date.now() : (editForm.createdAt ?? Date.now()),
         updatedAt: Date.now(),
       };
       if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
-      await storage.reports.save(item as Report);
+      const toSave = (firstSave
+        ? withListSortRankForCreate(sortTabListItems(reports), item as Report)
+        : item) as Report;
+      await storage.reports.save(toSave);
       await loadReports();
-      setEditForm(item);
+      setEditForm(toSave);
+      setIsNewDraft(false);
       setSaveMessageVisible(true);
       setTimeout(() => setSaveMessageVisible(false), 2000);
       return true;
@@ -1204,8 +1165,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       console.error('[ReportView] 보고서 저장 실패:', error);
       alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
       return false;
+    } finally {
+      setSaving(false);
     }
-  }, [editForm, appId]);
+  }, [editForm, appId, isNewDraft, reports, saving, uploading]);
 
   const reportUnsaved = useUnsavedEditGuard({
     active: !!(selectedReportId && editForm.id),
@@ -1216,25 +1179,30 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   });
 
   const handleSelectReport = (report: Report) => {
+    setIsNewDraft(false);
     setSelectedReportId(report.id);
     const nextSummary = legacyContentToEditableMarkdown(report.summary || '');
     setEditForm({ ...report, fileInfoList: getFileList(report), summary: nextSummary });
   };
 
-  const processFile = async (file: File, target: 'form' | 'editForm') => {
-    if (uploading) return;
+  const openInlineCreate = () => {
+    const id = crypto.randomUUID();
+    setSelectedReportId(id);
+    setEditForm({ id, appId, title: '', type: 'Other', summary: '', fileInfoList: [] });
+    setIsNewDraft(true);
+  };
+
+  const processFile = async (file: File) => {
+    if (uploading || saving) return;
     if (file.size > 10 * 1024 * 1024) {
       alert('파일 크기는 10MB 이하여야 합니다.');
       return;
     }
+    if (!editForm.id) return;
     setUploading(true);
     try {
-      const fileInfo = await uploadFile(appId, `reports/${target === 'editForm' ? editForm.id : form.id || 'new'}`, file);
-      if (target === 'editForm') {
-        setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
-      } else {
-        setForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
-      }
+      const fileInfo = await uploadFile(appId, `reports/${editForm.id}`, file);
+      setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 2000);
     } catch (error: any) {
@@ -1242,23 +1210,14 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}\n\n브라우저 콘솔을 확인하세요.`);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
       if (detailFileInputRef.current) detailFileInputRef.current.value = '';
     }
-  };
-
-  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'form');
-    }
-    e.target.value = '';
   };
 
   const handleDetailFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'editForm');
+      for (let i = 0; i < files.length; i++) await processFile(files[i]);
     }
     e.target.value = '';
   };
@@ -1277,55 +1236,18 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     setIsDragging(false);
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'form');
-    }
-  };
-
   const handleDetailDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'editForm');
-    }
-  };
-
-  const handleSave = async () => {
-    if (!form.title || form.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    try {
-      const item: any = {
-        id: form.id || crypto.randomUUID(),
-        appId,
-        title: form.title.trim(),
-        type: form.type || 'Other',
-        summary: form.summary ?? '',
-        createdAt: form.createdAt || Date.now(),
-        updatedAt: Date.now(),
-      };
-      const list = getFileList(form);
-      if (list.length) item.fileInfoList = list;
-      const toSave = withListSortRankForCreate(sortTabListItems(reports), item as Report);
-      await storage.reports.save(toSave);
-      setIsModalOpen(false);
-      setForm({});
-      loadReports();
-    } catch (error: any) {
-      console.error('[ReportView] 보고서 저장 실패:', error);
-      alert(`보고서 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
+      for (let i = 0; i < files.length; i++) await processFile(files[i]);
     }
   };
 
   const handleEditSave = async () => {
+    if (saving || uploading) return;
     const ok = await persistReportEdit();
     if (ok) reportUnsaved.syncBaseline();
   };
@@ -1375,18 +1297,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     if (selectedReportId && selectedIds.has(selectedReportId)) exitReportDetail();
   };
 
-  const handleDeleteFile = async (fileInfo: FileInfo) => {
-    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
-    try {
-      await deleteFile(fileInfo.url);
-      const list = getFileList(form).filter(f => f.url !== fileInfo.url);
-      setForm({ ...form, fileInfoList: list });
-    } catch (error) {
-      console.error('파일 삭제 실패:', error);
-      alert('파일 삭제에 실패했습니다.');
-    }
-  };
-
   const deleteReport = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
     const report = reports.find(r => r.id === id);
@@ -1396,12 +1306,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     await storage.reports.delete(id);
     loadReports();
     if (selectedReportId === id) exitReportDetail();
-    setIsModalOpen(false);
-  };
-
-  const openModal = () => {
-    setForm({ type: 'Other', id: crypto.randomUUID(), summary: '' });
-    setIsModalOpen(true);
   };
 
   // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
@@ -1420,13 +1324,13 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col" data-edit-scope="">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+      <div className="h-full flex flex-col min-h-0" data-edit-scope="">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <button type="button" onClick={reportUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">보고서 수정</h3>
+            <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 보고서 작성' : '보고서 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={reportUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
@@ -1455,55 +1359,63 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             >
               .md 보기
             </button>
-            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
               <Save size={14}/> 저장
             </button>
+            {!isNewDraft && (
             <button onClick={() => deleteReport(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Trash2 size={14}/> 삭제
             </button>
+            )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+          <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
+              {isNewDraft ? (
+                <span>저장 전</span>
+              ) : (
+                <>
+                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                <input
+                  className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
+                  value={editForm.title || ''}
+                  onChange={e => setEditForm({...editForm, title: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">유형</label>
+                <select
+                  className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
+                  value={editForm.type}
+                  onChange={e => setEditForm({...editForm, type: e.target.value as Report['type']})}
+                >
+                  <option value="CodeAnalysis">코드 분석</option>
+                  <option value="ProjectAnalysis">프로젝트 분석</option>
+                  <option value="Interim">중간 보고서</option>
+                  <option value="Final">완료 보고서</option>
+                  <option value="Other">기타</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div data-body-scroll className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5">
             <>
-                <div className="mb-2 pb-2 border-b">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
-                    <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                    {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                      <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                      <input
-                        className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
-                        value={editForm.title || ''}
-                        onChange={e => setEditForm({...editForm, title: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">유형</label>
-                      <select
-                        className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
-                        value={editForm.type}
-                        onChange={e => setEditForm({...editForm, type: e.target.value as Report['type']})}
-                      >
-                        <option value="CodeAnalysis">코드 분석</option>
-                        <option value="ProjectAnalysis">프로젝트 분석</option>
-                        <option value="Interim">중간 보고서</option>
-                        <option value="Final">완료 보고서</option>
-                        <option value="Other">기타</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      요약 (Markdown · Cursor 채팅 붙여넣기)
-                    </label>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    요약 (Markdown · Cursor 채팅 붙여넣기)
+                  </label>
                     <p className="text-xs text-slate-500 mb-2">
                       Cursor 채팅·표 붙여넣기 시 자동 구조화(
                       <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-chat</code>). 표·본문은{' '}
@@ -1585,7 +1497,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">보고서</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => openModal()} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
+          <button onClick={() => openInlineCreate()} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
             <Plus size={16} /> 작성하기
           </button>
           <button 
@@ -1746,131 +1658,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
           )}
         </div>
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" data-edit-scope="">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg">새 보고서 작성</h3>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { setIsModalOpen(false); setForm({}); }} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm">저장</button>
-                <button type="button" onClick={() => { setIsModalOpen(false); setForm({}); }}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
-              </div>
-            </div>
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
-                  <input className="w-full border rounded-lg p-2.5 focus:ring-2 ring-primary outline-none" value={form.title || ''} onChange={e => setForm({...form, title: e.target.value})} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">유형</label>
-                  <select className="w-full border rounded-lg p-2.5 outline-none" value={form.type} onChange={e => setForm({...form, type: e.target.value as any})}>
-                    <option value="CodeAnalysis">코드 분석</option>
-                    <option value="ProjectAnalysis">프로젝트 분석</option>
-                    <option value="Interim">중간 보고서</option>
-                    <option value="Final">완료 보고서</option>
-                    <option value="Other">기타</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">요약 (Markdown · 채팅 붙여넣기)</label>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                  <PlanningContentEditor
-                    className="w-full min-w-0 min-h-[240px] p-3 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
-                    placeholder="보고서 요약을 붙여넣으세요..."
-                    value={form.summary || ''}
-                    onChange={(summary) => setForm({ ...form, summary })}
-                  />
-                  <div className="flex flex-col min-w-0 min-h-[240px] border rounded-xl bg-white overflow-hidden">
-                    <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0">미리보기</div>
-                    <div className="flex-1 overflow-auto p-3 min-w-0">
-                      <MarkdownPreview mode="planning" content={form.summary || ''} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
-                {uploadSuccess && (
-                  <span className="text-xs text-green-600 font-medium mb-2 block">
-                    파일이 업로드 되었습니다
-                  </span>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                  id={`file-upload-${form.id || 'new'}`}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <div className="space-y-2">
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${
-                      isDragging
-                        ? 'border-primary bg-indigo-50'
-                        : 'border-slate-300 hover:border-slate-400 bg-slate-50'
-                    } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                  >
-                    <p className="text-xs text-slate-600 mb-1">
-                      파일을 여기에 드래그 앤 드롭하거나
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log('[ReportView] 파일 선택 버튼 클릭 - 이벤트 발생 확인');
-                      console.log('[ReportView] fileInputRef:', fileInputRef.current);
-                      if (fileInputRef.current) {
-                        console.log('[ReportView] fileInputRef 존재, click() 호출');
-                        try {
-                          fileInputRef.current.click();
-                          console.log('[ReportView] input.click() 호출 완료');
-                        } catch (error) {
-                          console.error('[ReportView] input.click() 호출 실패:', error);
-                        }
-                      } else {
-                        console.error('[ReportView] fileInputRef가 null입니다.');
-                      }
-                    }}
-                    disabled={uploading}
-                    className="w-full text-primary hover:text-indigo-800 hover:bg-indigo-50 cursor-pointer text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    클릭하여 파일 선택
-                  </button>
-                </div>
-                {getFileList(form).length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {getFileList(form).map((f) => (
-                      <div key={f.id || f.url} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <FileText size={16} className="text-slate-400 shrink-0" />
-                          <span className="text-sm text-slate-800 truncate">{f.name}</span>
-                          {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
-                          <button type="button" onClick={() => handleDeleteFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -2634,8 +2421,8 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
   const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [memos, setMemos] = useState<Memo[]>([]);
   const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<Partial<Memo>>({});
+  const [isNewDraft, setIsNewDraft] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Memo>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -2643,7 +2430,6 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [modalBodyHtml, setModalBodyHtml] = useState('');
   const memoFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [22, 26, 210, 300, 84, 100]);
   const {
@@ -2666,13 +2452,16 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     setLoading(false);
   };
 
-  const openModal = () => {
-    setForm({ title: '', content: '', id: crypto.randomUUID() });
-    setModalBodyHtml('');
-    setIsModalOpen(true);
+  const openInlineCreate = () => {
+    const id = crypto.randomUUID();
+    setSelectedMemoId(id);
+    setEditForm({ id, appId, title: '', content: '', fileInfoList: [] });
+    setBodyHtml('');
+    setIsNewDraft(true);
   };
 
   const handleSelectMemo = (memo: Memo) => {
+    setIsNewDraft(false);
     setSelectedMemoId(memo.id);
     const nextContent = ensureReadableRichHtml(memo.content || '');
     setEditForm({ ...memo, fileInfoList: getFileList(memo), content: nextContent });
@@ -2680,11 +2469,12 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
   };
 
   const processFile = async (file: File) => {
-    if (uploading) return;
+    if (uploading || saving) return;
     if (file.size > 10 * 1024 * 1024) {
       alert('파일 크기는 10MB 이하여야 합니다.');
       return;
     }
+    if (!editForm.id) return;
     setUploading(true);
     try {
       const fileInfo = await uploadFile(appId, `memos/${editForm.id || 'new'}`, file);
@@ -2746,9 +2536,11 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     setSelectedMemoId(null);
     setEditForm({});
     setBodyHtml('');
+    setIsNewDraft(false);
   }, []);
 
   const persistMemoEdit = useCallback(async (): Promise<boolean> => {
+    if (saving || uploading) return false;
     if (!editForm.title || editForm.title.trim() === '') {
       alert('제목을 입력하세요');
       return false;
@@ -2757,21 +2549,28 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
       alert('내용을 입력하세요');
       return false;
     }
+    if (!editForm.id) return false;
+    setSaving(true);
     try {
+      const firstSave = isNewDraft;
       const item: any = {
-        id: editForm.id!,
+        id: editForm.id,
         appId,
         title: editForm.title.trim(),
         content: bodyHtml,
-        createdAt: editForm.createdAt || Date.now(),
+        createdAt: firstSave ? Date.now() : (editForm.createdAt || Date.now()),
         updatedAt: Date.now(),
       };
       if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
-      await storage.memos.save(item as Memo);
+      const toSave = (firstSave
+        ? withListSortRankForCreate(sortTabListItems(memos), item as Memo)
+        : item) as Memo;
+      await storage.memos.save(toSave);
       await loadMemos();
-      setEditForm(item);
+      setEditForm(toSave);
+      setIsNewDraft(false);
       setSaveMessageVisible(true);
       setTimeout(() => setSaveMessageVisible(false), 2000);
       return true;
@@ -2779,8 +2578,10 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
       console.error('참고 저장 실패:', error);
       alert(`참고 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
       return false;
+    } finally {
+      setSaving(false);
     }
-  }, [editForm, bodyHtml, appId]);
+  }, [editForm, bodyHtml, appId, isNewDraft, memos, saving, uploading]);
 
   const memoUnsaved = useUnsavedEditGuard({
     active: !!(selectedMemoId && editForm.id),
@@ -2801,41 +2602,10 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     if (selectedMemoId === id) {
       exitMemoDetail();
     }
-    setIsModalOpen(false);
-  };
-
-  const handleSave = async () => {
-    if (!form.title || form.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    if (isBodyEffectivelyEmpty(modalBodyHtml)) {
-      alert('내용을 입력하세요');
-      return;
-    }
-    
-    try {
-      const item: Memo = {
-        id: form.id || crypto.randomUUID(),
-        appId,
-        title: form.title.trim(),
-        content: ensureReadableRichHtml(modalBodyHtml),
-        createdAt: form.createdAt || Date.now(),
-        updatedAt: Date.now()
-      };
-      const toSave = withListSortRankForCreate(sortTabListItems(memos), item);
-      await storage.memos.save(toSave);
-      loadMemos();
-      setIsModalOpen(false);
-      setForm({});
-      setModalBodyHtml('');
-    } catch (error: any) {
-      console.error('참고 저장 실패:', error);
-      alert(`참고 저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
-    }
   };
 
   const handleEditSave = async () => {
+    if (saving || uploading) return;
     const ok = await persistMemoEdit();
     if (ok) memoUnsaved.syncBaseline();
   };
@@ -2891,47 +2661,55 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col" data-edit-scope="">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+      <div className="h-full flex flex-col min-h-0" data-edit-scope="">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <button type="button" onClick={memoUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">참고 수정</h3>
+            <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 참고 작성' : '참고 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={memoUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
               <Save size={14}/> 저장
             </button>
+            {!isNewDraft && (
             <button onClick={() => deleteMemo(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Trash2 size={14}/> 삭제
             </button>
+            )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
-            <div className="mb-2 pb-2 border-b">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
-                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                )}
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+          <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
+              {isNewDraft ? (
+                <span>저장 전</span>
+              ) : (
+                <>
+                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                  )}
+                </>
+              )}
             </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+              <input
+                className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
+                placeholder="제목을 입력하세요"
+                value={editForm.title || ''}
+                onChange={e => setEditForm({...editForm, title: e.target.value})}
+              />
+            </div>
+          </div>
+          <div data-body-scroll className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5">
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                <input 
-                  className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none" 
-                  placeholder="제목을 입력하세요" 
-                  value={editForm.title || ''} 
-                  onChange={e => setEditForm({...editForm, title: e.target.value})} 
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">본문 (WYSIWYG)</label>
                 <RichHtmlEditor
@@ -3008,7 +2786,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">참고</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => openModal()} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+          <button onClick={() => openInlineCreate()} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
             <Plus size={16} /> 작성하기
           </button>
           {selectedIds.size > 0 && (
@@ -3140,46 +2918,6 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
           )}
         </div>
       </div>
-
-      {/* Create Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" data-edit-scope="">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg">새 참고 작성</h3>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-950 rounded-lg text-sm font-medium">저장</button>
-                <button onClick={() => setIsModalOpen(false)}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
-              </div>
-            </div>
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
-                <input 
-                  className="w-full border rounded-lg p-2.5 focus:ring-2 ring-yellow-400 outline-none" 
-                  placeholder="제목을 입력하세요" 
-                  value={form.title || ''} 
-                  onChange={e => setForm({...form, title: e.target.value})} 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">내용</label>
-                <RichHtmlEditor
-                  key={form.id ? `memo-create-${form.id}` : 'memo-create'}
-                  appId={appId}
-                  docId={form.id || 'new'}
-                  uploadSection="memos"
-                  initialHtml=""
-                  onHtmlChange={setModalBodyHtml}
-                  setUploading={setUploading}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
@@ -3189,11 +2927,9 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
   const [notes, setNotes] = useState<Note[]>([]);
   const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<Partial<Note>>({ title: '', content: '' });
-  const [noteModalDraftId, setNoteModalDraftId] = useState('');
-  const [noteModalContentHtml, setNoteModalContentHtml] = useState('');
-  const [noteModalUploading, setNoteModalUploading] = useState(false);
+  const [isNewDraft, setIsNewDraft] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Note>>({});
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
@@ -3220,51 +2956,53 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     setLoading(false);
   };
 
-  const openCreate = () => {
-    setForm({ title: '', content: '' });
-    setNoteModalDraftId(crypto.randomUUID());
-    setNoteModalContentHtml('');
-    setIsModalOpen(true);
+  const openInlineCreate = () => {
+    const id = crypto.randomUUID();
+    setSelectedNoteId(id);
+    setEditForm({ id, appId, title: '', content: '' });
+    setEditContentHtml('');
+    setIsNewDraft(true);
   };
 
   const openEdit = (note: Note) => {
+    setIsNewDraft(false);
     setSelectedNoteId(note.id);
     const nextContent = ensureReadableRichHtml(note.content || '');
     setEditForm({ ...note, content: nextContent });
     setEditContentHtml(nextContent);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setForm({ title: '', content: '' });
-    setNoteModalContentHtml('');
-    setNoteModalDraftId('');
-  };
-
   const exitNoteDetail = useCallback(() => {
     setSelectedNoteId(null);
     setEditForm({});
     setEditContentHtml('');
+    setIsNewDraft(false);
   }, []);
 
   const persistNoteEdit = useCallback(async (): Promise<boolean> => {
+    if (saving || uploading) return false;
     if (!editForm.title?.trim()) {
       alert('제목을 입력하세요');
       return false;
     }
+    if (!editForm.id) return false;
+    setSaving(true);
     try {
+      const firstSave = isNewDraft;
       const item: Note = {
-        id: editForm.id || crypto.randomUUID(),
+        id: editForm.id,
         appId,
         title: editForm.title.trim(),
         content: editContentHtml,
-        createdAt: editForm.createdAt ?? Date.now(),
+        createdAt: firstSave ? Date.now() : (editForm.createdAt ?? Date.now()),
         updatedAt: Date.now(),
       };
       if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-      await storage.notes.save(item);
+      const toSave = firstSave ? withListSortRankForCreate(sortTabListItems(notes), item) : item;
+      await storage.notes.save(toSave);
       await loadNotes();
-      setEditForm(item);
+      setEditForm(toSave);
+      setIsNewDraft(false);
       setSaveMessageVisible(true);
       setTimeout(() => setSaveMessageVisible(false), 2000);
       return true;
@@ -3272,8 +3010,10 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
       console.error('[NoteView] 저장 실패:', e);
       alert('저장에 실패했습니다.');
       return false;
+    } finally {
+      setSaving(false);
     }
-  }, [editForm, editContentHtml, appId]);
+  }, [editForm, editContentHtml, appId, isNewDraft, notes, saving, uploading]);
 
   const noteUnsaved = useUnsavedEditGuard({
     active: !!(selectedNoteId && editForm.id),
@@ -3283,29 +3023,6 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     save: persistNoteEdit,
   });
 
-  const handleSave = async () => {
-    if (!form.title?.trim()) {
-      alert('제목을 입력하세요');
-      return;
-    }
-    if (isBodyEffectivelyEmpty(noteModalContentHtml)) {
-      alert('내용을 입력하세요');
-      return;
-    }
-    const item: Note = {
-      id: form.id || crypto.randomUUID(),
-      appId,
-      title: form.title.trim(),
-      content: ensureReadableRichHtml(noteModalContentHtml),
-      createdAt: form.createdAt ?? Date.now(),
-      updatedAt: Date.now(),
-    };
-    const toSave = withListSortRankForCreate(sortTabListItems(notes), item);
-    await storage.notes.save(toSave);
-    loadNotes();
-    closeModal();
-  };
-
   const handleDelete = async (id: string) => {
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
     await storage.notes.delete(id);
@@ -3314,6 +3031,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
   };
 
   const handleEditSave = async () => {
+    if (saving || uploading) return;
     const ok = await persistNoteEdit();
     if (ok) noteUnsaved.syncBaseline();
   };
@@ -3325,8 +3043,8 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     return t.length <= maxLen ? t : t.slice(0, maxLen) + '…';
   };
 
-  if (loading) return <Loading />;
-
+  // 목록 로딩 중에도 활성 에디터를 유지한다. 로딩 early return이 위에 있으면
+  // 저장 시 loadNotes()가 TipTap을 언마운트했다가 빈 초안으로 리마운트해 본문을 잃는다.
   if (selectedNoteId && editForm.id) {
     return (
       <>
@@ -3342,49 +3060,57 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             저장되었습니다
           </div>
         )}
-        <div className="h-full flex flex-col" data-edit-scope="">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <div className="h-full flex flex-col min-h-0" data-edit-scope="">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
             <div className="flex items-center gap-3">
               <button type="button" onClick={noteUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
                 <ArrowLeft size={20} />
               </button>
-              <h3 className="font-bold text-lg text-slate-800">메모 수정</h3>
+              <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 메모 작성' : '메모 수정'}</h3>
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={noteUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
                 목록으로
               </button>
-              <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+              <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
                 <Save size={14}/> 저장
               </button>
+              {!isNewDraft && (
               <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
                 <Trash2 size={14}/> 삭제
               </button>
+              )}
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-            <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
-              <div className="mb-2 pb-2 border-b">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+          <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
+              {isNewDraft ? (
+                <span>저장 전</span>
+              ) : (
+                <>
                   <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                   {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                     <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
                   )}
-                </div>
-              </div>
-              <div className="space-y-6 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                  <input
-                    className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
-                    placeholder="제목"
-                    value={editForm.title || ''}
-                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
+                </>
+              )}
+            </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+              <input
+                className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
+                placeholder="제목"
+                value={editForm.title || ''}
+                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+              />
+            </div>
+          </div>
+          <div data-body-scroll className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5">
+            <div className="space-y-6 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
                   <RichHtmlEditor
                     key={`note-${editForm.id}`}
                     appId={appId}
@@ -3392,7 +3118,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
                     uploadSection="notes"
                     initialHtml={editForm.content || ''}
                     onHtmlChange={setEditContentHtml}
-                    setUploading={() => {}}
+                    setUploading={setUploading}
                   />
                 </div>
               </div>
@@ -3403,12 +3129,14 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     );
   }
 
+  if (loading) return <Loading />;
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">메모</h3>
         <button
-          onClick={openCreate}
+          onClick={openInlineCreate}
           className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
         >
           <Plus size={16} /> 메모 추가
@@ -3474,56 +3202,6 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
           </div>
         )}
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg" data-edit-scope="">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-800">메모 추가</h3>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
-                  취소
-                </button>
-                <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-primary text-white hover:bg-indigo-700 rounded-lg text-sm flex items-center gap-1">
-                  <Save size={14} /> 저장
-                </button>
-                <button type="button" onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-600 rounded">
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
-                <input
-                  type="text"
-                  className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 ring-primary outline-none"
-                  value={form.title ?? ''}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="제목"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">내용</label>
-                {noteModalDraftId && (
-                  <RichHtmlEditor
-                    key={`note-create-${noteModalDraftId}`}
-                    appId={appId}
-                    docId={noteModalDraftId}
-                    uploadSection="notes"
-                    initialHtml=""
-                    onHtmlChange={setNoteModalContentHtml}
-                    setUploading={setNoteModalUploading}
-                  />
-                )}
-                {noteModalUploading && (
-                  <p className="text-xs text-slate-500 mt-1">이미지 업로드 중…</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -3534,21 +3212,17 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
   const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Issue>>({});
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<Partial<Issue>>({});
+  const [isNewDraft, setIsNewDraft] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [issueModalDraftId, setIssueModalDraftId] = useState('');
-  const [issueModalDescHtml, setIssueModalDescHtml] = useState('');
-  const [issueModalSolHtml, setIssueModalSolHtml] = useState('');
   const [editDescriptionHtml, setEditDescriptionHtml] = useState('');
   const [editSolutionHtml, setEditSolutionHtml] = useState('');
   const [editorUploading, setEditorUploading] = useState(false);
-  const issueFormFileInputRef = useRef<HTMLInputElement>(null);
   const issueEditFileInputRef = useRef<HTMLInputElement>(null);
   const resize = useResizableColumns(6, [22, 26, 90, 92, 212, 100]);
   const {
@@ -3575,31 +3249,38 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
     setEditForm({});
     setEditDescriptionHtml('');
     setEditSolutionHtml('');
+    setIsNewDraft(false);
   }, []);
 
   const persistIssueEdit = useCallback(async (): Promise<boolean> => {
+    if (saving || uploading || editorUploading) return false;
     if (!editForm.title || editForm.title.trim() === '') {
       alert('제목을 입력하세요');
       return false;
     }
+    if (!editForm.id) return false;
+    setSaving(true);
     try {
+      const firstSave = isNewDraft;
       const item: Issue = {
-        id: editForm.id!,
+        id: editForm.id,
         appId,
         title: editForm.title.trim(),
         description: editDescriptionHtml,
         solution: editSolutionHtml,
         status: editForm.status || 'Open',
         severity: editForm.severity || 'Medium',
-        createdAt: editForm.createdAt || Date.now(),
+        createdAt: firstSave ? Date.now() : (editForm.createdAt || Date.now()),
         updatedAt: Date.now(),
       };
       if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
       const list = getFileList(editForm);
       if (list.length) item.fileInfoList = list;
-      await storage.issues.save(item);
+      const toSave = firstSave ? withListSortRankForCreate(sortTabListItems(issues), item) : item;
+      await storage.issues.save(toSave);
       await loadIssues();
-      setEditForm(item);
+      setEditForm(toSave);
+      setIsNewDraft(false);
       setSaveMessageVisible(true);
       setTimeout(() => setSaveMessageVisible(false), 2000);
       return true;
@@ -3607,8 +3288,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
       console.error('이슈 저장 실패:', error);
       alert(`저장에 실패했습니다.\n\n에러: ${error?.message || '알 수 없는 오류'}`);
       return false;
+    } finally {
+      setSaving(false);
     }
-  }, [editForm, editDescriptionHtml, editSolutionHtml, appId]);
+  }, [editForm, editDescriptionHtml, editSolutionHtml, appId, isNewDraft, issues, saving, uploading, editorUploading]);
 
   const issueUnsaved = useUnsavedEditGuard({
     active: !!(selectedIssueId && editForm.id),
@@ -3624,6 +3307,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
   });
 
   const handleSelectIssue = (issue: Issue) => {
+    setIsNewDraft(false);
     setSelectedIssueId(issue.id);
     const nextDesc = ensureReadableRichHtml(issue.description || '');
     const nextSol = ensureReadableRichHtml(issue.solution || '');
@@ -3632,20 +3316,26 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
     setEditSolutionHtml(nextSol);
   };
 
-  const processFile = async (file: File, target: 'form' | 'editForm') => {
-    if (uploading) return;
+  const openInlineCreate = () => {
+    const id = crypto.randomUUID();
+    setSelectedIssueId(id);
+    setEditForm({ id, appId, title: '', description: '', solution: '', status: 'Open', severity: 'Medium', fileInfoList: [] });
+    setEditDescriptionHtml('');
+    setEditSolutionHtml('');
+    setIsNewDraft(true);
+  };
+
+  const processFile = async (file: File) => {
+    if (uploading || saving) return;
     if (file.size > 10 * 1024 * 1024) {
       alert('파일 크기는 10MB 이하여야 합니다.');
       return;
     }
+    if (!editForm.id) return;
     setUploading(true);
     try {
-      const fileInfo = await uploadFile(appId, `issues/${target === 'editForm' ? editForm.id : form.id || 'new'}`, file);
-      if (target === 'editForm') {
-        setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
-      } else {
-        setForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
-      }
+      const fileInfo = await uploadFile(appId, `issues/${editForm.id}`, file);
+      setEditForm(prev => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 2000);
     } catch (error: any) {
@@ -3653,47 +3343,16 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
       alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}`);
     } finally {
       setUploading(false);
-      if (issueFormFileInputRef.current) issueFormFileInputRef.current.value = '';
       if (issueEditFileInputRef.current) issueEditFileInputRef.current.value = '';
     }
-  };
-
-  const handleIssueFormFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'form');
-    }
-    e.target.value = '';
   };
 
   const handleIssueEditFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'editForm');
+      for (let i = 0; i < files.length; i++) await processFile(files[i]);
     }
     e.target.value = '';
-  };
-
-  const handleIssueFormDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!uploading) setIsDragging(true);
-  };
-
-  const handleIssueFormDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleIssueFormDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'form');
-    }
   };
 
   const handleIssueEditDragOver = (e: React.DragEvent) => {
@@ -3714,19 +3373,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'editForm');
-    }
-  };
-
-  const handleDeleteIssueFormFile = async (fileInfo: FileInfo) => {
-    if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
-    try {
-      await deleteFile(fileInfo.url);
-      const list = getFileList(form).filter(f => f.url !== fileInfo.url);
-      setForm({ ...form, fileInfoList: list });
-    } catch (error) {
-      console.error('파일 삭제 실패:', error);
-      alert('파일 삭제에 실패했습니다.');
+      for (let i = 0; i < files.length; i++) await processFile(files[i]);
     }
   };
 
@@ -3742,35 +3389,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
     }
   };
 
-  const handleSave = async () => {
-    if (!form.title?.trim()) {
-      alert('제목을 입력하세요');
-      return;
-    }
-    const item: Issue = {
-      id: form.id || crypto.randomUUID(),
-      appId,
-      title: form.title.trim(),
-      description: ensureReadableRichHtml(issueModalDescHtml),
-      solution: ensureReadableRichHtml(issueModalSolHtml),
-      status: form.status || 'Open',
-      severity: form.severity || 'Medium',
-      createdAt: form.createdAt || Date.now(),
-      updatedAt: Date.now()
-    };
-    const list = getFileList(form);
-    if (list.length) item.fileInfoList = list;
-    const toSave = withListSortRankForCreate(sortTabListItems(issues), item);
-    await storage.issues.save(toSave);
-    loadIssues();
-    setIsModalOpen(false);
-    setForm({});
-    setIssueModalDescHtml('');
-    setIssueModalSolHtml('');
-    setIssueModalDraftId('');
-  };
-
   const handleEditSave = async () => {
+    if (saving || uploading || editorUploading) return;
     const ok = await persistIssueEdit();
     if (ok) issueUnsaved.syncBaseline();
   };
@@ -3784,7 +3404,6 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
     await storage.issues.delete(id);
     loadIssues();
     if (selectedIssueId === id) exitIssueDetail();
-    setIsModalOpen(false);
   };
 
   const handleToggleSelect = (id: string) => {
@@ -3818,23 +3437,6 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
     setSelectedIds(new Set());
     loadIssues();
     if (selectedIssueId && selectedIds.has(selectedIssueId)) exitIssueDetail();
-    setIsModalOpen(false);
-  };
-
-  const openModal = () => {
-    setForm({ status: 'Open', severity: 'Medium', id: crypto.randomUUID() });
-    setIssueModalDraftId(crypto.randomUUID());
-    setIssueModalDescHtml('');
-    setIssueModalSolHtml('');
-    setIsModalOpen(true);
-  };
-
-  const closeIssueCreateModal = () => {
-    setIsModalOpen(false);
-    setForm({});
-    setIssueModalDescHtml('');
-    setIssueModalSolHtml('');
-    setIssueModalDraftId('');
   };
 
   // 상세 페이지 (편집 가능) - 참고 탭과 동일 형식
@@ -3853,73 +3455,81 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col" data-edit-scope="">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+      <div className="h-full flex flex-col min-h-0" data-edit-scope="">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <button type="button" onClick={issueUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">트러블슈팅 수정</h3>
+            <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 트러블슈팅 작성' : '트러블슈팅 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={issueUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
               목록으로
             </button>
-            <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
+            <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || editorUploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
               <Save size={14}/> 저장
             </button>
+            {!isNewDraft && (
             <button onClick={() => deleteIssue(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Trash2 size={14}/> 삭제
             </button>
+            )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
-            <div className="mb-2 pb-2 border-b">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
-                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                )}
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+          <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
+              {isNewDraft ? (
+                <span>저장 전</span>
+              ) : (
+                <>
+                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+                  )}
+                </>
+              )}
             </div>
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-3">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                  <input
-                    className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
-                    placeholder="문제 상황 요약"
-                    value={editForm.title || ''}
-                    onChange={e => setEditForm({...editForm, title: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">심각도</label>
-                  <select
-                    className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
-                    value={editForm.severity}
-                    onChange={e => setEditForm({...editForm, severity: e.target.value as Issue['severity']})}
-                  >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+              <div className="md:col-span-3">
+                <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                <input
+                  className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
+                  placeholder="문제 상황 요약"
+                  value={editForm.title || ''}
+                  onChange={e => setEditForm({...editForm, title: e.target.value})}
+                />
               </div>
-              <div className="max-w-xs">
-                <label className="block text-sm font-medium text-slate-700 mb-2">상태</label>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">심각도</label>
                 <select
                   className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
-                  value={editForm.status}
-                  onChange={e => setEditForm({...editForm, status: e.target.value as Issue['status']})}
+                  value={editForm.severity}
+                  onChange={e => setEditForm({...editForm, severity: e.target.value as Issue['severity']})}
                 >
-                  <option value="Open">Open</option>
-                  <option value="InProgress">In Progress</option>
-                  <option value="Resolved">Resolved</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
                 </select>
               </div>
+            </div>
+            <div className="max-w-xs mt-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">상태</label>
+              <select
+                className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
+                value={editForm.status}
+                onChange={e => setEditForm({...editForm, status: e.target.value as Issue['status']})}
+              >
+                <option value="Open">Open</option>
+                <option value="InProgress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+          </div>
+          <div data-body-scroll className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5">
+            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">문제 설명</label>
                 <RichHtmlEditor
@@ -3992,7 +3602,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h3 className="font-bold text-lg text-slate-800">트러블슈팅 이슈</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => openModal()} className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+          <button onClick={() => openInlineCreate()} className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
             <AlertCircle size={16} /> 이슈 등록
           </button>
           {selectedIds.size > 0 && (
@@ -4136,114 +3746,6 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
           )}
         </div>
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" data-edit-scope="">
-               <div className="p-4 border-b flex justify-between items-center">
-               <h3 className="font-bold text-lg">새 이슈 등록</h3>
-               <div className="flex items-center gap-2">
-                 <button type="button" onClick={closeIssueCreateModal} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">취소</button>
-                 <button type="button" data-edit-save="" onClick={handleSave} className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg text-sm">저장</button>
-                 <button type="button" onClick={closeIssueCreateModal}><X size={20} className="text-slate-400 hover:text-slate-600"/></button>
-               </div>
-            </div>
-            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
-               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="sm:col-span-3">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
-                    <input className="w-full border rounded-lg p-2.5 focus:ring-2 ring-red-500 outline-none" value={form.title || ''} onChange={e => setForm({...form, title: e.target.value})} placeholder="문제 상황 요약" />
-                  </div>
-                  <div>
-                     <label className="block text-sm font-medium text-slate-700 mb-1">심각도</label>
-                     <select className="w-full border rounded-lg p-2.5 outline-none" value={form.severity} onChange={e => setForm({...form, severity: e.target.value as any})}>
-                       <option value="High">High</option>
-                       <option value="Medium">Medium</option>
-                       <option value="Low">Low</option>
-                     </select>
-                  </div>
-               </div>
-               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="sm:col-span-1">
-                     <label className="block text-sm font-medium text-slate-700 mb-1">상태</label>
-                     <select className="w-full border rounded-lg p-2.5 outline-none" value={form.status} onChange={e => setForm({...form, status: e.target.value as any})}>
-                       <option value="Open">Open</option>
-                       <option value="InProgress">In Progress</option>
-                       <option value="Resolved">Resolved</option>
-                     </select>
-                  </div>
-               </div>
-               <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">문제 설명</label>
-                  {issueModalDraftId && form.id && (
-                    <RichHtmlEditor
-                      key={`issue-create-d-${issueModalDraftId}`}
-                      appId={appId}
-                      docId={`${form.id}-d`}
-                      uploadSection="issues"
-                      initialHtml=""
-                      onHtmlChange={setIssueModalDescHtml}
-                      setUploading={setUploading}
-                    />
-                  )}
-               </div>
-               <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">해결 방법 (Solution)</label>
-                  {issueModalDraftId && form.id && (
-                    <RichHtmlEditor
-                      key={`issue-create-s-${issueModalDraftId}`}
-                      appId={appId}
-                      docId={`${form.id}-s`}
-                      uploadSection="issues"
-                      initialHtml=""
-                      onHtmlChange={setIssueModalSolHtml}
-                      setUploading={setUploading}
-                    />
-                  )}
-               </div>
-               <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
-                  {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
-                  <input ref={issueFormFileInputRef} type="file" multiple onChange={handleIssueFormFileInputChange} className="hidden" />
-                  <div
-                    onDragOver={handleIssueFormDragOver}
-                    onDragLeave={handleIssueFormDragLeave}
-                    onDrop={handleIssueFormDrop}
-                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-red-400 bg-red-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-                  >
-                    <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
-                    <button type="button" onClick={() => issueFormFileInputRef.current?.click()} disabled={uploading} className="w-full text-red-600 hover:text-red-800 text-xs font-medium py-2 px-3 rounded border border-red-200 transition-colors disabled:opacity-50">
-                      클릭하여 파일 선택
-                    </button>
-                  </div>
-                  {getFileList(form).length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {getFileList(form).map((f) => (
-                        <div key={f.id || f.url} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <FileText size={16} className="text-slate-400 shrink-0" />
-                            <span className="text-sm text-slate-800 truncate">{f.name}</span>
-                            {f.size != null && <span className="text-xs text-slate-500 shrink-0">({(f.size / 1024).toFixed(2)} KB)</span>}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                            <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
-                            <button type="button" onClick={() => handleDeleteIssueFormFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-               </div>
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end">
-              <div className="flex flex-wrap gap-2">
-                 {form.id ? <button onClick={() => deleteIssue(form.id!)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm">삭제</button> : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

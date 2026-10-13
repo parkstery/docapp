@@ -20,7 +20,6 @@ import {
   Strikethrough,
   Trash2,
   Undo2,
-  X,
 } from 'lucide-react';
 import { FileInfo, FreeDoc } from '../types';
 import { storage } from '../services/storage';
@@ -346,8 +345,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
   const [docs, setDocs] = useState<FreeDoc[]>([]);
   const { containerRef: highlightContainerRef, isHighlighted } = useHighlightedRow(highlightId, highlightSeq);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<Partial<FreeDoc>>({});
+  const [isNewDraft, setIsNewDraft] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<FreeDoc>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -366,11 +365,9 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
     onDrop: onFreeDrop,
     dragRowClassName: freeDragRowClassName,
   } = useDragListReorder(docs, setDocs, (row) => storage.freeDocs.save(row));
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const detailFileInputRef = useRef<HTMLInputElement>(null);
 
   const [bodyHtml, setBodyHtml] = useState('');
-  const [modalHtml, setModalHtml] = useState('');
 
   useEffect(() => {
     loadDocs();
@@ -385,14 +382,16 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
     setLoading(false);
   };
 
-  const openModal = () => {
+  const openInlineCreate = () => {
     const id = crypto.randomUUID();
-    setForm({ id, title: '', html: '', fileInfoList: [] });
-    setModalHtml('');
-    setIsModalOpen(true);
+    setSelectedId(id);
+    setEditForm({ id, appId, title: '', html: '', fileInfoList: [] });
+    setBodyHtml('');
+    setIsNewDraft(true);
   };
 
   const handleSelect = (d: FreeDoc) => {
+    setIsNewDraft(false);
     setSelectedId(d.id);
     setEditForm({ ...d, fileInfoList: d.fileInfoList || [] });
     setBodyHtml(d.html || '');
@@ -402,9 +401,11 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
     setSelectedId(null);
     setEditForm({});
     setBodyHtml('');
+    setIsNewDraft(false);
   }, []);
 
   const persistFreeEdit = useCallback(async (): Promise<boolean> => {
+    if (saving || uploading || uploadingAttachment) return false;
     if (!editForm.title || editForm.title.trim() === '') {
       alert('제목을 입력하세요');
       return false;
@@ -413,20 +414,25 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
       alert('내용을 입력하세요');
       return false;
     }
+    if (!editForm.id) return false;
+    setSaving(true);
     try {
+      const firstSave = isNewDraft;
       const item: FreeDoc = {
-        id: editForm.id!,
+        id: editForm.id,
         appId,
         title: editForm.title.trim(),
         html: bodyHtml,
-        createdAt: editForm.createdAt || Date.now(),
+        createdAt: firstSave ? Date.now() : (editForm.createdAt || Date.now()),
         updatedAt: Date.now(),
         fileInfoList: getFileList(editForm),
       };
       if (editForm.listSortRank != null) item.listSortRank = editForm.listSortRank;
-      await storage.freeDocs.save(item);
+      const toSave = firstSave ? withListSortRankForCreate(sortTabListItems(docs), item) : item;
+      await storage.freeDocs.save(toSave);
       await loadDocs();
-      setEditForm(item);
+      setEditForm(toSave);
+      setIsNewDraft(false);
       setSaveMessageVisible(true);
       setTimeout(() => setSaveMessageVisible(false), 2000);
       return true;
@@ -434,8 +440,10 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
       console.error('[FreeDoc] 저장 실패:', error);
       alert(`저장에 실패했습니다.\n\n${error?.message || ''}`);
       return false;
+    } finally {
+      setSaving(false);
     }
-  }, [editForm, bodyHtml, appId]);
+  }, [editForm, bodyHtml, appId, isNewDraft, docs, saving, uploading, uploadingAttachment]);
 
   const freeUnsaved = useUnsavedEditGuard({
     active: !!(selectedId && editForm.id),
@@ -460,41 +468,10 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
     if (selectedId === id) {
       exitFreeDetail();
     }
-    setIsModalOpen(false);
-  };
-
-  const handleSave = async () => {
-    if (!form.title || form.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return;
-    }
-    if (isBodyEffectivelyEmpty(modalHtml)) {
-      alert('내용을 입력하세요');
-      return;
-    }
-    try {
-      const item: FreeDoc = {
-        id: form.id!,
-        appId,
-        title: form.title.trim(),
-        html: modalHtml,
-        createdAt: form.createdAt || Date.now(),
-        updatedAt: Date.now(),
-        fileInfoList: getFileList(form),
-      };
-      const toSave = withListSortRankForCreate(sortTabListItems(docs), item);
-      await storage.freeDocs.save(toSave);
-      loadDocs();
-      setIsModalOpen(false);
-      setForm({});
-      setModalHtml('');
-    } catch (error: any) {
-      console.error('[FreeDoc] 저장 실패:', error);
-      alert(`저장에 실패했습니다.\n\n${error?.message || ''}`);
-    }
   };
 
   const handleEditSave = async () => {
+    if (saving || uploading || uploadingAttachment) return;
     const ok = await persistFreeEdit();
     if (ok) freeUnsaved.syncBaseline();
   };
@@ -532,21 +509,17 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
     }
   };
 
-  const processFile = async (file: File, target: 'form' | 'editForm') => {
-    if (uploadingAttachment) return;
+  const processFile = async (file: File) => {
+    if (uploadingAttachment || saving) return;
     if (file.size > 10 * 1024 * 1024) {
       alert('파일 크기는 10MB 이하여야 합니다.');
       return;
     }
+    if (!editForm.id) return;
     setUploadingAttachment(true);
     try {
-      const docId = target === 'editForm' ? editForm.id : form.id;
-      const fileInfo = await uploadFile(appId, `freeDocs/${docId || 'new'}`, file);
-      if (target === 'editForm') {
-        setEditForm((prev) => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
-      } else {
-        setForm((prev) => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
-      }
+      const fileInfo = await uploadFile(appId, `freeDocs/${editForm.id}`, file);
+      setEditForm((prev) => ({ ...prev, fileInfoList: [...getFileList(prev), fileInfo] }));
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 2000);
     } catch (error: any) {
@@ -554,23 +527,14 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
       alert(`파일 업로드 실패: ${error?.message || '알 수 없는 오류'}`);
     } finally {
       setUploadingAttachment(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
       if (detailFileInputRef.current) detailFileInputRef.current.value = '';
     }
-  };
-
-  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'form');
-    }
-    e.target.value = '';
   };
 
   const handleDetailFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], 'editForm');
+      for (let i = 0; i < files.length; i++) await processFile(files[i]);
     }
     e.target.value = '';
   };
@@ -587,27 +551,22 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
     setIsDragging(false);
   };
 
-  const handleDrop = async (e: React.DragEvent, target: 'form' | 'editForm') => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files?.length) {
-      for (let i = 0; i < files.length; i++) await processFile(files[i], target);
+      for (let i = 0; i < files.length; i++) await processFile(files[i]);
     }
   };
 
-  const handleDeleteFile = async (fileInfo: FileInfo, target: 'form' | 'editForm') => {
+  const handleDeleteFile = async (fileInfo: FileInfo) => {
     if (!confirm('정말로 이 파일을 삭제하시겠습니까?')) return;
     try {
       await deleteFile(fileInfo.url);
-      if (target === 'editForm') {
-        const list = getFileList(editForm).filter((f) => f.url !== fileInfo.url);
-        setEditForm({ ...editForm, fileInfoList: list });
-      } else {
-        const list = getFileList(form).filter((f) => f.url !== fileInfo.url);
-        setForm({ ...form, fileInfoList: list });
-      }
+      const list = getFileList(editForm).filter((f) => f.url !== fileInfo.url);
+      setEditForm({ ...editForm, fileInfoList: list });
     } catch (error) {
       console.error('파일 삭제 실패:', error);
       alert('파일 삭제에 실패했습니다.');
@@ -629,8 +588,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
             저장되었습니다
           </div>
         )}
-        <div className="h-full flex flex-col" data-edit-scope="">
-          <div className="flex justify-between items-center mb-4">
+        <div className="h-full flex flex-col min-h-0" data-edit-scope="">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -639,14 +598,14 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
               >
                 <ArrowLeft size={20} />
               </button>
-              <h3 className="font-bold text-lg text-slate-800">TASK 수정</h3>
+              <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 TASK 작성' : 'TASK 수정'}</h3>
               {uploading && (
                 <span className="text-xs text-slate-500 flex items-center gap-1">
                   <Loader2 className="animate-spin" size={14} /> 이미지 업로드 중…
                 </span>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={freeUnsaved.requestExit}
@@ -658,11 +617,12 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
                 type="button"
                 data-edit-save=""
                 onClick={handleEditSave}
-                disabled={uploading}
+                disabled={uploading || uploadingAttachment || saving}
                 className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50"
               >
                 <Save size={14} /> 저장
               </button>
+              {!isNewDraft && (
               <button
                 type="button"
                 onClick={() => deleteDoc(editForm.id!)}
@@ -670,31 +630,38 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
               >
                 <Trash2 size={14} /> 삭제
               </button>
+              )}
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-            <div className="pt-0 px-8 pb-8 flex-1 overflow-y-auto">
-              <div className="mb-2 pb-2 border-b">
-                <div className="flex items-center gap-4 text-sm text-slate-500 mb-1">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+          <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
+            <div className="flex items-center gap-4 text-sm text-slate-500">
+              {isNewDraft ? (
+                <span>저장 전</span>
+              ) : (
+                <>
                   <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
                   {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
                     <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
                   )}
-                </div>
-              </div>
-              <div className="space-y-6 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                  <input
-                    className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-violet-500 outline-none"
-                    placeholder="제목"
-                    value={editForm.title || ''}
-                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">본문 (WYSIWYG)</label>
+                </>
+              )}
+            </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+              <input
+                className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-violet-500 outline-none"
+                placeholder="제목"
+                value={editForm.title || ''}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              />
+            </div>
+          </div>
+          <div data-body-scroll className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5">
+            <div className="space-y-6 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">본문 (WYSIWYG)</label>
                   <RichFreeEditor
                     key={editForm.id}
                     appId={appId}
@@ -711,7 +678,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
                   <div
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
-                    onDrop={(e) => void handleDrop(e, 'editForm')}
+                    onDrop={(e) => void handleDrop(e)}
                     className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploadingAttachment ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
@@ -731,7 +698,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
                           <div className="flex items-center gap-2 shrink-0">
                             <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
                             <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
-                            <button type="button" onClick={() => handleDeleteFile(f, 'editForm')} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
+                            <button type="button" onClick={() => handleDeleteFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
                           </div>
                         </div>
                       ))}
@@ -753,7 +720,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={openModal}
+            onClick={openInlineCreate}
             className="bg-violet-500 hover:bg-violet-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium"
           >
             <Plus size={16} /> 작성하기
@@ -856,96 +823,6 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
           )}
         </div>
       </div>
-
-      {isModalOpen && form.id && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col" data-edit-scope="">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-lg">새 TASK 작성</h3>
-              <button type="button" onClick={() => setIsModalOpen(false)} aria-label="닫기">
-                <X size={20} className="text-slate-400 hover:text-slate-600" />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              {uploading && (
-                <p className="text-xs text-violet-600 flex items-center gap-1">
-                  <Loader2 className="animate-spin" size={14} /> 이미지 업로드 중…
-                </p>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">제목</label>
-                <input
-                  className="w-full border rounded-lg p-2.5 focus:ring-2 ring-violet-500 outline-none"
-                  placeholder="제목"
-                  value={form.title || ''}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">본문</label>
-                <RichFreeEditor
-                  key={form.id}
-                  appId={appId}
-                  docId={form.id}
-                  initialHtml=""
-                  onHtmlChange={setModalHtml}
-                  setUploading={setUploading}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">첨부파일</label>
-                {uploadSuccess && <span className="text-xs text-green-600 font-medium mb-2 block">파일이 업로드 되었습니다</span>}
-                <input ref={fileInputRef} type="file" multiple onChange={handleFileInputChange} className="hidden" />
-                <div className="space-y-2">
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => void handleDrop(e, 'form')}
-                    className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors ${isDragging ? 'border-primary bg-indigo-50' : 'border-slate-300 hover:border-slate-400 bg-slate-50'} ${uploadingAttachment ? 'opacity-50 pointer-events-none' : ''}`}
-                  >
-                    <p className="text-xs text-slate-600 mb-1">파일을 여기에 드래그 앤 드롭하거나</p>
-                  </div>
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingAttachment} className="w-full text-primary hover:text-indigo-800 hover:bg-indigo-50 cursor-pointer text-xs font-medium py-2 px-3 rounded border border-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    클릭하여 파일 선택
-                  </button>
-                </div>
-                {getFileList(form).length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {getFileList(form).map((f) => (
-                      <div key={f.id || f.url} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <FileText size={16} className="text-slate-400 shrink-0" />
-                          <span className="text-sm text-slate-800 truncate">{f.name}</span>
-                          {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
-                          <button type="button" onClick={() => handleDeleteFile(f, 'form')} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="p-4 border-t bg-slate-50 rounded-b-xl flex justify-end gap-2">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg text-sm">
-                취소
-              </button>
-              <button
-                type="button"
-                data-edit-save=""
-                onClick={handleSave}
-                disabled={uploading}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-              >
-                저장
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
