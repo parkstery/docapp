@@ -87,8 +87,8 @@ const Dashboard: React.FC = () => {
   const resize = useResizableColumns(7, [41, 67, 200, 56, 356, 70, 56]);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-3 sm:space-y-6">
         {/* Header Section */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           <div>
@@ -142,46 +142,34 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="lg:hidden p-3 space-y-3">
+              <div className="lg:hidden py-1 divide-y divide-slate-200">
                 {filteredApps.map((app) => (
                   <div
                     key={app.id}
                     onClick={() => navigate(`/app/${app.id}`)}
-                    className="border border-slate-200 rounded-lg p-4 bg-white hover:bg-indigo-50/40 transition-colors cursor-pointer"
+                    className="px-3 py-2 bg-white hover:bg-indigo-50/40 active:bg-indigo-50/60 transition-colors cursor-pointer"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{app.name}</p>
-                        <p className="text-xs text-slate-500 mt-1">{new Date(app.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap
-                        ${app.platform === 'iOS' ? 'bg-slate-100 text-slate-800 border-slate-200' :
-                          app.platform === 'Android' ? 'bg-green-100 text-green-800 border-green-200' :
-                          app.platform === 'Web' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-purple-100 text-purple-800 border-purple-200'}`}>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-900 truncate min-w-0 flex-1">{app.name}</p>
+                      <span className="text-[11px] text-slate-500 whitespace-nowrap shrink-0">
                         {app.platform}
                       </span>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-                      <Smartphone size={14} className="text-indigo-500" />
-                      <span className="font-mono">v{app.version}</span>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-500 truncate">{app.description || '-'}</p>
-                    <div className="mt-3 flex items-center justify-end gap-2">
                       <button
                         onClick={(e) => { e.stopPropagation(); openModal(app); }}
-                        className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                        className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
                         aria-label="프로젝트 수정"
                       >
-                        <Edit2 size={16} />
+                        <Edit2 size={13} />
                       </button>
                       <button
                         onClick={(e) => handleDelete(e, app.id)}
-                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"
+                        className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
                         aria-label="프로젝트 삭제"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
+                    <p className="mt-0.5 text-xs text-slate-500 truncate">v{app.version} · {new Date(app.createdAt).toLocaleDateString()} · {app.description || '-'}</p>
                   </div>
                 ))}
                 {filteredApps.length === 0 && (

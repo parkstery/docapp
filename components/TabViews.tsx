@@ -758,7 +758,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
             <button type="button" onClick={planningUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 기획서 작성' : '기획서 수정'}</h3>
+            <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 기획서 작성' : '기획서 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={planningUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors w-full sm:w-auto">
@@ -932,16 +932,16 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
         </div>
       )}
     <div className="h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h3 className="font-bold text-lg text-slate-800">기획서</h3>
-        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          <button onClick={openInlineCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+      <div className="flex flex-row justify-between items-center gap-2 mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-slate-800">기획서</h3>
+        <div className="flex gap-2 shrink-0">
+          <button onClick={openInlineCreate} className="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm font-medium">
             <Plus size={16} /> 작성하기
           </button>
           {selectedIds.size > 0 && (
             <button
               onClick={handleDeleteSelected}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm"
             >
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
@@ -953,8 +953,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
         <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
-            <div className="lg:hidden p-3 space-y-3">
-              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+            <div className="lg:hidden p-2 space-y-1.5">
+              <label className="flex items-center gap-2 text-xs text-slate-500 px-1 py-0.5">
                 <input
                   type="checkbox"
                   checked={orderedDocs.length > 0 && selectedIds.size === orderedDocs.length}
@@ -972,16 +972,12 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                   onDragEnd={onPlanningDragEnd}
                   onDragOver={(e) => onPlanningDragOver(e, doc.id)}
                   onDrop={(e) => void onPlanningDrop(e, doc.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${planningDragRowClassName(doc.id)} ${!planningReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(doc.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
+                  className={`border border-slate-200 rounded-lg px-3 py-2 bg-white ${planningDragRowClassName(doc.id)} ${!planningReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(doc.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectDoc(doc)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {doc.title}</p>
-                      <p className="text-xs text-slate-500 mt-1">{new Date(doc.updatedAt).toLocaleDateString()}</p>
-                      <p className="text-sm text-slate-600 mt-2 truncate">{doc.content}</p>
-                      {getFileList(doc).length > 0 && (
-                        <p className="text-xs text-indigo-600 mt-1 truncate">첨부 {getFileList(doc).length}개</p>
-                      )}
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">{new Date(doc.updatedAt).toLocaleDateString()}{getFileList(doc).length > 0 ? ` · 첨부 ${getFileList(doc).length}개` : ''} · {doc.content}</p>
                     </button>
                     <input
                       type="checkbox"
@@ -1330,7 +1326,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <button type="button" onClick={reportUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 보고서 작성' : '보고서 수정'}</h3>
+            <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 보고서 작성' : '보고서 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={reportUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
@@ -1494,16 +1490,16 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   // 목록 페이지
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h3 className="font-bold text-lg text-slate-800">보고서</h3>
+      <div className="flex flex-row justify-between items-center gap-2 mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-slate-800">보고서</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => openInlineCreate()} className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm">
+          <button onClick={() => openInlineCreate()} className="bg-primary hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm">
             <Plus size={16} /> 작성하기
           </button>
           <button 
             onClick={handleDeleteSelected} 
             disabled={selectedIds.size === 0}
-            className={`px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm ${
+            className={`px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm ${
               selectedIds.size > 0 
                 ? 'bg-red-500 hover:bg-red-600 text-white' 
                 : 'bg-slate-300 text-slate-500 cursor-not-allowed'
@@ -1518,8 +1514,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
-            <div className="lg:hidden p-3 space-y-3">
-              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+            <div className="lg:hidden p-2 space-y-1.5">
+              <label className="flex items-center gap-2 text-xs text-slate-500 px-1 py-0.5">
                 <input
                   type="checkbox"
                   checked={orderedReports.length > 0 && selectedIds.size === orderedReports.length}
@@ -1537,23 +1533,12 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   onDragEnd={onReportDragEnd}
                   onDragOver={(e) => onReportDragOver(e, r.id)}
                   onDrop={(e) => void onReportDrop(e, r.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${reportDragRowClassName(r.id)} ${!reportReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(r.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
+                  className={`border border-slate-200 rounded-lg px-3 py-2 bg-white ${reportDragRowClassName(r.id)} ${!reportReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(r.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectReport(r)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {r.title}</p>
-                      <div className="mt-1">
-                        <span className={`px-2 py-1 rounded text-xs font-medium border ${
-                          r.type === 'Final' ? 'bg-green-50 text-green-700 border-green-200' :
-                          r.type === 'Interim' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                          r.type === 'CodeAnalysis' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                          'bg-slate-50 text-slate-600 border-slate-200'
-                        }`}>
-                          {r.type}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 mt-2 truncate">{stripHtml(r.summary) || (r.summary?.includes('<img') ? '[이미지]' : '')}</p>
-                      <p className="text-xs text-slate-500 mt-1">{new Date(r.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">[{r.type}] {new Date(r.createdAt).toLocaleDateString()} · {stripHtml(r.summary) || (r.summary?.includes('<img') ? '[이미지]' : '')}</p>
                     </button>
                     <input
                       type="checkbox"
@@ -1982,7 +1967,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <button type="button" onClick={promptUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">BARN 수정</h3>
+            <h3 className="font-bold text-base lg:text-lg text-slate-800">BARN 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={promptUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
@@ -2109,8 +2094,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
           저장되었습니다
         </div>
       )}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h3 className="font-bold text-lg text-slate-800">BARN</h3>
+      <div className="flex flex-row justify-between items-center gap-2 mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-slate-800">BARN</h3>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -2120,14 +2105,14 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
               setAddResponseHtml('');
               setIsAdding(true);
             }}
-            className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+            className="bg-primary hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm"
           >
             <Plus size={16} /> 로그 추가
           </button>
           {selectedIds.size > 0 && (
             <button
               onClick={handleDeleteSelected}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm"
             >
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
@@ -2139,8 +2124,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
-            <div className="lg:hidden p-3 space-y-3">
-              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+            <div className="lg:hidden p-2 space-y-1.5">
+              <label className="flex items-center gap-2 text-xs text-slate-500 px-1 py-0.5">
                 <input
                   type="checkbox"
                   checked={orderedPrompts.length > 0 && selectedIds.size === orderedPrompts.length}
@@ -2158,23 +2143,16 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   onDragEnd={onPromptDragEnd}
                   onDragOver={(e) => onPromptDragOver(e, p.id)}
                   onDrop={(e) => void onPromptDrop(e, p.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${promptDragRowClassName(p.id)} ${!promptReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(p.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
+                  className={`border border-slate-200 rounded-lg px-3 py-2 bg-white ${promptDragRowClassName(p.id)} ${!promptReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(p.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectPrompt(p)} className="text-left min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 line-clamp-3 whitespace-pre-line break-words">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
                         {index + 1}. {p.prompt?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.prompt)}` : promptPreviewPlain(p.prompt)}
                       </p>
-                      <p className="text-xs text-slate-500 line-clamp-3 whitespace-pre-line break-words mt-1">
-                        {p.response?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.response)}` : promptPreviewPlain(p.response)}
+                      <p className="text-xs text-slate-500 truncate mt-0.5">
+                        {new Date(p.createdAt).toLocaleDateString()}{p.tags.length > 0 ? ` · ${p.tags[0]}${p.tags.length > 1 ? ` +${p.tags.length - 1}` : ''}` : ''} · {p.response?.includes('<img') ? '[이미지]' : promptPreviewPlain(p.response)}
                       </p>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {p.tags.slice(0, 2).map((t, i) => (
-                          <span key={i} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-100">{t}</span>
-                        ))}
-                        {p.tags.length > 2 && <span className="text-xs text-slate-400">+{p.tags.length - 2}</span>}
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">{new Date(p.createdAt).toLocaleDateString()}</p>
                     </button>
                     <input
                       type="checkbox"
@@ -2667,7 +2645,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             <button type="button" onClick={memoUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 참고 작성' : '참고 수정'}</h3>
+            <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 참고 작성' : '참고 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={memoUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
@@ -2783,16 +2761,16 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
   // 목록 페이지
   return (
     <div className="h-full flex flex-col">
-       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h3 className="font-bold text-lg text-slate-800">참고</h3>
+       <div className="flex flex-row justify-between items-center gap-2 mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-slate-800">참고</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => openInlineCreate()} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+          <button onClick={() => openInlineCreate()} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-950 px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm font-medium">
             <Plus size={16} /> 작성하기
           </button>
           {selectedIds.size > 0 && (
             <button 
               onClick={handleDeleteSelected} 
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm"
             >
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
@@ -2804,8 +2782,8 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
         <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
-            <div className="lg:hidden p-3 space-y-3">
-              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+            <div className="lg:hidden p-2 space-y-1.5">
+              <label className="flex items-center gap-2 text-xs text-slate-500 px-1 py-0.5">
                 <input
                   type="checkbox"
                   checked={orderedMemos.length > 0 && selectedIds.size === orderedMemos.length}
@@ -2823,13 +2801,12 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
                   onDragEnd={onMemoDragEnd}
                   onDragOver={(e) => onMemoDragOver(e, m.id)}
                   onDrop={(e) => void onMemoDrop(e, m.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${memoDragRowClassName(m.id)} ${!memoReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(m.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
+                  className={`border border-slate-200 rounded-lg px-3 py-2 bg-white ${memoDragRowClassName(m.id)} ${!memoReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(m.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectMemo(m)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {m.title}</p>
-                      <p className="text-sm text-slate-600 mt-2 truncate">{stripHtml(m.content) || (m.content?.includes('<img') ? '[이미지]' : '')}</p>
-                      <p className="text-xs text-slate-500 mt-1">{new Date(m.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">{new Date(m.createdAt).toLocaleDateString()} · {stripHtml(m.content) || (m.content?.includes('<img') ? '[이미지]' : '')}</p>
                     </button>
                     <input
                       type="checkbox"
@@ -3066,7 +3043,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
               <button type="button" onClick={noteUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
                 <ArrowLeft size={20} />
               </button>
-              <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 메모 작성' : '메모 수정'}</h3>
+              <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 메모 작성' : '메모 수정'}</h3>
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={noteUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
@@ -3133,11 +3110,11 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h3 className="font-bold text-lg text-slate-800">메모</h3>
+      <div className="flex flex-row justify-between items-center gap-2 mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-slate-800">메모</h3>
         <button
           onClick={openInlineCreate}
-          className="bg-primary hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+          className="bg-primary hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm"
         >
           <Plus size={16} /> 메모 추가
         </button>
@@ -3151,7 +3128,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             <p className="text-xs mt-1">메모 추가 버튼으로 새 메모를 만드세요.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-4">
             {orderedNotes.map((note) => (
               <div
                 key={note.id}
@@ -3174,9 +3151,9 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
                   if (noteDraggedRef.current) return;
                   openEdit(note);
                 }}
-                className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[20rem] hover:shadow-md hover:border-slate-300 transition-all ${noteDragRowClassName(note.id)} ${!noteReorderBusy ? 'cursor-pointer' : ''} ${isHighlighted(note.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
+                className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-0 lg:min-h-[20rem] hover:shadow-md hover:border-slate-300 transition-all ${noteDragRowClassName(note.id)} ${!noteReorderBusy ? 'cursor-pointer' : ''} ${isHighlighted(note.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
               >
-                <div className="p-4 flex-1 flex flex-col min-h-0">
+                <div className="p-3 lg:p-4 flex-1 flex flex-col min-h-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="font-semibold text-slate-800 truncate flex-1 min-w-0">{note.title}</h4>
                     <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -3190,10 +3167,10 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
                       </button>
                     </div>
                   </div>
-                  <p className="text-sm text-slate-600 line-clamp-8 flex-1 break-words">
+                  <p className="text-sm text-slate-600 line-clamp-2 lg:line-clamp-8 flex-1 break-words">
                     {contentPreview(note.content, 240)}
                   </p>
-                  <p className="text-xs text-slate-400 mt-2">
+                  <p className="text-xs text-slate-400 mt-1">
                     {new Date(note.updatedAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -3461,7 +3438,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
             <button type="button" onClick={issueUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 트러블슈팅 작성' : '트러블슈팅 수정'}</h3>
+            <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 트러블슈팅 작성' : '트러블슈팅 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={issueUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
@@ -3599,16 +3576,16 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
   // 목록 페이지
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h3 className="font-bold text-lg text-slate-800">트러블슈팅 이슈</h3>
+      <div className="flex flex-row justify-between items-center gap-2 mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-slate-800">트러블슈팅 이슈</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => openInlineCreate()} className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium">
+          <button onClick={() => openInlineCreate()} className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm font-medium">
             <AlertCircle size={16} /> 이슈 등록
           </button>
           {selectedIds.size > 0 && (
             <button 
               onClick={handleDeleteSelected} 
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm"
             >
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>
@@ -3620,8 +3597,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
         <div ref={highlightContainerRef} className="overflow-auto flex-1">
           {loading ? <Loading /> : (
             <>
-            <div className="lg:hidden p-3 space-y-3">
-              <label className="flex items-center gap-2 text-sm text-slate-600 px-1">
+            <div className="lg:hidden p-2 space-y-1.5">
+              <label className="flex items-center gap-2 text-xs text-slate-500 px-1 py-0.5">
                 <input
                   type="checkbox"
                   checked={orderedIssues.length > 0 && selectedIds.size === orderedIssues.length}
@@ -3639,23 +3616,12 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
                   onDragEnd={onIssueDragEnd}
                   onDragOver={(e) => onIssueDragOver(e, issue.id)}
                   onDrop={(e) => void onIssueDrop(e, issue.id)}
-                  className={`border border-slate-200 rounded-lg p-3 bg-white ${issueDragRowClassName(issue.id)} ${!issueReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(issue.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
+                  className={`border border-slate-200 rounded-lg px-3 py-2 bg-white ${issueDragRowClassName(issue.id)} ${!issueReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(issue.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectIssue(issue)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {issue.title}</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
-                          ${issue.status === 'Resolved' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                          {issue.status}
-                        </span>
-                        <span className={`px-2 py-1 rounded text-xs font-semibold
-                          ${issue.severity === 'High' ? 'text-red-600 bg-red-50' : issue.severity === 'Medium' ? 'text-orange-600 bg-orange-50' : 'text-slate-500 bg-slate-100'}`}>
-                          {issue.severity}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 truncate mt-2">{stripHtml(issue.description) || (issue.description?.includes('<img') ? '[이미지]' : '')}</p>
-                      <p className="text-xs text-slate-500 mt-1">{new Date(issue.updatedAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">[{issue.status}/{issue.severity}] {new Date(issue.updatedAt).toLocaleDateString()} · {stripHtml(issue.description) || (issue.description?.includes('<img') ? '[이미지]' : '')}</p>
                     </button>
                     <input
                       type="checkbox"
@@ -3928,22 +3894,22 @@ export const ScreenshotView: React.FC<ViewProps> = ({ appId, highlightId, highli
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h3 className="font-bold text-lg text-slate-800">스크린샷 갤러리</h3>
+      <div className="flex flex-row justify-between items-center gap-2 mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-slate-800">스크린샷 갤러리</h3>
         <div className="flex flex-wrap gap-2">
           <button 
             onClick={(e) => {
               e.stopPropagation();
               fileInputRef.current?.click();
             }} 
-            className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 shadow-sm font-medium hover:bg-slate-700 w-full sm:w-auto"
+            className="bg-slate-800 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center justify-center gap-1.5 shadow-sm font-medium hover:bg-slate-700 shrink-0"
           >
             <ImageIcon size={16} /> 이미지 추가
           </button>
           {selectedIds.size > 0 && (
             <button 
               onClick={handleDeleteSelected} 
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-1 shadow-sm w-full sm:w-auto"
+              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center justify-center gap-1 shadow-sm shrink-0"
             >
               <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
             </button>

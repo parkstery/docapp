@@ -715,23 +715,23 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-lg text-slate-800">TASK</h3>
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-slate-800">TASK</h3>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={openInlineCreate}
-            className="bg-violet-500 hover:bg-violet-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm font-medium"
+            className="bg-violet-500 hover:bg-violet-600 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm font-medium"
           >
-            <Plus size={16} /> 작성하기
+            <Plus size={14} /> 작성하기
           </button>
           {selectedIds.size > 0 && (
             <button
               type="button"
               onClick={handleDeleteSelected}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded-lg text-[13px] flex items-center gap-1 shadow-sm"
             >
-              <Trash2 size={16} /> 선택 삭제 ({selectedIds.size})
+              <Trash2 size={14} /> 선택 삭제 ({selectedIds.size})
             </button>
           )}
         </div>
@@ -744,7 +744,48 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
               <Loader2 className="animate-spin" /> 로딩 중…
             </div>
           ) : (
-            <table className="report-table-separators min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0]" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <>
+            <div className="lg:hidden p-2 space-y-1.5">
+              <label className="flex items-center gap-2 text-xs text-slate-500 px-1 py-0.5">
+                <input
+                  type="checkbox"
+                  checked={orderedDocs.length > 0 && selectedIds.size === orderedDocs.length}
+                  onChange={handleSelectAll}
+                  className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                />
+                전체 선택
+              </label>
+              {orderedDocs.map((d, index) => (
+                <div
+                  key={d.id}
+                  data-highlight-id={d.id} tabIndex={-1}
+                  draggable={!freeReorderBusy}
+                  onDragStart={(e) => onFreeDragStart(e, d.id)}
+                  onDragEnd={onFreeDragEnd}
+                  onDragOver={(e) => onFreeDragOver(e, d.id)}
+                  onDrop={(e) => void onFreeDrop(e, d.id)}
+                  className={`border border-slate-200 rounded-lg px-3 py-2 bg-white ${freeDragRowClassName(d.id)} ${!freeReorderBusy ? 'cursor-grab active:cursor-grabbing' : ''} ${isHighlighted(d.id) ? HIGHLIGHT_ROW_CLASS : ''}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => handleSelect(d)} className="text-left min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{index + 1}. {d.title}</p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">{new Date(d.createdAt).toLocaleDateString()} · {stripHtml(d.html) || (d.html?.includes('<img') ? '[이미지]' : '')}</p>
+                    </button>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(d.id)}
+                      onChange={() => handleToggleSelect(d.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                    />
+                  </div>
+                </div>
+              ))}
+              {orderedDocs.length === 0 && (
+                <div className="text-center py-12 text-slate-400 text-sm">작성된 TASK 문서가 없습니다.</div>
+              )}
+            </div>
+            <table className="hidden lg:table report-table-separators min-w-full divide-y divide-slate-200 [border-collapse:separate] [border-spacing:0]" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 {resize.widths.map((_, i) => (
                   <col key={i} style={resize.getColStyle(i)} />
@@ -820,6 +861,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
                 )}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
