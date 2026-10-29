@@ -1,15 +1,24 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Dashboard from './components/Dashboard';
-import AppDetail from './components/AppDetail';
 import LoginPage from './components/LoginPage';
-import HelpPage from './components/HelpPage';
-import PrivacyPage from './components/PrivacyPage';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { devLog } from './utils/devLog';
 import { EditTabToSave } from './components/EditTabToSave';
 import { isAllowedUser } from './constants/access';
+import { LoadErrorBanner } from './components/LoadErrorBanner';
+
+// 에디터(TipTap)·마크다운 렌더러가 무거우므로 상세 화면은 필요할 때 불러온다
+const AppDetail = lazy(() => import('./components/AppDetail'));
+const HelpPage = lazy(() => import('./components/HelpPage'));
+const PrivacyPage = lazy(() => import('./components/PrivacyPage'));
+
+const PageLoader: React.FC = () => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <Loader2 className="animate-spin text-indigo-600" size={32} />
+  </div>
+);
 
 // 허용 목록에 없는 계정으로 로그인한 경우
 const AccessDenied: React.FC<{ email: string | null }> = ({ email }) => {
@@ -83,37 +92,39 @@ const AppRoutes: React.FC = () => {
   }
 
   return (
-    <Routes>
-      <Route path="/help" element={<HelpPage />} />
-      <Route path="/privacy" element={<PrivacyPage />} />
-      <Route 
-        path="/login" 
-        element={
-          user ? (
-            <Navigate to="/" replace />
-          ) : (
-            <LoginPage />
-          )
-        } 
-      />
-      <Route 
-        path="/" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/app/:id" 
-        element={
-          <ProtectedRoute>
-            <AppDetail />
-          </ProtectedRoute>
-        } 
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/help" element={<HelpPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route 
+          path="/login" 
+          element={
+            user ? (
+              <Navigate to="/" replace />
+            ) : (
+              <LoginPage />
+            )
+          } 
+        />
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/app/:id" 
+          element={
+            <ProtectedRoute>
+              <AppDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 
@@ -197,6 +208,7 @@ const App: React.FC = () => {
         }
       `}</style>
       <EditTabToSave />
+      <LoadErrorBanner />
       <HashRouter>
         <AppRoutes />
       </HashRouter>

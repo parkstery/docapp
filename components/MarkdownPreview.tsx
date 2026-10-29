@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useEffect } from 'react';
-import hljs from 'highlight.js';
+import hljs from 'highlight.js/lib/common';
 import 'github-markdown-css/github-markdown.css';
 import 'highlight.js/styles/github.min.css';
 import '../styles/markdown-docapp.css';

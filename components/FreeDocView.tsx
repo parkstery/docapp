@@ -31,13 +31,13 @@ import { useUnsavedEditGuard } from '../hooks/useUnsavedEditGuard';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { freeDocEditSnapshot } from '../utils/editSnapshots';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
+import { parseHtmlInert } from '../utils/htmlText';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 function stripHtml(html: string): string {
   if (!html) return '';
-  const d = document.createElement('div');
-  d.innerHTML = html;
+  const d = parseHtmlInert(html);
   return (d.textContent || '').replace(/\s+/g, ' ').trim();
 }
 

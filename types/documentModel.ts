@@ -9,6 +9,7 @@ import type {
   Note,
   FileInfo,
 } from '../types';
+import { parseHtmlInert } from '../utils/htmlText';
 
 /** 앱 내 탭·Firestore 컬렉션과 대응하는 문서 종류 */
 export type DocumentKind =
@@ -109,8 +110,7 @@ export function memoToView(doc: Memo): DocumentView {
 export function freeDocToView(doc: FreeDoc): DocumentView {
   let plain = '';
   if (typeof document !== 'undefined') {
-    const div = document.createElement('div');
-    div.innerHTML = doc.html || '';
+    const div = parseHtmlInert(doc.html || '');
     plain = (div.textContent || '').replace(/\s+/g, ' ').trim();
   } else {
     plain = (doc.html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();

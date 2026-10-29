@@ -54,10 +54,15 @@ const Dashboard: React.FC = () => {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (confirm('정말로 이 앱 프로젝트를 삭제하시겠습니까?')) {
+    if (!confirm('정말로 이 앱 프로젝트를 삭제하시겠습니까?\n프로젝트 안의 모든 문서와 첨부파일도 함께 삭제되며 되돌릴 수 없습니다.')) return;
+    setIsLoading(true);
+    try {
       await storage.deleteApp(id);
-      loadApps();
+    } catch (error: any) {
+      console.error('프로젝트 삭제 실패:', error);
+      alert('프로젝트 삭제 중 오류가 발생했습니다. 다시 삭제하면 남은 항목이 이어서 정리됩니다.\n' + (error?.message || ''));
     }
+    loadApps();
   };
 
   const openModal = (app?: AppProject) => {

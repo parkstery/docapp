@@ -8,9 +8,11 @@ import {
   setDoc, 
   deleteDoc, 
   query, 
-  where 
+  where,
+  writeBatch,
+  type DocumentReference,
 } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { getStorage, ref, listAll, deleteObject, type StorageReference } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 import { AppProject, PlanningDoc, Report, PromptLog, Memo, FreeDoc, Issue, Screenshot, Note } from '../types';
 import { devLog } from '../utils/devLog';
@@ -52,6 +54,14 @@ export const auth = getAuth(app);
 devLog('[Firebase] Storage 초기화 완료:', firebaseConfig.storageBucket);
 devLog('[Firebase] Auth 초기화 완료');
 
+/** 조회 실패 알림 이벤트 — 목록이 빈 것으로 오해되지 않도록 화면에 오류를 띄운다 (components/LoadErrorBanner) */
+export const LOAD_ERROR_EVENT = 'docapp:load-error';
+
+const notifyLoadError = (source: string, error: unknown) => {
+  const message = (error as { code?: string; message?: string })?.code || (error as Error)?.message || String(error);
+  window.dispatchEvent(new CustomEvent(LOAD_ERROR_EVENT, { detail: { source, message } }));
+};
+
 // Helper: Fetch collection data, optionally filtering by appId and sorting
 const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> => {
   try {
@@ -74,6 +84,7 @@ const getCollection = async <T>(colName: string, appId?: string): Promise<T[]> =
     return data.sort((a: any, b: any) => recencyMillis(b) - recencyMillis(a));
   } catch (error) {
     console.error(`Error getting collection ${colName}:`, error);
+    notifyLoadError(colName, error);
     return [];
   }
 };
@@ -99,6 +110,44 @@ const deleteDocument = async (colName: string, id: string) => {
   }
 };
 
+/** 프로젝트(appId)에 딸린 문서가 저장되는 컬렉션 */
+const APP_CHILD_COLLECTIONS = ['planning', 'reports', 'prompts', 'memos', 'freeDocs', 'issues', 'screenshots', 'notes'];
+
+const BATCH_LIMIT = 450;
+
+// Storage 폴더 아래 파일을 하위 폴더까지 모두 수집
+const listFilesRecursive = async (folder: StorageReference): Promise<StorageReference[]> => {
+  const res = await listAll(folder);
+  const nested = await Promise.all(res.prefixes.map(listFilesRecursive));
+  return [...res.items, ...nested.flat()];
+};
+
+const deleteRefsInBatches = async (refs: DocumentReference[]) => {
+  for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    refs.slice(i, i + BATCH_LIMIT).forEach((r) => batch.delete(r));
+    await batch.commit();
+  }
+};
+
+/**
+ * 프로젝트 삭제: 하위 문서(8개 컬렉션) → Storage 파일(`{appId}/` 아래 전체) → 프로젝트 문서 순.
+ * 중간에 실패하면 프로젝트 문서가 남으므로 다시 삭제하면 이어서 정리된다.
+ */
+const deleteAppWithContents = async (id: string) => {
+  const snapshots = await Promise.all(
+    APP_CHILD_COLLECTIONS.map((col) => getDocs(query(collection(db, col), where('appId', '==', id))))
+  );
+  await deleteRefsInBatches(snapshots.flatMap((snap) => snap.docs.map((d) => d.ref)));
+
+  const files = await listFilesRecursive(ref(firebaseStorage, id));
+  for (let i = 0; i < files.length; i += 20) {
+    await Promise.all(files.slice(i, i + 20).map((f) => deleteObject(f)));
+  }
+
+  await deleteDocument('apps', id);
+};
+
 export const storage = {
   getApps: () => getCollection<AppProject>('apps'),
   
@@ -108,12 +157,13 @@ export const storage = {
       return snap.exists() ? snap.data() as AppProject : undefined;
     } catch (error) {
       console.error("Error getting app:", error);
+      notifyLoadError('apps', error);
       return undefined;
     }
   },
   
   saveApp: (app: AppProject) => saveDocument('apps', app),
-  deleteApp: (id: string) => deleteDocument('apps', id),
+  deleteApp: deleteAppWithContents,
   
   // Sub-modules
   planning: {

@@ -1,6 +1,6 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import hljs from 'highlight.js';
+import hljs from 'highlight.js/lib/common';
 import githubMarkdownCss from 'github-markdown-css/github-markdown.css?raw';
 import markdownDocappCss from '../styles/markdown-docapp.css?raw';
 import { prepareMarkdownForRender } from '../utils/markdownTableNormalize';

@@ -13,11 +13,10 @@ export function mergeFileInfoList(
  * Firestore 저장 시 fileInfoList 로 통일하고 레거시 fileInfo 필드는 제거한다.
  * fileInfo/fileInfoList 가 없는 문서 타입은 그대로 반환한다.
  */
-export function withNormalizedAttachments<T extends Record<string, unknown>>(item: T): T {
+export function withNormalizedAttachments<T extends { fileInfo?: FileInfo; fileInfoList?: FileInfo[] }>(item: T): T {
   if (!('fileInfo' in item) && !('fileInfoList' in item)) {
     return item;
   }
-  const { fileInfo: _removed, ...rest } = item as T & { fileInfo?: FileInfo };
-  const fileInfoList = mergeFileInfoList(item as { fileInfo?: FileInfo; fileInfoList?: FileInfo[] });
-  return { ...rest, fileInfoList } as T;
+  const { fileInfo: _removed, ...rest } = item;
+  return { ...rest, fileInfoList: mergeFileInfoList(item) } as unknown as T;
 }

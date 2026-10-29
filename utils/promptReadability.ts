@@ -1,3 +1,5 @@
+import { parseHtmlInert } from './htmlText';
+
 /** TipTap 등에서 저장된 HTML → 줄바꿈을 최대한 보존한 평문 */
 export function htmlToPlainTextWithBreaks(html: string): string {
   if (!html.trim()) return '';
@@ -8,8 +10,7 @@ export function htmlToPlainTextWithBreaks(html: string): string {
     .replace(/<\/h[1-6]>/gi, '\n')
     .replace(/<\/li>/gi, '\n')
     .replace(/<\/tr>/gi, '\n');
-  const d = document.createElement('div');
-  d.innerHTML = h;
+  const d = parseHtmlInert(h);
   return (d.textContent || '')
     .replace(/\r\n/g, '\n')
     .replace(/[ \t]+\n/g, '\n')

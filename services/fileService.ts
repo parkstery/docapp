@@ -1,16 +1,9 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { firebaseStorage, auth } from './storage';
-import { Timestamp } from 'firebase/firestore';
 import { devLog } from '../utils/devLog';
+import type { FileInfo } from '../types';
 
-export interface FileInfo {
-  id: string;
-  name: string;
-  url: string;
-  size?: number;
-  type?: string;
-  date: Timestamp | number;
-}
+export type { FileInfo };
 
 /**
  * 일반 파일 업로드

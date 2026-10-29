@@ -3,6 +3,8 @@
  * 저장 포맷과 무관하게 표현 레이어에서 사용한다.
  */
 
+import { parseHtmlInert } from '../utils/htmlText';
+
 export type ExportMarkdownProfile = 'gfm' | 'notion';
 
 function escapeMdCell(s: string): string {
@@ -12,8 +14,7 @@ function escapeMdCell(s: string): string {
 /** HTML 문자열에서 태그 제거 후 한 줄로 압축 */
 export function htmlToPlainOneLine(html: string): string {
   if (!html.trim()) return '';
-  const d = document.createElement('div');
-  d.innerHTML = html;
+  const d = parseHtmlInert(html);
   return (d.textContent || '').replace(/\s+/g, ' ').trim();
 }
 

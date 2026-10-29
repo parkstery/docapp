@@ -42,6 +42,7 @@ import { MarkdownPreview } from './MarkdownPreview';
 import { PlanningContentEditor } from './PlanningContentEditor';
 import { restructureContentAsChatPaste } from '../utils/chatPasteStorage';
 import { legacyContentToEditableMarkdown, markdownListPreview } from '../utils/documentMarkdown';
+import { parseHtmlInert } from '../utils/htmlText';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -73,8 +74,7 @@ const MemoFontSize = Extension.create({
 
 const stripHtml = (html: string): string => {
   if (!html) return '';
-  const d = document.createElement('div');
-  d.innerHTML = html;
+  const d = parseHtmlInert(html);
   return (d.textContent || '').replace(/\s+/g, ' ').trim();
 };
 
