@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // docapp 접근 허용 계정 — constants/access.ts 의 ALLOWED_EMAILS 와 함께 수정할 것
+    function isAllowedUser() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['googiden@gmail.com'];
+    }
+
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 이 앱(docapp)이 쓰는 최상위 컬렉션 — 허용 계정만
+    match /{collection}/{id} {
+      allow read, write: if isAllowedUser()
+        && collection in ['apps', 'planning', 'reports', 'prompts', 'memos', 'freeDocs', 'issues', 'screenshots', 'notes'];
+    }
+  }
+}

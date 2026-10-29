@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // docapp 접근 허용 계정 — constants/access.ts 의 ALLOWED_EMAILS 와 함께 수정할 것
+    function isAllowedUser() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['googiden@gmail.com'];
+    }
+
+    // 목록 조회·경로 직접 읽기·업로드·삭제는 허용 계정만.
+    // (getDownloadURL 로 발급된 토큰 URL 은 규칙과 무관하게 동작하므로 기존 이미지 표시는 유지됨)
+    match /{allPaths=**} {
+      allow read, write: if isAllowedUser();
+    }
+  }
+}

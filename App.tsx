@@ -6,9 +6,32 @@ import AppDetail from './components/AppDetail';
 import LoginPage from './components/LoginPage';
 import HelpPage from './components/HelpPage';
 import PrivacyPage from './components/PrivacyPage';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
 import { devLog } from './utils/devLog';
 import { EditTabToSave } from './components/EditTabToSave';
+import { isAllowedUser } from './constants/access';
+
+// 허용 목록에 없는 계정으로 로그인한 경우
+const AccessDenied: React.FC<{ email: string | null }> = ({ email }) => {
+  const { signOut } = useAuth();
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center space-y-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full">
+          <ShieldAlert className="text-red-600" size={32} />
+        </div>
+        <h1 className="text-xl font-bold text-slate-800">접근 권한이 없는 계정입니다</h1>
+        <p className="text-sm text-slate-500 break-all">{email || '알 수 없는 계정'}</p>
+        <button
+          onClick={() => signOut()}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium"
+        >
+          로그아웃 후 다른 계정으로 로그인
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // 인증이 필요한 라우트 보호 컴포넌트
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -31,6 +54,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (!user) {
     devLog('[ProtectedRoute] 사용자 없음, 로그인 페이지로 리다이렉트');
     return <Navigate to="/login" replace />;
+  }
+
+  if (!isAllowedUser(user)) {
+    devLog('[ProtectedRoute] 허용되지 않은 계정:', user.email);
+    return <AccessDenied email={user.email} />;
   }
 
   devLog('[ProtectedRoute] 인증된 사용자, 콘텐츠 표시');
