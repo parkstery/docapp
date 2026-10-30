@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useUnsavedEditGuard } from '../hooks/useUnsavedEditGuard';
+import { useTabNavigation } from '../hooks/useTabHistory';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import {
   planningEditSnapshot,
@@ -19,7 +20,7 @@ import TextStyle from '@tiptap/extension-text-style';
 import { 
   FileText, Plus, Save, Trash2, X, Download, Tag, 
   AlertCircle, CheckCircle, Clock, Image as ImageIcon,
-  Search, Loader2, ArrowLeft,
+  Search, Loader2,
   Bold, Italic, Heading2, List, ListOrdered, Undo2, Redo2, Strikethrough
 } from 'lucide-react';
 import { PlanningDoc, Report, PromptLog, Memo, Issue, Screenshot, FileInfo, Note } from '../types';
@@ -619,6 +620,15 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
     setEditForm({ ...doc, fileInfoList: getFileList(doc) });
   };
 
+  useTabNavigation({
+    tab: 'planning',
+    items: docs,
+    loading,
+    currentId: selectedDocId,
+    select: handleSelectDoc,
+    requestExitThen: planningUnsaved.requestExitThen,
+  });
+
   const openInlineCreate = () => {
     const id = crypto.randomUUID();
     setSelectedDocId(id);
@@ -755,9 +765,6 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={planningUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-              <ArrowLeft size={20} />
-            </button>
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 기획서 작성' : '기획서 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1181,6 +1188,15 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     setEditForm({ ...report, fileInfoList: getFileList(report), summary: nextSummary });
   };
 
+  useTabNavigation({
+    tab: 'reports',
+    items: reports,
+    loading,
+    currentId: selectedReportId,
+    select: handleSelectReport,
+    requestExitThen: reportUnsaved.requestExitThen,
+  });
+
   const openInlineCreate = () => {
     const id = crypto.randomUUID();
     setSelectedReportId(id);
@@ -1323,9 +1339,6 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={reportUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-              <ArrowLeft size={20} />
-            </button>
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 보고서 작성' : '보고서 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1865,6 +1878,15 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     setEditResponseHtml(nextResponse);
   };
 
+  useTabNavigation({
+    tab: 'prompts',
+    items: prompts,
+    loading,
+    currentId: selectedPrompt?.id ?? null,
+    select: handleSelectPrompt,
+    requestExitThen: promptUnsaved.requestExitThen,
+  });
+
   /** 클립보드 이미지를 업로드한 뒤 마크다운 이미지 문법으로 현재 커서 위치에 삽입 */
   const handlePasteImageInField = async (e: React.ClipboardEvent, field: 'prompt' | 'response') => {
     const items = e.clipboardData?.items;
@@ -1964,9 +1986,6 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       <div className="h-full flex flex-col" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={promptUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-              <ArrowLeft size={20} />
-            </button>
             <h3 className="font-bold text-base lg:text-lg text-slate-800">BARN 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -2569,6 +2588,15 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     save: persistMemoEdit,
   });
 
+  useTabNavigation({
+    tab: 'memos',
+    items: memos,
+    loading,
+    currentId: selectedMemoId,
+    select: handleSelectMemo,
+    requestExitThen: memoUnsaved.requestExitThen,
+  });
+
   const deleteMemo = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
     const memo = memos.find(m => m.id === id);
@@ -2642,9 +2670,6 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={memoUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-              <ArrowLeft size={20} />
-            </button>
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 참고 작성' : '참고 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -3000,6 +3025,15 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     save: persistNoteEdit,
   });
 
+  useTabNavigation({
+    tab: 'notes',
+    items: notes,
+    loading,
+    currentId: selectedNoteId,
+    select: openEdit,
+    requestExitThen: noteUnsaved.requestExitThen,
+  });
+
   const handleDelete = async (id: string) => {
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
     await storage.notes.delete(id);
@@ -3040,9 +3074,6 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
         <div className="h-full flex flex-col min-h-0" data-edit-scope="">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
             <div className="flex items-center gap-3">
-              <button type="button" onClick={noteUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-                <ArrowLeft size={20} />
-              </button>
               <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 메모 작성' : '메모 수정'}</h3>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -3293,6 +3324,15 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
     setEditSolutionHtml(nextSol);
   };
 
+  useTabNavigation({
+    tab: 'issues',
+    items: issues,
+    loading,
+    currentId: selectedIssueId,
+    select: handleSelectIssue,
+    requestExitThen: issueUnsaved.requestExitThen,
+  });
+
   const openInlineCreate = () => {
     const id = crypto.randomUUID();
     setSelectedIssueId(id);
@@ -3435,9 +3475,6 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={issueUnsaved.requestExit} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-              <ArrowLeft size={20} />
-            </button>
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 트러블슈팅 작성' : '트러블슈팅 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">

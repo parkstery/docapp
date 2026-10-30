@@ -5,7 +5,6 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
-  ArrowLeft,
   Bold,
   FileText,
   Heading2,
@@ -28,6 +27,7 @@ import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useDragListReorder } from '../hooks/useDragListReorder';
 import { useHighlightedRow } from '../hooks/useHighlightedRow';
 import { useUnsavedEditGuard } from '../hooks/useUnsavedEditGuard';
+import { useTabNavigation } from '../hooks/useTabHistory';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { freeDocEditSnapshot } from '../utils/editSnapshots';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
@@ -453,6 +453,15 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
     save: persistFreeEdit,
   });
 
+  useTabNavigation({
+    tab: 'free',
+    items: docs,
+    loading,
+    currentId: selectedId,
+    select: handleSelect,
+    requestExitThen: freeUnsaved.requestExitThen,
+  });
+
   const deleteDoc = async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return;
     const doc = docs.find((item) => item.id === id);
@@ -591,13 +600,6 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
         <div className="h-full flex flex-col min-h-0" data-edit-scope="">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={freeUnsaved.requestExit}
-                className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
-              >
-                <ArrowLeft size={20} />
-              </button>
               <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 TASK 작성' : 'TASK 수정'}</h3>
               {uploading && (
                 <span className="text-xs text-slate-500 flex items-center gap-1">

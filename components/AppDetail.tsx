@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, FileText, MessageSquare, StickyNote, ClipboardList, AlertTriangle, Image as ImageIcon, Loader2, ScrollText, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, FileText, MessageSquare, StickyNote, ClipboardList, AlertTriangle, Image as ImageIcon, Loader2, ScrollText, Search } from 'lucide-react';
 import { storage } from '../services/storage';
 import { AppProject } from '../types';
 import { PlanningView, ReportView, PromptView, MemoView, NoteView, IssueView, ScreenshotView } from './TabViews';
 import { FreeDocView } from './FreeDocView';
 import ProjectSearchModal from './ProjectSearchModal';
+import { TabNavContext, useTabHistory } from '../hooks/useTabHistory';
 
 type Tab = 'planning' | 'reports' | 'prompts' | 'memos' | 'free' | 'notes' | 'issues' | 'screenshots';
 
@@ -13,11 +14,11 @@ const AppDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [app, setApp] = useState<AppProject | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('planning');
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightItemId, setHighlightItemId] = useState<string | null>(null);
   const [highlightSeq, setHighlightSeq] = useState(0);
+  const { activeTab, goTab, goBack, goForward, canGoForward, contextValue } = useTabHistory<Tab>('planning', () => navigate('/'));
 
   useEffect(() => {
     const fetchApp = async () => {
@@ -58,10 +59,28 @@ const AppDetail: React.FC = () => {
     <div className="flex h-screen bg-slate-50 flex-col">
       {/* Header */}
       <header className="bg-white border-b px-3 sm:px-6 py-2 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
-            <ArrowLeft size={20} />
-          </button>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={goBack}
+              title="뒤로"
+              aria-label="뒤로"
+              className="p-2 hover:bg-slate-100 rounded-full text-slate-500"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <button
+              type="button"
+              onClick={goForward}
+              disabled={!canGoForward}
+              title="앞으로"
+              aria-label="앞으로"
+              className="p-2 hover:bg-slate-100 rounded-full text-slate-500 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-default"
+            >
+              <ArrowRight size={20} />
+            </button>
+          </div>
           <div>
             <h1 className="font-bold text-lg text-slate-800 flex items-center gap-2">
               {app.name} 
@@ -85,9 +104,10 @@ const AppDetail: React.FC = () => {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onSelectResult={(tabId, docId) => {
-          setActiveTab(tabId as Tab);
-          setHighlightItemId(docId);
-          setHighlightSeq((n) => n + 1);
+          goTab(tabId as Tab, () => {
+            setHighlightItemId(docId);
+            setHighlightSeq((n) => n + 1);
+          });
         }}
       />
       {/* Mobile Tab Bar */}
@@ -99,7 +119,7 @@ const AppDetail: React.FC = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as Tab)}
+                onClick={() => goTab(tab.id as Tab)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] font-medium rounded-lg transition-colors whitespace-nowrap ${
                   isActive
                     ? 'bg-indigo-50 text-primary'
@@ -124,7 +144,7 @@ const AppDetail: React.FC = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as Tab)}
+                  onClick={() => goTab(tab.id as Tab)}
                   className={`w-full flex items-center gap-0 pl-3 pr-3 py-3 text-sm font-medium rounded-lg transition-colors ${
                     isActive 
                       ? 'bg-indigo-50 text-primary' 
@@ -152,32 +172,34 @@ const AppDetail: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-slate-50">
-          <div className="max-w-6xl mx-auto h-full">
-            {activeTab === 'planning' && (
-              <PlanningView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
-            )}
-            {activeTab === 'reports' && (
-              <ReportView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
-            )}
-            {activeTab === 'prompts' && (
-              <PromptView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
-            )}
-            {activeTab === 'memos' && (
-              <MemoView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
-            )}
-            {activeTab === 'free' && (
-              <FreeDocView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
-            )}
-            {activeTab === 'notes' && (
-              <NoteView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
-            )}
-            {activeTab === 'issues' && (
-              <IssueView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
-            )}
-            {activeTab === 'screenshots' && (
-              <ScreenshotView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
-            )}
-          </div>
+          <TabNavContext.Provider value={contextValue}>
+            <div className="max-w-6xl mx-auto h-full">
+              {activeTab === 'planning' && (
+                <PlanningView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+              )}
+              {activeTab === 'reports' && (
+                <ReportView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+              )}
+              {activeTab === 'prompts' && (
+                <PromptView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+              )}
+              {activeTab === 'memos' && (
+                <MemoView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+              )}
+              {activeTab === 'free' && (
+                <FreeDocView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+              )}
+              {activeTab === 'notes' && (
+                <NoteView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+              )}
+              {activeTab === 'issues' && (
+                <IssueView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+              )}
+              {activeTab === 'screenshots' && (
+                <ScreenshotView appId={app.id} highlightId={highlightItemId} highlightSeq={highlightSeq} />
+              )}
+            </div>
+          </TabNavContext.Provider>
         </main>
       </div>
     </div>

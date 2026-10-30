@@ -54,20 +54,44 @@ export function useUnsavedEditGuard({ active, editKey, buildSnapshot, exit, save
 
   const isDirty = useCallback(() => buildRef.current() !== baselineRef.current, []);
 
+  // 상단 뒤로/앞으로처럼 "나간 뒤 이어서 할 일"이 있는 경우 (대화상자 취소 시 버림)
+  const afterExitRef = useRef<(() => void) | null>(null);
+
+  const runExit = useCallback(() => {
+    exit();
+    const after = afterExitRef.current;
+    afterExitRef.current = null;
+    after?.();
+  }, [exit]);
+
   const requestExit = useCallback(() => {
     if (!active) return;
-    if (!isDirty()) exit();
+    afterExitRef.current = null;
+    if (!isDirty()) runExit();
     else setDialogOpen(true);
-  }, [active, exit, isDirty]);
+  }, [active, runExit, isDirty]);
+
+  /** 편집 화면을 나간 뒤(저장/버리기 확인 포함) after를 실행한다. 편집 중이 아니면 바로 실행. */
+  const requestExitThen = useCallback((after: () => void) => {
+    if (!active) {
+      after();
+      return;
+    }
+    afterExitRef.current = after;
+    if (!isDirty()) runExit();
+    else setDialogOpen(true);
+  }, [active, runExit, isDirty]);
 
   const closeDialog = useCallback(() => {
-    if (!savingDialog) setDialogOpen(false);
+    if (savingDialog) return;
+    afterExitRef.current = null;
+    setDialogOpen(false);
   }, [savingDialog]);
 
   const discardAndExit = useCallback(() => {
     setDialogOpen(false);
-    exit();
-  }, [exit]);
+    runExit();
+  }, [runExit]);
 
   const saveAndExit = useCallback(async () => {
     setSavingDialog(true);
@@ -75,12 +99,12 @@ export function useUnsavedEditGuard({ active, editKey, buildSnapshot, exit, save
       const ok = await save();
       if (ok) {
         setDialogOpen(false);
-        exit();
+        runExit();
       }
     } finally {
       setSavingDialog(false);
     }
-  }, [exit, save]);
+  }, [runExit, save]);
 
   /** 저장 직후 편집 상태와 동기화해 dirty를 해제한다(목록으로 나가지 않을 때). */
   const syncBaseline = useCallback(() => {
@@ -91,6 +115,7 @@ export function useUnsavedEditGuard({ active, editKey, buildSnapshot, exit, save
 
   return {
     requestExit,
+    requestExitThen,
     syncBaseline,
     dialogOpen,
     savingDialog,
