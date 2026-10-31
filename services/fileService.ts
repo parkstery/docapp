@@ -1,9 +1,46 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject, getMetadata, updateMetadata } from 'firebase/storage';
 import { firebaseStorage, auth } from './storage';
 import { devLog } from '../utils/devLog';
+import { detectTextCharset, isTextLikeFile, textBaseContentType } from '../utils/textFileCharset';
 import type { FileInfo } from '../types';
 
 export type { FileInfo };
+
+/**
+ * 텍스트 파일 업로드용 Content-Type (charset 포함).
+ * charset 이 없으면 브라우저가 OS 기본 인코딩(한국어 Windows = CP949)으로 읽어 UTF-8 한글이 깨진다.
+ */
+const textUploadContentType = async (file: File): Promise<string | undefined> => {
+  if (!isTextLikeFile(file.name, file.type)) return undefined;
+  const charset = detectTextCharset(await file.arrayBuffer());
+  return `${textBaseContentType(file.name, file.type)}; charset=${charset}`;
+};
+
+const charsetChecked = new Set<string>();
+
+/**
+ * 이미 올라간 텍스트 파일의 Content-Type 에 charset 이 없으면 내용을 읽어 판별한 뒤 붙인다.
+ * (예전에 charset 없이 업로드된 파일을 열 때 한 번만 실행됨)
+ */
+export const ensureTextCharset = async (file: Pick<FileInfo, 'name' | 'url' | 'type'>): Promise<void> => {
+  if (!isTextLikeFile(file.name, file.type) || charsetChecked.has(file.url)) return;
+  try {
+    const fileRef = ref(firebaseStorage, getFilePathFromURL(file.url));
+    const meta = await getMetadata(fileRef);
+    const current = meta.contentType || '';
+    if (!/charset=/i.test(current)) {
+      const res = await fetch(file.url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const charset = detectTextCharset(await res.arrayBuffer());
+      const contentType = `${textBaseContentType(file.name, current || file.type)}; charset=${charset}`;
+      await updateMetadata(fileRef, { contentType });
+      devLog('[FileService] charset 보정:', file.name, current, '→', contentType);
+    }
+    charsetChecked.add(file.url);
+  } catch (error) {
+    console.warn('[FileService] charset 보정 실패(원래대로 엽니다):', file.name, error);
+  }
+};
 
 /**
  * 일반 파일 업로드
@@ -47,8 +84,9 @@ export const uploadFile = async (
     devLog('[FileService] 인증된 사용자로 업로드 시도:', currentUser.email);
     devLog('[FileService] uploadBytes 시작...');
     
-    // 파일 업로드
-    await uploadBytes(storageRef, file);
+    // 파일 업로드 (텍스트 파일은 charset 을 지정해 브라우저에서 바로 열어도 글자가 깨지지 않게)
+    const contentType = await textUploadContentType(file);
+    await uploadBytes(storageRef, file, contentType ? { contentType } : undefined);
     devLog('[FileService] uploadBytes 완료');
     
     // 다운로드 URL 가져오기

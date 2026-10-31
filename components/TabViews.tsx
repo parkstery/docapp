@@ -4,6 +4,7 @@ import { useTabNavigation } from '../hooks/useTabHistory';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { TitleSuggestionBar, useTitleSuggestion } from './TitleSuggestionBar';
 import { suggestTitleFromBody } from '../utils/titleSuggestion';
+import { downloadAttachment, openAttachment } from '../utils/attachmentOpen';
 import {
   planningEditSnapshot,
   reportEditSnapshot,
@@ -936,8 +937,8 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                           {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <a href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={f.url} onClick={(e) => void downloadAttachment(e, f)} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
                           <button type="button" onClick={() => handleDeleteDetailFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
                         </div>
                       </div>
@@ -1083,7 +1084,7 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                       {getFileList(doc).length > 0 && (
                         <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
                           {getFileList(doc).map((f) => (
-                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                            <a key={f.id || f.url} href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
                               <FileText size={12}/> {f.name}
                             </a>
                           ))}
@@ -1527,8 +1528,8 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                               {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                              <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                              <a href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                              <a href={f.url} onClick={(e) => void downloadAttachment(e, f)} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
                               <button type="button" onClick={() => handleDeleteDetailFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
                             </div>
                           </div>
@@ -1681,7 +1682,7 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                       {getFileList(r).length > 0 && (
                         <div className="flex flex-col gap-1 min-w-0 overflow-hidden" onClick={e => e.stopPropagation()}>
                           {getFileList(r).map((f) => (
-                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 min-w-0 max-w-full text-indigo-600 hover:text-indigo-800">
+                            <a key={f.id || f.url} href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 min-w-0 max-w-full text-indigo-600 hover:text-indigo-800">
                               <FileText size={14} className="shrink-0" />
                               <span className="truncate" title={f.name}>{f.name}</span>
                             </a>
@@ -2179,8 +2180,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                           {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <a href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={f.url} onClick={(e) => void downloadAttachment(e, f)} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
                           <button type="button" onClick={() => handleDeleteFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
                         </div>
                       </div>
@@ -2351,7 +2352,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                       {getFileList(p).length > 0 && (
                         <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
                           {getFileList(p).map((f) => (
-                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                            <a key={f.id || f.url} href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
                               <FileText size={12}/> {f.name}
                             </a>
                           ))}
@@ -2512,8 +2513,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                           {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <a href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={f.url} onClick={(e) => void downloadAttachment(e, f)} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
                           <button type="button" onClick={() => handleDeleteFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
                         </div>
                       </div>
@@ -2905,8 +2906,8 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
                           {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <a href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={f.url} onClick={(e) => void downloadAttachment(e, f)} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
                           <button type="button" onClick={() => handleDeleteMemoFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
                         </div>
                       </div>
@@ -3042,7 +3043,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
                       {getFileList(m).length > 0 && (
                         <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
                           {getFileList(m).map((f) => (
-                            <a key={f.id || f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
+                            <a key={f.id || f.url} href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs truncate max-w-full">
                               <FileText size={12}/> {f.name}
                             </a>
                           ))}
@@ -3776,8 +3777,8 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
                           {f.size != null && <span className="text-xs text-slate-500 shrink-0">({(f.size / 1024).toFixed(2)} KB)</span>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                          <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                          <a href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                          <a href={f.url} onClick={(e) => void downloadAttachment(e, f)} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
                           <button type="button" onClick={() => handleDeleteIssueEditFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
                         </div>
                       </div>

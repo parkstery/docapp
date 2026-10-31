@@ -31,6 +31,7 @@ import { useTabNavigation } from '../hooks/useTabHistory';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { TitleSuggestionBar, useTitleSuggestion } from './TitleSuggestionBar';
 import { suggestTitleFromBody } from '../utils/titleSuggestion';
+import { downloadAttachment, openAttachment } from '../utils/attachmentOpen';
 import { freeDocEditSnapshot } from '../utils/editSnapshots';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 import { parseHtmlInert } from '../utils/htmlText';
@@ -721,8 +722,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
                             {f.size != null && <span className="text-xs text-slate-500">({(f.size / 1024).toFixed(2)} KB)</span>}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
-                            <a href={f.url} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
+                            <a href={f.url} onClick={(e) => openAttachment(e, f)} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-indigo-800 text-xs px-2 py-1 rounded hover:bg-indigo-50">읽기</a>
+                            <a href={f.url} onClick={(e) => void downloadAttachment(e, f)} download={f.name} className="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">다운로드</a>
                             <button type="button" onClick={() => handleDeleteFile(f)} className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">삭제</button>
                           </div>
                         </div>
