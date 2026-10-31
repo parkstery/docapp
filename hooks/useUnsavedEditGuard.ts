@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+/**
+ * 저장 결과. true: 저장됨 / false: 실패(확인 창 유지) /
+ * 'stay': 저장하지 않고 편집 화면에 남아 사용자 확인을 기다림(확인 창 닫음, 나가지 않음)
+ */
+export type GuardSaveResult = boolean | 'stay';
+
 export type UseUnsavedEditGuardParams = {
   active: boolean;
   editKey: string;
   buildSnapshot: () => string;
   exit: () => void;
-  save: () => Promise<boolean>;
+  save: () => Promise<GuardSaveResult>;
 };
 
 export function useUnsavedEditGuard({ active, editKey, buildSnapshot, exit, save }: UseUnsavedEditGuardParams) {
@@ -97,9 +103,12 @@ export function useUnsavedEditGuard({ active, editKey, buildSnapshot, exit, save
     setSavingDialog(true);
     try {
       const ok = await save();
-      if (ok) {
+      if (ok === true) {
         setDialogOpen(false);
         runExit();
+      } else if (ok === 'stay') {
+        afterExitRef.current = null;
+        setDialogOpen(false);
       }
     } finally {
       setSavingDialog(false);

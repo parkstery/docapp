@@ -28,6 +28,7 @@ export function promptEditSnapshot(
 ): string {
   const tags = [...(f.tags || [])].map(String).sort();
   return JSON.stringify({
+    t: (f.title ?? '').trim(),
     p: promptHtml,
     r: responseHtml,
     g: tags,

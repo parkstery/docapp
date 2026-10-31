@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useUnsavedEditGuard } from '../hooks/useUnsavedEditGuard';
+import { useUnsavedEditGuard, type GuardSaveResult } from '../hooks/useUnsavedEditGuard';
 import { useTabNavigation } from '../hooks/useTabHistory';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
+import { TitleSuggestionBar, useTitleSuggestion } from './TitleSuggestionBar';
+import { suggestTitleFromBody } from '../utils/titleSuggestion';
 import {
   planningEditSnapshot,
   reportEditSnapshot,
@@ -33,7 +35,6 @@ import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrd
 import {
   ensureReadablePromptHtml,
   ensureReadableRichHtml,
-  htmlToPlainTextWithBreaks,
   promptPreviewPlain,
 } from '../utils/promptReadability';
 import { devLog, devWarn } from '../utils/devLog';
@@ -568,11 +569,20 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
     setIsNewDraft(false);
   }, []);
 
-  const persistPlanningEdit = useCallback(async (): Promise<boolean> => {
+  const titleSuggest = useTitleSuggestion(selectedDocId);
+
+
+  const persistPlanningEdit = useCallback(async (): Promise<GuardSaveResult> => {
     if (saving || uploading) return false;
     if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return false;
+      const suggested = suggestTitleFromBody(editForm.content);
+      if (!suggested) {
+        alert('제목을 입력하세요');
+        return false;
+      }
+      setEditForm(prev => ({ ...prev, title: suggested }));
+      titleSuggest.show();
+      return 'stay';
     }
     if (!editForm.id) return false;
     setSaving(true);
@@ -639,7 +649,10 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
   const handleEditSave = async () => {
     if (saving || uploading) return;
     const ok = await persistPlanningEdit();
-    if (ok) planningUnsaved.syncBaseline();
+    if (ok === true) {
+      titleSuggest.hide();
+      planningUnsaved.syncBaseline();
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -824,10 +837,20 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
             <div className="mt-3">
               <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
               <input
+                ref={titleSuggest.inputRef}
                 className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
                 placeholder="제목을 입력하세요"
                 value={editForm.title || ''}
-                onChange={e => setEditForm({...editForm, title: e.target.value})}
+                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+              />
+              <TitleSuggestionBar
+                open={titleSuggest.open}
+                disabled={saving || uploading}
+                onYes={handleEditSave}
+                onNo={() => {
+                  setEditForm(prev => ({ ...prev, title: '' }));
+                  titleSuggest.reject();
+                }}
               />
             </div>
           </div>
@@ -1132,11 +1155,20 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     setIsNewDraft(false);
   }, []);
 
-  const persistReportEdit = useCallback(async (): Promise<boolean> => {
+  const titleSuggest = useTitleSuggestion(selectedReportId);
+
+
+  const persistReportEdit = useCallback(async (): Promise<GuardSaveResult> => {
     if (saving || uploading) return false;
     if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return false;
+      const suggested = suggestTitleFromBody(editForm.summary);
+      if (!suggested) {
+        alert('제목을 입력하세요');
+        return false;
+      }
+      setEditForm(prev => ({ ...prev, title: suggested }));
+      titleSuggest.show();
+      return 'stay';
     }
     if (!editForm.id) return false;
     setSaving(true);
@@ -1261,7 +1293,10 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const handleEditSave = async () => {
     if (saving || uploading) return;
     const ok = await persistReportEdit();
-    if (ok) reportUnsaved.syncBaseline();
+    if (ok === true) {
+      titleSuggest.hide();
+      reportUnsaved.syncBaseline();
+    }
   };
 
   const handleDeleteDetailFile = async (fileInfo: FileInfo) => {
@@ -1397,9 +1432,19 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
                 <input
+                  ref={titleSuggest.inputRef}
                   className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
                   value={editForm.title || ''}
-                  onChange={e => setEditForm({...editForm, title: e.target.value})}
+                  onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                />
+                <TitleSuggestionBar
+                  open={titleSuggest.open}
+                  disabled={saving || uploading}
+                  onYes={handleEditSave}
+                  onNo={() => {
+                    setEditForm(prev => ({ ...prev, title: '' }));
+                    titleSuggest.reject();
+                  }}
                 />
               </div>
               <div>
@@ -1666,10 +1711,12 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const [prompts, setPrompts] = useState<PromptLog[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptLog | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [input, setInput] = useState<{ tags: string; fileInfoList?: FileInfo[] }>({ tags: '', fileInfoList: [] });
+  const [input, setInput] = useState<{ title: string; tags: string; fileInfoList?: FileInfo[] }>({ title: '', tags: '', fileInfoList: [] });
   const [addPromptDraftId, setAddPromptDraftId] = useState('');
   const [addPromptHtml, setAddPromptHtml] = useState('');
   const [addResponseHtml, setAddResponseHtml] = useState('');
+  /** 새 BARN 창: 창을 열 때마다 새 draftId가 생기므로 그걸 기준으로 확인 줄을 닫는다 */
+  const addTitleSuggest = useTitleSuggestion(addPromptDraftId);
   const [editForm, setEditForm] = useState<Partial<PromptLog>>({});
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1681,7 +1728,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   const [editResponseHtml, setEditResponseHtml] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
-  const resize = useResizableColumns(6, [22, 26, 340, 80, 84, 100]);
+  const resize = useResizableColumns(7, [22, 26, 180, 300, 80, 84, 100]);
   const {
     ordered: orderedPrompts,
     savingOrder: promptReorderBusy,
@@ -1781,17 +1828,26 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
   };
 
   const handleSave = async () => {
+    if (!input.title.trim()) {
+      const suggested = suggestTitleFromBody(addPromptHtml);
+      if (!suggested) {
+        alert('제목을 입력하세요');
+        return;
+      }
+      setInput(prev => ({ ...prev, title: suggested }));
+      addTitleSuggest.show();
+      return;
+    }
     if (isBodyEffectivelyEmpty(addPromptHtml)) {
       alert('프롬프트를 입력하세요');
       return;
     }
     const promptHtml = ensureReadablePromptHtml(addPromptHtml);
     const responseHtml = ensureReadablePromptHtml(addResponseHtml || '');
-    const titlePlain = (htmlToPlainTextWithBreaks(promptHtml) || '').replace(/\s+/g, ' ').trim();
     const item: any = {
       id: crypto.randomUUID(),
       appId,
-      title: titlePlain.substring(0, 30) + (titlePlain.length > 30 ? '...' : ''),
+      title: input.title.trim(),
       prompt: promptHtml,
       response: responseHtml,
       tags: input.tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -1805,7 +1861,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     await storage.prompts.save(toSave);
     loadPrompts();
     setIsAdding(false);
-    setInput({ tags: '', fileInfoList: [] });
+    setInput({ title: '', tags: '', fileInfoList: [] });
     setAddPromptHtml('');
     setAddResponseHtml('');
     setAddPromptDraftId('');
@@ -1818,7 +1874,20 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
     setEditResponseHtml('');
   }, []);
 
-  const persistPromptEdit = useCallback(async (): Promise<boolean> => {
+  const titleSuggest = useTitleSuggestion(selectedPrompt?.id);
+
+
+  const persistPromptEdit = useCallback(async (): Promise<GuardSaveResult> => {
+    if (!editForm.title || editForm.title.trim() === '') {
+      const suggested = suggestTitleFromBody(editPromptHtml);
+      if (!suggested) {
+        alert('제목을 입력하세요');
+        return false;
+      }
+      setEditForm(prev => ({ ...prev, title: suggested }));
+      titleSuggest.show();
+      return 'stay';
+    }
     if (isBodyEffectivelyEmpty(editPromptHtml)) {
       alert('프롬프트를 입력하세요');
       return false;
@@ -1827,7 +1896,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
       const item: any = {
         id: editForm.id!,
         appId,
-        title: stripHtml(editPromptHtml).substring(0, 30) + '...',
+        title: editForm.title.trim(),
         prompt: editPromptHtml,
         response: editResponseHtml || '',
         tags: editForm.tags || [],
@@ -1866,7 +1935,10 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
 
   const handleEditSave = async () => {
     const ok = await persistPromptEdit();
-    if (ok) promptUnsaved.syncBaseline();
+    if (ok === true) {
+      titleSuggest.hide();
+      promptUnsaved.syncBaseline();
+    }
   };
 
   const handleSelectPrompt = (prompt: PromptLog) => {
@@ -1983,8 +2055,8 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             저장되었습니다
           </div>
         )}
-      <div className="h-full flex flex-col" data-edit-scope="">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+      <div className="h-full flex flex-col min-h-0" data-edit-scope="">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <h3 className="font-bold text-base lg:text-lg text-slate-800">BARN 수정</h3>
           </div>
@@ -2001,16 +2073,35 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-          <div className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
-            <div className="mb-2 pb-2 border-b">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500 mb-1">
-                <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                  <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                )}
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+          <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
+              <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
+              {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
+                <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
+              )}
             </div>
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+              <input
+                ref={titleSuggest.inputRef}
+                className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
+                placeholder="제목을 입력하세요"
+                value={editForm.title || ''}
+                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+              />
+              <TitleSuggestionBar
+                open={titleSuggest.open}
+                disabled={uploading}
+                onYes={handleEditSave}
+                onNo={() => {
+                  setEditForm(prev => ({ ...prev, title: '' }));
+                  titleSuggest.reject();
+                }}
+              />
+            </div>
+          </div>
+          <div data-body-scroll className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5">
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
@@ -2167,7 +2258,10 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   <div className="flex items-start justify-between gap-3">
                     <button type="button" onClick={() => handleSelectPrompt(p)} className="text-left min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">
-                        {index + 1}. {p.prompt?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.prompt)}` : promptPreviewPlain(p.prompt)}
+                        {index + 1}. {p.title}
+                      </p>
+                      <p className="text-xs text-slate-600 truncate mt-0.5">
+                        {p.prompt?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.prompt)}` : promptPreviewPlain(p.prompt)}
                       </p>
                       <p className="text-xs text-slate-500 truncate mt-0.5">
                         {new Date(p.createdAt).toLocaleDateString()}{p.tags.length > 0 ? ` · ${p.tags[0]}${p.tags.length > 1 ? ` +${p.tags.length - 1}` : ''}` : ''} · {p.response?.includes('<img') ? '[이미지]' : promptPreviewPlain(p.response)}
@@ -2203,10 +2297,11 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                     <resize.ResizeHandle columnIndex={0} />
                   </th>
                   <th style={resize.getThStyle(1)} className="report-col-tight report-col-center text-xs font-semibold text-slate-700 uppercase tracking-wider">No<resize.ResizeHandle columnIndex={1} /></th>
-                  <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Prompt (Preview)<resize.ResizeHandle columnIndex={2} /></th>
-                  <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={3} /></th>
-                  <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={4} /></th>
-                  <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(2)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Title<resize.ResizeHandle columnIndex={2} /></th>
+                  <th style={resize.getThStyle(3)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Prompt (Preview)<resize.ResizeHandle columnIndex={3} /></th>
+                  <th style={resize.getThStyle(4)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Tags<resize.ResizeHandle columnIndex={4} /></th>
+                  <th style={resize.getThStyle(5)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Attachment<resize.ResizeHandle columnIndex={5} /></th>
+                  <th style={resize.getThStyle(6)} className="text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date<resize.ResizeHandle columnIndex={6} /></th>
                 </tr>
               </thead>
                <tbody className="divide-y divide-slate-200">
@@ -2234,7 +2329,10 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                        {index + 1}
                      </td>
                      <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
-                       <div className="text-sm text-slate-900 line-clamp-4 whitespace-pre-line break-words font-medium">
+                       <div className="text-sm font-medium text-slate-900 break-words">{p.title}</div>
+                     </td>
+                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleSelectPrompt(p)}>
+                       <div className="text-sm text-slate-900 line-clamp-4 whitespace-pre-line break-words">
                          {p.prompt?.includes('<img') ? `[이미지] ${promptPreviewPlain(p.prompt)}` : promptPreviewPlain(p.prompt)}
                        </div>
                        <div className="text-xs text-slate-500 line-clamp-4 whitespace-pre-line break-words mt-1">
@@ -2263,7 +2361,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 cursor-pointer" onClick={() => handleSelectPrompt(p)}>{new Date(p.createdAt).toLocaleDateString()}</td>
                    </tr>
                  ))}
-                 {orderedPrompts.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
+                 {orderedPrompts.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400">로그가 없습니다.</td></tr>}
                </tbody>
             </table>
             </>
@@ -2282,7 +2380,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   type="button"
                   onClick={() => {
                     setIsAdding(false);
-                    setInput({ tags: '', fileInfoList: [] });
+                    setInput({ title: '', tags: '', fileInfoList: [] });
                     setAddPromptHtml('');
                     setAddResponseHtml('');
                     setAddPromptDraftId('');
@@ -2296,7 +2394,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   type="button"
                   onClick={() => {
                     setIsAdding(false);
-                    setInput({ tags: '', fileInfoList: [] });
+                    setInput({ title: '', tags: '', fileInfoList: [] });
                     setAddPromptHtml('');
                     setAddResponseHtml('');
                     setAddPromptDraftId('');
@@ -2308,6 +2406,25 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
               </div>
             </div>
             <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
+                <input
+                  ref={addTitleSuggest.inputRef}
+                  className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
+                  placeholder="제목을 입력하세요"
+                  value={input.title}
+                  onChange={e => setInput({ ...input, title: e.target.value })}
+                />
+                <TitleSuggestionBar
+                  open={addTitleSuggest.open}
+                  disabled={uploading}
+                  onYes={handleSave}
+                  onNo={() => {
+                    setInput(prev => ({ ...prev, title: '' }));
+                    addTitleSuggest.reject();
+                  }}
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">User Prompt</label>
                 {addPromptDraftId && (
@@ -2536,11 +2653,20 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     setIsNewDraft(false);
   }, []);
 
-  const persistMemoEdit = useCallback(async (): Promise<boolean> => {
+  const titleSuggest = useTitleSuggestion(selectedMemoId);
+
+
+  const persistMemoEdit = useCallback(async (): Promise<GuardSaveResult> => {
     if (saving || uploading) return false;
     if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return false;
+      const suggested = suggestTitleFromBody(bodyHtml);
+      if (!suggested) {
+        alert('제목을 입력하세요');
+        return false;
+      }
+      setEditForm(prev => ({ ...prev, title: suggested }));
+      titleSuggest.show();
+      return 'stay';
     }
     if (isBodyEffectivelyEmpty(bodyHtml)) {
       alert('내용을 입력하세요');
@@ -2613,7 +2739,10 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
   const handleEditSave = async () => {
     if (saving || uploading) return;
     const ok = await persistMemoEdit();
-    if (ok) memoUnsaved.syncBaseline();
+    if (ok === true) {
+      titleSuggest.hide();
+      memoUnsaved.syncBaseline();
+    }
   };
 
   const handleToggleSelect = (id: string) => {
@@ -2704,10 +2833,20 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             <div className="mt-3">
               <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
               <input
+                ref={titleSuggest.inputRef}
                 className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
                 placeholder="제목을 입력하세요"
                 value={editForm.title || ''}
-                onChange={e => setEditForm({...editForm, title: e.target.value})}
+                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+              />
+              <TitleSuggestionBar
+                open={titleSuggest.open}
+                disabled={saving || uploading}
+                onYes={handleEditSave}
+                onNo={() => {
+                  setEditForm(prev => ({ ...prev, title: '' }));
+                  titleSuggest.reject();
+                }}
               />
             </div>
           </div>
@@ -2981,11 +3120,20 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
     setIsNewDraft(false);
   }, []);
 
-  const persistNoteEdit = useCallback(async (): Promise<boolean> => {
+  const titleSuggest = useTitleSuggestion(selectedNoteId);
+
+
+  const persistNoteEdit = useCallback(async (): Promise<GuardSaveResult> => {
     if (saving || uploading) return false;
     if (!editForm.title?.trim()) {
-      alert('제목을 입력하세요');
-      return false;
+      const suggested = suggestTitleFromBody(editContentHtml);
+      if (!suggested) {
+        alert('제목을 입력하세요');
+        return false;
+      }
+      setEditForm(prev => ({ ...prev, title: suggested }));
+      titleSuggest.show();
+      return 'stay';
     }
     if (!editForm.id) return false;
     setSaving(true);
@@ -3044,7 +3192,10 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
   const handleEditSave = async () => {
     if (saving || uploading) return;
     const ok = await persistNoteEdit();
-    if (ok) noteUnsaved.syncBaseline();
+    if (ok === true) {
+      titleSuggest.hide();
+      noteUnsaved.syncBaseline();
+    }
   };
 
   const contentPreview = (text: string, maxLen: number) => {
@@ -3108,10 +3259,20 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
             <div className="mt-3">
               <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
               <input
+                ref={titleSuggest.inputRef}
                 className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
                 placeholder="제목"
                 value={editForm.title || ''}
                 onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+              />
+              <TitleSuggestionBar
+                open={titleSuggest.open}
+                disabled={saving || uploading}
+                onYes={handleEditSave}
+                onNo={() => {
+                  setEditForm(prev => ({ ...prev, title: '' }));
+                  titleSuggest.reject();
+                }}
               />
             </div>
           </div>
@@ -3260,11 +3421,20 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
     setIsNewDraft(false);
   }, []);
 
-  const persistIssueEdit = useCallback(async (): Promise<boolean> => {
+  const titleSuggest = useTitleSuggestion(selectedIssueId);
+
+
+  const persistIssueEdit = useCallback(async (): Promise<GuardSaveResult> => {
     if (saving || uploading || editorUploading) return false;
     if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return false;
+      const suggested = suggestTitleFromBody(editDescriptionHtml) || suggestTitleFromBody(editSolutionHtml);
+      if (!suggested) {
+        alert('제목을 입력하세요');
+        return false;
+      }
+      setEditForm(prev => ({ ...prev, title: suggested }));
+      titleSuggest.show();
+      return 'stay';
     }
     if (!editForm.id) return false;
     setSaving(true);
@@ -3409,7 +3579,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
   const handleEditSave = async () => {
     if (saving || uploading || editorUploading) return;
     const ok = await persistIssueEdit();
-    if (ok) issueUnsaved.syncBaseline();
+    if (ok === true) {
+      titleSuggest.hide();
+      issueUnsaved.syncBaseline();
+    }
   };
 
   const deleteIssue = async (id: string) => {
@@ -3510,10 +3683,20 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
               <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
                 <input
+                  ref={titleSuggest.inputRef}
                   className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
                   placeholder="문제 상황 요약"
                   value={editForm.title || ''}
-                  onChange={e => setEditForm({...editForm, title: e.target.value})}
+                  onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                />
+                <TitleSuggestionBar
+                  open={titleSuggest.open}
+                  disabled={saving || uploading || editorUploading}
+                  onYes={handleEditSave}
+                  onNo={() => {
+                    setEditForm(prev => ({ ...prev, title: '' }));
+                    titleSuggest.reject();
+                  }}
                 />
               </div>
               <div>

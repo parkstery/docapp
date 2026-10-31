@@ -26,9 +26,11 @@ import { deleteFile, uploadFile } from '../services/fileService';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 import { useDragListReorder } from '../hooks/useDragListReorder';
 import { useHighlightedRow } from '../hooks/useHighlightedRow';
-import { useUnsavedEditGuard } from '../hooks/useUnsavedEditGuard';
+import { useUnsavedEditGuard, type GuardSaveResult } from '../hooks/useUnsavedEditGuard';
 import { useTabNavigation } from '../hooks/useTabHistory';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
+import { TitleSuggestionBar, useTitleSuggestion } from './TitleSuggestionBar';
+import { suggestTitleFromBody } from '../utils/titleSuggestion';
 import { freeDocEditSnapshot } from '../utils/editSnapshots';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 import { parseHtmlInert } from '../utils/htmlText';
@@ -404,11 +406,19 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
     setIsNewDraft(false);
   }, []);
 
-  const persistFreeEdit = useCallback(async (): Promise<boolean> => {
+  const titleSuggest = useTitleSuggestion(selectedId);
+
+  const persistFreeEdit = useCallback(async (): Promise<GuardSaveResult> => {
     if (saving || uploading || uploadingAttachment) return false;
     if (!editForm.title || editForm.title.trim() === '') {
-      alert('제목을 입력하세요');
-      return false;
+      const suggested = suggestTitleFromBody(bodyHtml);
+      if (!suggested) {
+        alert('제목을 입력하세요');
+        return false;
+      }
+      setEditForm(prev => ({ ...prev, title: suggested }));
+      titleSuggest.show();
+      return 'stay';
     }
     if (isBodyEffectivelyEmpty(bodyHtml)) {
       alert('내용을 입력하세요');
@@ -482,7 +492,10 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
   const handleEditSave = async () => {
     if (saving || uploading || uploadingAttachment) return;
     const ok = await persistFreeEdit();
-    if (ok) freeUnsaved.syncBaseline();
+    if (ok === true) {
+      titleSuggest.hide();
+      freeUnsaved.syncBaseline();
+    }
   };
 
   const handleToggleSelect = (id: string) => {
@@ -653,10 +666,20 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
             <div className="mt-3">
               <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
               <input
+                ref={titleSuggest.inputRef}
                 className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-violet-500 outline-none"
                 placeholder="제목"
                 value={editForm.title || ''}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              />
+              <TitleSuggestionBar
+                open={titleSuggest.open}
+                disabled={saving || uploading || uploadingAttachment}
+                onYes={handleEditSave}
+                onNo={() => {
+                  setEditForm(prev => ({ ...prev, title: '' }));
+                  titleSuggest.reject();
+                }}
               />
             </div>
           </div>
