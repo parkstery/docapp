@@ -18,6 +18,8 @@ type TabNavContextValue = {
   register: (tab: string, controller: TabNavController) => () => void;
   report: (tab: string, docId: string | null) => void;
   openFailed: (tab: string, docId: string) => void;
+  /** 현재 편집을 정리(확인 대화상자 포함)한 뒤 대시보드로 이동 */
+  leaveProject: () => void;
 };
 
 export const TabNavContext = createContext<TabNavContextValue | null>(null);
@@ -38,6 +40,8 @@ export function useTabHistory<T extends string>(initialTab: T, onLeaveProject: (
   const pendingOpenRef = useRef<TabHistoryEntry | null>(null);
 
   const rerender = () => setVersion((v) => v + 1);
+  const onLeaveProjectRef = useRef(onLeaveProject);
+  onLeaveProjectRef.current = onLeaveProject;
 
   const setActiveTab = useCallback((tab: T) => {
     activeTabRef.current = tab;
@@ -132,7 +136,8 @@ export function useTabHistory<T extends string>(initialTab: T, onLeaveProject: (
       historyRef.current = { entries, index: h.index };
       rerender();
     },
-  }), [push]);
+    leaveProject: () => leaveCurrent(() => onLeaveProjectRef.current()),
+  }), [push, leaveCurrent]);
 
   const { index, entries } = historyRef.current;
   return {

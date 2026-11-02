@@ -36,6 +36,7 @@ import { freeDocEditSnapshot } from '../utils/editSnapshots';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 import { parseHtmlInert } from '../utils/htmlText';
 import { BackToListButton } from './BackToListButton';
+import { DocDates } from './DocDates';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -614,9 +615,10 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
         )}
         <div className="h-full flex flex-col min-h-0" data-edit-scope="">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
               <BackToListButton onClick={freeUnsaved.requestExit} />
               <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 TASK 작성' : 'TASK 수정'}</h3>
+              <DocDates createdAt={editForm.createdAt} updatedAt={editForm.updatedAt} isNew={isNewDraft} />
               {uploading && (
                 <span className="text-xs text-slate-500 flex items-center gap-1">
                   <Loader2 className="animate-spin" size={14} /> 이미지 업로드 중…
@@ -647,19 +649,7 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
           <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
-            <div className="flex items-center gap-4 text-sm text-slate-500">
-              {isNewDraft ? (
-                <span>저장 전</span>
-              ) : (
-                <>
-                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="mt-3">
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
               <input
                 ref={titleSuggest.inputRef}

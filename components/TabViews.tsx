@@ -43,10 +43,10 @@ import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 import { openDocumentPreviewInBrowser } from '../services/markdownRender';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MarkdownSplitEditor } from './markdownEditor/MarkdownSplitEditor';
-import { restructureContentAsChatPaste } from '../utils/chatPasteStorage';
 import { legacyContentToEditableMarkdown, markdownListPreview } from '../utils/documentMarkdown';
 import { parseHtmlInert } from '../utils/htmlText';
 import { BackToListButton } from './BackToListButton';
+import { DocDates } from './DocDates';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -779,23 +779,12 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
             <BackToListButton onClick={planningUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 기획서 작성' : '기획서 수정'}</h3>
+            <DocDates createdAt={editForm.createdAt} updatedAt={editForm.updatedAt} isNew={isNewDraft} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const next = restructureContentAsChatPaste(editForm.content || '');
-                setEditForm({ ...editForm, content: next });
-                setPlanningPasteHint(true);
-                setTimeout(() => setPlanningPasteHint(false), 2500);
-              }}
-              className="px-4 py-2 bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-lg text-sm transition-colors w-full sm:w-auto"
-            >
-              구조화 적용
-            </button>
             <button
               type="button"
               onClick={() =>
@@ -805,15 +794,15 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                   { format: 'planning' }
                 )
               }
-              className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors w-full sm:w-auto"
+              className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-sm transition-colors"
             >
               .md 보기
             </button>
-            <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto disabled:opacity-50">
+            <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors disabled:opacity-50">
               <Save size={14}/> 저장
             </button>
             {!isNewDraft && (
-            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors w-full sm:w-auto">
+            <button onClick={() => handleDelete(editForm.id!)} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center justify-center gap-1 font-medium transition-colors">
               <Trash2 size={14}/> 삭제
             </button>
             )}
@@ -822,27 +811,18 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
           <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
-              {isNewDraft ? (
-                <span>저장 전</span>
-              ) : (
-                <>
-                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-              <input
-                ref={titleSuggest.inputRef}
-                className="w-full border rounded-lg p-3 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
-                placeholder="제목을 입력하세요"
-                value={editForm.title || ''}
-                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-              />
+            <div>
+              <div className="flex items-center gap-3">
+                <label htmlFor={`planning-title-${editForm.id}`} className="shrink-0 text-sm font-medium text-slate-700">제목</label>
+                <input
+                  id={`planning-title-${editForm.id}`}
+                  ref={titleSuggest.inputRef}
+                  className="min-w-0 flex-1 border rounded-lg px-3 py-2 text-lg font-semibold focus:ring-2 ring-indigo-500 outline-none"
+                  placeholder="제목을 입력하세요"
+                  value={editForm.title || ''}
+                  onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                />
+              </div>
               <TitleSuggestionBar
                 open={titleSuggest.open}
                 disabled={saving || uploading}
@@ -857,22 +837,9 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
           <div data-body-scroll className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5">
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  내용 (Markdown · Cursor 채팅 붙여넣기)
-                </label>
-                <p className="text-xs text-slate-500 mb-2">
-                  Cursor 채팅창에서 드래그·복사 후 여기에 붙여넣으면 docapp이 표·목록·제목을 자동으로 구조화합니다(
-                  <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-chat</code>). Notion에서 복사한
-                  서식은 <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-html</code>로 저장됩니다.
-                  표·본문은 <strong>오른쪽 미리보기</strong>에서 확인하세요.
-                </p>
-                {planningPasteHint && (
-                  <p className="text-xs text-green-700 font-medium mb-2">
-                    채팅 붙여넣기 구조화가 적용되었습니다. 오른쪽 미리보기를 확인하세요.
-                  </p>
-                )}
                 <MarkdownSplitEditor
                   ariaLabel="기획서 내용"
+                  notice={planningPasteHint ? '구조화가 적용되었습니다' : undefined}
                   placeholder="Cursor 채팅 내용을 붙여넣으세요..."
                   value={editForm.content || ''}
                   onChange={(content) => setEditForm(prev => ({ ...prev, content }))}
@@ -1360,23 +1327,12 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
             <BackToListButton onClick={reportUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 보고서 작성' : '보고서 수정'}</h3>
+            <DocDates createdAt={editForm.createdAt} updatedAt={editForm.updatedAt} isNew={isNewDraft} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const next = restructureContentAsChatPaste(editForm.summary || '');
-                setEditForm({ ...editForm, summary: next });
-                setReportPasteHint(true);
-                setTimeout(() => setReportPasteHint(false), 2500);
-              }}
-              className="px-4 py-2 bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-lg text-sm transition-colors"
-            >
-              구조화 적용
-            </button>
             <button
               type="button"
               onClick={() =>
@@ -1403,27 +1359,18 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
           <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
-              {isNewDraft ? (
-                <span>저장 전</span>
-              ) : (
-                <>
-                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
-                <input
-                  ref={titleSuggest.inputRef}
-                  className="w-full border rounded-lg p-3 focus:ring-2 ring-indigo-500 outline-none"
-                  value={editForm.title || ''}
-                  onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-                />
+            <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-6">
+              <div className="min-w-0 md:flex-1">
+                <div className="flex items-center gap-3">
+                  <label htmlFor={`report-title-${editForm.id}`} className="shrink-0 text-sm font-medium text-slate-700">제목</label>
+                  <input
+                    id={`report-title-${editForm.id}`}
+                    ref={titleSuggest.inputRef}
+                    className="min-w-0 flex-1 border rounded-lg px-3 py-2 focus:ring-2 ring-indigo-500 outline-none"
+                    value={editForm.title || ''}
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                  />
+                </div>
                 <TitleSuggestionBar
                   open={titleSuggest.open}
                   disabled={saving || uploading}
@@ -1434,10 +1381,11 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                   }}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">유형</label>
+              <div className="flex items-center gap-3 md:w-64 shrink-0">
+                <label htmlFor={`report-type-${editForm.id}`} className="shrink-0 text-sm font-medium text-slate-700">유형</label>
                 <select
-                  className="w-full border rounded-lg p-3 outline-none focus:ring-2 ring-indigo-500"
+                  id={`report-type-${editForm.id}`}
+                  className="min-w-0 flex-1 border rounded-lg px-3 py-2 outline-none focus:ring-2 ring-indigo-500"
                   value={editForm.type}
                   onChange={e => setEditForm({...editForm, type: e.target.value as Report['type']})}
                 >
@@ -1454,21 +1402,9 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
             <>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    요약 (Markdown · Cursor 채팅 붙여넣기)
-                  </label>
-                    <p className="text-xs text-slate-500 mb-2">
-                      Cursor 채팅·표 붙여넣기 시 자동 구조화(
-                      <code className="text-[11px] bg-slate-100 px-1 rounded">:::docapp-chat</code>). 표·본문은{' '}
-                      <strong>오른쪽 미리보기</strong>에서 확인하세요.
-                    </p>
-                    {reportPasteHint && (
-                      <p className="text-xs text-green-700 font-medium mb-2">
-                        구조화가 적용되었습니다. 오른쪽 미리보기를 확인하세요.
-                      </p>
-                    )}
                     <MarkdownSplitEditor
                       ariaLabel="보고서 요약"
+                      notice={reportPasteHint ? '구조화가 적용되었습니다' : undefined}
                       placeholder="보고서 요약·채팅 내용을 붙여넣으세요..."
                       value={editForm.summary || ''}
                       onChange={(summary) => setEditForm(prev => ({ ...prev, summary }))}
@@ -2033,9 +1969,10 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
             <BackToListButton onClick={promptUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">BARN 수정</h3>
+            <DocDates createdAt={editForm.createdAt} updatedAt={editForm.updatedAt} />
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
@@ -2049,13 +1986,7 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
           <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
-              <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-              {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-              )}
-            </div>
-            <div className="mt-3">
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
               <input
                 ref={titleSuggest.inputRef}
@@ -2772,9 +2703,10 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
             <BackToListButton onClick={memoUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 참고 작성' : '참고 수정'}</h3>
+            <DocDates createdAt={editForm.createdAt} updatedAt={editForm.updatedAt} isNew={isNewDraft} />
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
@@ -2790,19 +2722,7 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
           <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
-              {isNewDraft ? (
-                <span>저장 전</span>
-              ) : (
-                <>
-                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="mt-3">
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
               <input
                 ref={titleSuggest.inputRef}
@@ -3196,9 +3116,10 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
         )}
         <div className="h-full flex flex-col min-h-0" data-edit-scope="">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
               <BackToListButton onClick={noteUnsaved.requestExit} />
               <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 메모 작성' : '메모 수정'}</h3>
+              <DocDates createdAt={editForm.createdAt} updatedAt={editForm.updatedAt} isNew={isNewDraft} />
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
@@ -3214,19 +3135,7 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
           <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
-              {isNewDraft ? (
-                <span>저장 전</span>
-              ) : (
-                <>
-                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="mt-3">
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
               <input
                 ref={titleSuggest.inputRef}
@@ -3617,9 +3526,10 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
             <BackToListButton onClick={issueUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 트러블슈팅 작성' : '트러블슈팅 수정'}</h3>
+            <DocDates createdAt={editForm.createdAt} updatedAt={editForm.updatedAt} isNew={isNewDraft} />
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || editorUploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
@@ -3635,19 +3545,7 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
           <div data-fixed-title className="shrink-0 px-4 sm:px-8 pt-4 sm:pt-5 pb-4 border-b border-slate-200">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-500">
-              {isNewDraft ? (
-                <span>저장 전</span>
-              ) : (
-                <>
-                  <span>작성일: {new Date(editForm.createdAt || 0).toLocaleString()}</span>
-                  {editForm.updatedAt && editForm.updatedAt !== editForm.createdAt && (
-                    <span>수정일: {new Date(editForm.updatedAt).toLocaleString()}</span>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-slate-700 mb-2">제목</label>
                 <input

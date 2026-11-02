@@ -39,6 +39,8 @@ export interface MarkdownSplitEditorProps {
   placeholder?: string;
   onStructuredPaste?: () => void;
   ariaLabel?: string;
+  /** 도구줄 오른쪽에 잠시 띄울 안내(예: 붙여넣기 구조화 완료) */
+  notice?: string;
 }
 
 const PANE_HEIGHT = 'h-[clamp(360px,65vh,880px)]';
@@ -56,6 +58,7 @@ export const MarkdownSplitEditor: React.FC<MarkdownSplitEditorProps> = ({
   placeholder,
   onStructuredPaste,
   ariaLabel,
+  notice,
 }) => {
   const [prefs, setPrefs] = useState<EditorPrefs>(loadPrefs);
   const editorRef = useRef<CodeMirrorMarkdownHandle>(null);
@@ -126,6 +129,18 @@ export const MarkdownSplitEditor: React.FC<MarkdownSplitEditorProps> = ({
           <Search size={14} />
           찾기
         </button>
+        <div className="ml-auto flex items-center gap-3 text-xs">
+          {notice && (
+            <span role="status" className="text-green-700 font-medium">
+              {notice}
+            </span>
+          )}
+          {showPreview && (
+            <span className="text-slate-500">
+              미리보기 · Paste Normalizer <span className="text-[10px] text-indigo-600 font-semibold uppercase">v2</span>
+            </span>
+          )}
+        </div>
       </div>
 
       <div className={`grid gap-4 grid-cols-1 ${prefs.mode === 'split' ? 'xl:grid-cols-2' : ''}`}>
@@ -161,11 +176,7 @@ export const MarkdownSplitEditor: React.FC<MarkdownSplitEditorProps> = ({
         )}
         {showPreview && (
           <div className={`${PANE_HEIGHT} flex flex-col min-w-0 border rounded-xl bg-white overflow-hidden`}>
-            <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0 flex items-center justify-between gap-2">
-              <span>미리보기 · Paste Normalizer</span>
-              <span className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wide">v2</span>
-            </div>
-            <div className="flex-1 overflow-auto p-4 min-w-0">
+            <div className="flex-1 overflow-auto p-4 min-w-0" aria-label="미리보기">
               <MarkdownPreview mode="planning" content={value} />
             </div>
           </div>

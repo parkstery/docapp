@@ -109,13 +109,3 @@ function summarizeBlocks(blocks: DocumentBlock[]): string {
   const label = parts.length ? parts.join(' · ') : '본문';
   return `<!-- docapp: Cursor 채팅 붙여넣기 (${label}) — 미리보기에서 확인 -->\n`;
 }
-
-export function restructureContentAsChatPaste(source: string): string {
-  const existing = extractChatPasteBlocksFromContent(source);
-  const stripped = stripChatPasteFences(source);
-  if (!stripped && existing.length > 0) {
-    return summarizeBlocks(existing) + wrapChatPasteBlock(existing);
-  }
-  if (!stripped) return source;
-  return buildChatPasteInsert(stripped);
-}
