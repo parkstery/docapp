@@ -46,6 +46,7 @@ import { MarkdownSplitEditor } from './markdownEditor/MarkdownSplitEditor';
 import { restructureContentAsChatPaste } from '../utils/chatPasteStorage';
 import { legacyContentToEditableMarkdown, markdownListPreview } from '../utils/documentMarkdown';
 import { parseHtmlInert } from '../utils/htmlText';
+import { BackToListButton } from './BackToListButton';
 
 /** 단일 fileInfo / fileInfoList 를 항상 배열로 반환 (하위 호환) */
 const getFileList = (item: { fileInfo?: FileInfo; fileInfoList?: FileInfo[] } | null | undefined): FileInfo[] =>
@@ -778,13 +779,11 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <BackToListButton onClick={planningUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 기획서 작성' : '기획서 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={planningUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors w-full sm:w-auto">
-              목록으로
-            </button>
             <button
               type="button"
               onClick={() => {
@@ -1361,11 +1360,11 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <BackToListButton onClick={reportUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 보고서 작성' : '보고서 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={reportUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">목록으로</button>
             <button
               type="button"
               onClick={() => {
@@ -2034,13 +2033,11 @@ export const PromptView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <BackToListButton onClick={promptUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">BARN 수정</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={promptUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
-              목록으로
-            </button>
             <button type="button" data-edit-save="" onClick={handleEditSave} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors">
               <Save size={14}/> 저장
             </button>
@@ -2775,13 +2772,11 @@ export const MemoView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <BackToListButton onClick={memoUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 참고 작성' : '참고 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={memoUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
-              목록으로
-            </button>
             <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
               <Save size={14}/> 저장
             </button>
@@ -3201,13 +3196,11 @@ export const NoteView: React.FC<ViewProps> = ({ appId, highlightId, highlightSeq
         )}
         <div className="h-full flex flex-col min-h-0" data-edit-scope="">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <BackToListButton onClick={noteUnsaved.requestExit} />
               <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 메모 작성' : '메모 수정'}</h3>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={noteUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
-                목록으로
-              </button>
               <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
                 <Save size={14}/> 저장
               </button>
@@ -3624,13 +3617,11 @@ export const IssueView: React.FC<ViewProps> = ({ appId, highlightId, highlightSe
         )}
       <div className="h-full flex flex-col min-h-0" data-edit-scope="">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <BackToListButton onClick={issueUnsaved.requestExit} />
             <h3 className="font-bold text-base lg:text-lg text-slate-800">{isNewDraft ? '새 트러블슈팅 작성' : '트러블슈팅 수정'}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={issueUnsaved.requestExit} className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors">
-              목록으로
-            </button>
             <button type="button" data-edit-save="" onClick={handleEditSave} disabled={uploading || editorUploading || saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 font-medium transition-colors disabled:opacity-50">
               <Save size={14}/> 저장
             </button>

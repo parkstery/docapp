@@ -35,6 +35,7 @@ import { downloadAttachment, openAttachment } from '../utils/attachmentOpen';
 import { freeDocEditSnapshot } from '../utils/editSnapshots';
 import { sortTabListItems, withListSortRankForCreate } from '../utils/listRowOrder';
 import { parseHtmlInert } from '../utils/htmlText';
+import { BackToListButton } from './BackToListButton';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -613,7 +614,8 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
         )}
         <div className="h-full flex flex-col min-h-0" data-edit-scope="">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 shrink-0">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <BackToListButton onClick={freeUnsaved.requestExit} />
               <h3 className="font-bold text-lg text-slate-800">{isNewDraft ? '새 TASK 작성' : 'TASK 수정'}</h3>
               {uploading && (
                 <span className="text-xs text-slate-500 flex items-center gap-1">
@@ -622,13 +624,6 @@ export const FreeDocView: React.FC<ViewProps> = ({ appId, highlightId, highlight
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={freeUnsaved.requestExit}
-                className="px-4 py-2 bg-slate-300 text-slate-700 hover:bg-slate-400 rounded-lg text-sm transition-colors"
-              >
-                목록으로
-              </button>
               <button
                 type="button"
                 data-edit-save=""

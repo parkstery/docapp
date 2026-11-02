@@ -470,7 +470,7 @@ export const AuthProvider = ({ children }) => {
       await new Promise((r) => setTimeout(r, 500));
     };
     const tabBtnR = (label) => (isMobileNav
-      ? page.locator('nav.lg\\:hidden button').filter({ hasText: label }).first()
+      ? page.locator('nav[aria-label="문서 종류"]:visible button').filter({ hasText: label }).first()
       : page.locator('aside button').filter({ hasText: label }).first());
     const openTabR = async (label) => {
       await tabBtnR(label).click();
@@ -546,7 +546,7 @@ export const AuthProvider = ({ children }) => {
           await recoverToList();
           await setVp(vp.w, vp.h);
           await openTabR(k.tab);
-          await page.getByText(k.title + ' v2', { exact: true }).first().click();
+          await page.getByText(k.title + ' v2').locator('visible=true').first().click();
           await until(async () => ((await scope().count()) === 1 ? true : null), 8000, 'scroll saved open ' + k.key);
           await expectHeading(k.savedH);
           await fillLongBody(k, k.key + '-' + vpTag + '-saved');
