@@ -77,6 +77,7 @@ export const storage = {
   issues: makeCol('issues'),
   screenshots: makeCol('screenshots'),
 };
+export const LOAD_ERROR_EVENT = 'docapp:load-error';
 export const db = {};
 export const firebaseStorage = {};
 export const auth = { currentUser: { uid: 'fixture-uid', email: 'fixture@example.com' } };
@@ -99,6 +100,7 @@ export const uploadFile = async (entityId, section, file) => {
 };
 export const deleteFile = async (url) => { window.__DOCAPP_FIXTURE__.deletes.push({ collection: '__files__', id: url, at: Date.now() }); };
 export const getFilePathFromURL = (url) => url;
+export const ensureTextCharset = async () => {};
 `;
     const authSrc = `
 import React from '${reactUrl}';
@@ -110,7 +112,7 @@ export const useAuth = () => {
   return c;
 };
 export const AuthProvider = ({ children }) => {
-  const [user] = useState({ uid: 'fixture-uid', email: 'fixture@example.com', displayName: 'Fixture' });
+  const [user] = useState({ uid: 'fixture-uid', email: 'googiden@gmail.com', emailVerified: true, displayName: 'Fixture' });
   const [loading] = useState(false);
   const value = { user, loading, signIn: async () => {}, signOut: async () => {} };
   return React.createElement(AuthContext.Provider, { value }, children);
@@ -132,6 +134,14 @@ export const AuthProvider = ({ children }) => {
     const scope = () => page.locator('[data-edit-scope]');
     const saveBtn = () => page.locator('[data-edit-scope] [data-edit-save]');
     const titleInput = () => page.locator('[data-edit-scope] input:not([type="file"])').first();
+    // 기획서·보고서 본문은 CodeMirror 편집기(처음 열 때 지연 로드)
+    const fillCodeMirror = async (text) => {
+      await until(async () => ((await scope().locator('.cm-content').count()) === 1 ? true : null), 10000, 'codemirror loaded');
+      await scope().locator('.cm-content').click();
+      await page.keyboard.press('Control+a');
+      await page.keyboard.insertText(text);
+    };
+    const codeMirrorText = () => page.evaluate("Array.from(document.querySelectorAll('[data-edit-scope] .cm-line')).map((l) => l.textContent).join('\\n')");
     const overlayCount = () => page.locator('div.fixed.inset-0').count();
     const storeSize = (col) => page.evaluate('(window.__DOCAPP_FIXTURE__.size(' + JSON.stringify(col) + '))');
     const writesFor = (col, id) => page.evaluate("(window.__DOCAPP_FIXTURE__.writesFor(" + JSON.stringify(col) + (id ? "," + JSON.stringify(id) : "") + "))");
@@ -218,7 +228,7 @@ export const AuthProvider = ({ children }) => {
         }
         // Fill body (+ selects) and save.
         if (k.editor === 'textarea') {
-          await scope().locator('textarea').first().fill(k.body);
+          await fillCodeMirror(k.body);
         } else if (k.editor === 'tip') {
           await scope().locator('[contenteditable="true"]').first().fill(k.body);
         } else {
@@ -263,7 +273,7 @@ export const AuthProvider = ({ children }) => {
         const tVal = await titleInput().inputValue();
         if (tVal !== k.title + ' v2') throw new Error('title not preserved: ' + tVal);
         if (k.editor === 'textarea') {
-          const bVal = await scope().locator('textarea').first().inputValue();
+          const bVal = await codeMirrorText();
           if (bVal.indexOf(k.body) < 0) throw new Error('body not preserved');
         } else if (k.editor === 'tip') {
           const bTxt = await scope().locator('[contenteditable="true"]').first().innerText();
@@ -471,8 +481,9 @@ export const AuthProvider = ({ children }) => {
     const settleEdit = async () => {
       await page.evaluate("new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(res, 150))))");
     };
-    const assertScrollLayout = async (label) => {
-      const body = page.locator('[data-body-scroll]').first();
+    const assertScrollLayout = async (label, k) => {
+      // 기획서·보고서는 긴 본문이 CodeMirror 편집기 안에서 스크롤된다
+      const body = k && k.editor === 'textarea' ? scope().locator('.cm-scroller').first() : page.locator('[data-body-scroll]').first();
       const title = page.locator('[data-fixed-title] input:not([type="file"])').first();
       await until(async () => {
         const h = await body.evaluate((el) => el.scrollHeight - el.clientHeight).catch(() => 0);
@@ -496,7 +507,7 @@ export const AuthProvider = ({ children }) => {
     };
     const fillLongBody = async (k, marker) => {
       if (k.editor === 'textarea') {
-        await scope().locator('textarea').first().fill(longText(marker));
+        await fillCodeMirror(longText(marker));
       } else if (k.editor === 'tip') {
         await scope().locator('[contenteditable="true"]').first().fill(longHtml(marker));
       } else {
@@ -517,7 +528,7 @@ export const AuthProvider = ({ children }) => {
           await until(async () => ((await scope().count()) === 1 ? true : null), 8000, 'scroll draft scope ' + k.key);
           await titleInput().fill('SUPERVISOR scroll ' + k.key);
           await fillLongBody(k, k.key + '-' + vpTag + '-draft');
-          await assertScrollLayout('scroll-' + k.key + '-' + vpTag + '-draft');
+          await assertScrollLayout('scroll-' + k.key + '-' + vpTag + '-draft', k);
           await page.getByRole('button', { name: '목록으로' }).first().click();
           await until(async () => {
             const t = await page.locator('#unsaved-changes-title').count().catch(() => 0);
@@ -543,7 +554,7 @@ export const AuthProvider = ({ children }) => {
           await expectHeading(k.savedH);
           await until(async () => ((await saveBtn().isEnabled().catch(() => false)) ? true : null), 8000, 'scroll saved enabled ' + k.key);
           await settleEdit();
-          await assertScrollLayout('scroll-' + k.key + '-' + vpTag + '-saved');
+          await assertScrollLayout('scroll-' + k.key + '-' + vpTag + '-saved', k);
           await page.getByRole('button', { name: '목록으로' }).first().click();
           await until(async () => ((await scope().count()) === 0 ? true : null), 8000, 'scroll saved exit ' + k.key);
           results['scroll-' + k.key + '-' + vpTag + '-saved'] = 'pass';

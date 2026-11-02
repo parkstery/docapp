@@ -42,7 +42,7 @@ import { devLog, devWarn } from '../utils/devLog';
 import { sanitizePreviewHtml } from '../services/sanitizeHtml';
 import { openDocumentPreviewInBrowser } from '../services/markdownRender';
 import { MarkdownPreview } from './MarkdownPreview';
-import { PlanningContentEditor } from './PlanningContentEditor';
+import { MarkdownSplitEditor } from './markdownEditor/MarkdownSplitEditor';
 import { restructureContentAsChatPaste } from '../utils/chatPasteStorage';
 import { legacyContentToEditableMarkdown, markdownListPreview } from '../utils/documentMarkdown';
 import { parseHtmlInert } from '../utils/htmlText';
@@ -872,29 +872,16 @@ export const PlanningView: React.FC<ViewProps> = ({ appId, highlightId, highligh
                     채팅 붙여넣기 구조화가 적용되었습니다. 오른쪽 미리보기를 확인하세요.
                   </p>
                 )}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <PlanningContentEditor
-                    className="w-full min-w-0 min-h-[400px] xl:min-h-[480px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
-                    placeholder="Cursor 채팅 내용을 붙여넣으세요..."
-                    value={editForm.content || ''}
-                    onChange={(content) => setEditForm({ ...editForm, content })}
-                    onStructuredPaste={() => {
-                      setPlanningPasteHint(true);
-                      setTimeout(() => setPlanningPasteHint(false), 2500);
-                    }}
-                  />
-                  <div className="flex flex-col min-w-0 min-h-[400px] xl:min-h-[480px] border rounded-xl bg-white overflow-hidden">
-                    <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0 flex items-center justify-between gap-2">
-                      <span>미리보기 · Paste Normalizer</span>
-                      <span className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wide">
-                        v2
-                      </span>
-                    </div>
-                    <div className="flex-1 overflow-auto p-4 min-w-0">
-                      <MarkdownPreview mode="planning" content={editForm.content || ''} />
-                    </div>
-                  </div>
-                </div>
+                <MarkdownSplitEditor
+                  ariaLabel="기획서 내용"
+                  placeholder="Cursor 채팅 내용을 붙여넣으세요..."
+                  value={editForm.content || ''}
+                  onChange={(content) => setEditForm(prev => ({ ...prev, content }))}
+                  onStructuredPaste={() => {
+                    setPlanningPasteHint(true);
+                    setTimeout(() => setPlanningPasteHint(false), 2500);
+                  }}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
@@ -1481,27 +1468,16 @@ export const ReportView: React.FC<ViewProps> = ({ appId, highlightId, highlightS
                         구조화가 적용되었습니다. 오른쪽 미리보기를 확인하세요.
                       </p>
                     )}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                      <PlanningContentEditor
-                        className="w-full min-w-0 min-h-[360px] xl:min-h-[420px] p-4 resize-y outline-none border rounded-xl font-mono text-sm bg-slate-50/50 focus:bg-white focus:ring-2 ring-indigo-500"
-                        placeholder="보고서 요약·채팅 내용을 붙여넣으세요..."
-                        value={editForm.summary || ''}
-                        onChange={(summary) => setEditForm({ ...editForm, summary })}
-                        onStructuredPaste={() => {
-                          setReportPasteHint(true);
-                          setTimeout(() => setReportPasteHint(false), 2500);
-                        }}
-                      />
-                      <div className="flex flex-col min-w-0 min-h-[360px] xl:min-h-[420px] border rounded-xl bg-white overflow-hidden">
-                        <div className="px-3 py-2 border-b bg-slate-50 text-xs font-medium text-slate-600 shrink-0 flex items-center justify-between gap-2">
-                          <span>미리보기 · Paste Normalizer</span>
-                          <span className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wide">v2</span>
-                        </div>
-                        <div className="flex-1 overflow-auto p-4 min-w-0">
-                          <MarkdownPreview mode="planning" content={editForm.summary || ''} />
-                        </div>
-                      </div>
-                    </div>
+                    <MarkdownSplitEditor
+                      ariaLabel="보고서 요약"
+                      placeholder="보고서 요약·채팅 내용을 붙여넣으세요..."
+                      value={editForm.summary || ''}
+                      onChange={(summary) => setEditForm(prev => ({ ...prev, summary }))}
+                      onStructuredPaste={() => {
+                        setReportPasteHint(true);
+                        setTimeout(() => setReportPasteHint(false), 2500);
+                      }}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">첨부파일</label>
